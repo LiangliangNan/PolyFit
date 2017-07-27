@@ -7,7 +7,7 @@ Executable files are also available in the project page.
 
 Please consider citing the above paper if you use the code (or part of it). 
 
-==========================================================================================================
+==================================================================================
 
 How to compile the code?
       - This implementation is based on the following third party libraries (only the version specified here has been tested):
@@ -27,7 +27,7 @@ NOTE: Though lp_solve is included and can be used as an alternative solver, it c
 Project file(s) for Visual Studio 2017 are provided.
 The code should also be compiled by other compilers and/or under other platforms (but not tested yet).
 
-==========================================================================================================
+==================================================================================
 
 How to run the program?
       Our algorithm consists of few major steps. To make life easier, this implementation provides a user interface with a few 
@@ -36,14 +36,14 @@ How to run the program?
 NOTE: This implementation incorporates a progress logger into the user interface. Thus, running times should be (slightly)
       longer than what have been reported in our paper.	  
 
-==========================================================================================================
+==================================================================================
 
 License
       This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
       as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. The 
       full text of the license can be found in the accompanying License.txt file.
 
-==========================================================================================================
+==================================================================================
 
 Should you have any questions, comments, suggestions, or you want to report issues, please contact me at: 
 
