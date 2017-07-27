@@ -8,7 +8,7 @@ These executables have been tested under 64 bit Windows 8. The source code of Po
 
 Please consider citing the above paper if you use this program. 
 
-==============================================================================================================================
+=====================================================================================================
 
 How to run the program?
       Two solvers (Gurobi and lp_solve) were linked against these binary files. However, the Gurobi solver is more reliable and 
@@ -23,14 +23,20 @@ How to run the program?
 NOTE: This implementation incorporates a progress logger into the user interface. Thus, running times should be (slightly)
       longer than what have been reported in our paper.	  
 
-==============================================================================================================================
+=====================================================================================================
 
-License
+Data.
+      Test data can be downloaded from the project page of PolyFit here:
+	  http://web.siat.ac.cn/~liangliang/publications/2017/polyfit/polyfit.html
+
+=====================================================================================================
+
+License.
       This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
       as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. The 
       full text of the license can be found in the accompanying License.txt file.
 
-==============================================================================================================================
+=====================================================================================================
 
 Should you have any questions, comments, suggestions, or you want to report issues, please contact me at: 
 
