@@ -7,7 +7,10 @@ NOTE: all data in this folder are stored in ASCII format (for easier understandi
       are suggested save the data in binary format using PolyFit, or Mapple (http://web.siat.ac.cn/~liangliang/software.htm)
       Using binary format will result in much smaller file sizes and much faster reading/saving speed.
 
-==============================================================================================================================
+The data can be downloaded from the project page of PolyFit:
+	  http://web.siat.ac.cn/~liangliang/publications/2017/polyfit/polyfit.html
+
+=====================================================================================================
 
 File format:
 
@@ -24,7 +27,7 @@ ax + by + cz + d = 0).
 Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary format.
 Please refer to 'point_set_serializer_vg.cpp' of the source code for more information.
 
-------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
 // the coordinates of the points 
 num_points: N   // N is an integer denoting the number of points
 x1  y1  z1	    // 3 floating point numbers
@@ -65,7 +68,7 @@ group_color: r g b
 group_num_points: N
 id1 ... idN
 num_children: 0
-------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
 
 Below is an example file (comments are NOT part of the file):
 
@@ -100,7 +103,7 @@ group_num_point: 9155
 38812 ... 140417 
 num_children: 0
 
-==============================================================================================================================
+=====================================================================================================
 
 Parameters. 
 
@@ -110,7 +113,7 @@ Slightly different weights (fitting = 0.3, coverage = 0.4, and complexity = 0.3)
 where the background (ground plane) has a much higher density than the object (sofa), thus the smaller data fitting weight.
 If non-default parameters are used, these parameters are provided in the files names.
 
-==============================================================================================================================
+=====================================================================================================
 
 Should you have any questions, comments, suggestions, or you want to report issues, please contact me at: 
 
