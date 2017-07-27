@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/Resources">
+        <file>fileopen.png</file>
+        <file>filesave.png</file>
+        <file>snap_shot.png</file>
+        <file>PolyFit.png</file>
+        <file>step1.png</file>
+        <file>step2.png</file>
+        <file>step3.png</file>
+        <file>step4.png</file>
+        <file>about.png</file>
+        <file>PolyFit.ico</file>
+    </qresource>
+</RCC>
