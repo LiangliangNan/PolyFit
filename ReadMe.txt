@@ -38,13 +38,13 @@ NOTE: This implementation incorporates a progress logger into the user interface
 
 =====================================================================================================
 
-Data
+Data.
       Test data can be downloaded from the project page of PolyFit here:
 	  http://web.siat.ac.cn/~liangliang/publications/2017/polyfit/polyfit.html
 
 =====================================================================================================
 
-License
+License.
       This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License
       as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version. The 
       full text of the license can be found in the accompanying License.txt file.
