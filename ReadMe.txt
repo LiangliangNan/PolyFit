@@ -13,14 +13,14 @@ Please consider citing the above paper if you use the code (or part of it).
 ====================================================================================================
 
 How to compile the code?
-      - This implementation is based on the following third party libraries (only the version 
-	specified here has been tested):
+    This implementation is based on the following third party libraries (only the version specified 
+    here has been tested):
       -) Qt (version 5.8.0). https://www.qt.io/
       -) CGAL (version 4.10). http://www.cgal.org/index.html
       -) boost (version 1.64. Not a direct dependence, but CGAL relies on it). http://www.boost.org/
 
     Besides, you need either Gurobi or lp_solve for solving the Integer Linear Programs formulated 
-	by our method.
+    by our method.
       -) Gurobi (version 7.5.1, 64 bit). You may download it and obtain an academic license from 
 	 http://www.gurobi.com/
       -) lp_solve (version 5.5, source code included in this distribution). 
