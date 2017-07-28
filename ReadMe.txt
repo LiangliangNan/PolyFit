@@ -29,8 +29,8 @@ How to compile the code?
 NOTE: Though lp_solve is included and can be used as an alternative solver, it can only solve very 
       small problems. It is too slow (may take you hours or days) and may fail to solve some 
       problems. For example, lp_solve takes 15 minutes for the data "Fig1.vg", while Gurobi takes 
-      only 0.02 seconds. So don't doubt to use the Gurobi solver (academic licenses are free).
-      It is much faster and reliable. 
+      only 0.02 seconds. So don't doubt to use the Gurobi solver (academic licenses are free) that
+	  is much faster and reliable. 
 
 Project file(s) for Visual Studio 2017 are provided.
 The code should also be compiled by compilers under other platforms, but not tested yet.
