@@ -19,3 +19,5 @@
 
 3rd_lpsolve/* linguist-vendored
 3rd_QGLViewer-2.6.3/* linguist-vendored
+*.h linguist-language=C++
+*.c linguist-language=C++
