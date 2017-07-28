@@ -51,8 +51,4 @@ x64
 .vs/PolyFit/v15/.suo
 3rd_QGLViewer-2.6.3/3rd_qglviewer.vcxproj.user
 3rd_QGLViewer-2.6.3/GeneratedFiles
-PolyFit/GeneratedFiles
-PolyFit/PolyFit.log
-PolyFit/PolyFit.vcxproj.user
-.vs/PolyFit/v15/.suo
-.vs/PolyFit/v15/.suo
+PolyFit/GeneratedFiles/qrc_PolyFit.cpp

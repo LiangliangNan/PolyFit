@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.16
+VisualStudioVersion = 15.0.26403.7
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PolyFit", "PolyFit\PolyFit.vcxproj", "{D5DCB796-638E-405E-BE60-A779B1743C37}"
 EndProject
@@ -22,17 +22,11 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{45EEA339-E627-4DA0-A19F-1527A4AE58F4}"
 	ProjectSection(SolutionItems) = preProject
 		License.txt = License.txt
-		ReadMe-data.txt = ReadMe-data.txt
-		ReadMe-exe.txt = ReadMe-exe.txt
 		ReadMe.txt = ReadMe.txt
 		Tricks for pairwise intersection.pdf = Tricks for pairwise intersection.pdf
 	EndProjectSection
 EndProject
 Global
-	GlobalSection(SubversionScc) = preSolution
-		Svn-Managed = True
-		Manager = AnkhSVN - Subversion Support for Visual Studio
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
 		Release|x64 = Release|x64
@@ -76,6 +70,10 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		QtVersion = 4.8.0
+	EndGlobalSection
+	GlobalSection(SubversionScc) = preSolution
+		Svn-Managed = True
+		Manager = AnkhSVN - Subversion Support for Visual Studio
 	EndGlobalSection
 	GlobalSection(Qt) = preSolution
 		Integration = True
