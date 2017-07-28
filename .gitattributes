@@ -17,4 +17,4 @@
 *.RTF	 diff=astextplain
 
 
-3rd* linguist-vendored
+3rd*/* linguist-vendored
