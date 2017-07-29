@@ -495,8 +495,6 @@ bool MainWindow::saveReconstructedMesh()
 
 bool MainWindow::doOpen(const QString &fileName)
 {
-	canvas()->clear();
-
 	std::string name = fileName.toStdString();
 	std::string ext = FileUtils::extension(name);
 	String::to_lowercase(ext);
@@ -518,6 +516,7 @@ bool MainWindow::doOpen(const QString &fileName)
 		canvas()->setMesh(mesh);
 
 	if (pset) {
+		canvas()->clear();
 		canvas()->setPointSet(pset);
 
 		hypothesisMeshFileName_ = pointCloudFileName_;

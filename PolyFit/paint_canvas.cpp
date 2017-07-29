@@ -279,7 +279,11 @@ void PaintCanvas::snapshotScreen() {
 	if (need_hide)
 		show_coord_sys_ = false;  // hide the coord system temporally
 
+	show_hint_text_ = false;
+	show_mouse_hint_ = false;
 	saveSnapshot(false);
+	show_hint_text_ = true;
+	show_mouse_hint_ = true;
 
 	if (need_hide)
 		show_coord_sys_ = true;
@@ -416,7 +420,9 @@ vec3 PaintCanvas::unProjectionOf(double winx, double winy, double winz) {  // sc
 
 void PaintCanvas::setMesh(Map* mesh) { 
 	optimized_mesh_ = mesh;
-	fitScreen();
+
+	if (!point_set_)
+		fitScreen();
 }
 
 
