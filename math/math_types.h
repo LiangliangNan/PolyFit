@@ -43,7 +43,6 @@
 #include "vecg.h"
 #include "box.h"
 #include "line.h"
-#include "segment.h"
 #include "plane.h"
 #include "matrix.h"
 
