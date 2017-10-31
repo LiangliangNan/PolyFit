@@ -48,7 +48,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #ifdef REMOVE_DEGENERATE_FACES
 
 static void remove_degenerated_facets(Map* mesh) {
-	// I can't collect all the edges, because when you collapse one edge, nearby edges may change
+	// You can't collect all the edges and then collapse them one by one, 
+	// because collapsing one edge affects other neighboring edges.
 	// std::vector<Map::Halfedge*> to_collapse;
 
 	MapEditor editor(mesh);

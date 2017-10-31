@@ -80,38 +80,36 @@ void PointSetSerializer_vg::save_vg(const PointSet* pset, const std::string& fil
 	output.precision(16);
 
 	//////////////////////////////////////////////////////////////////////////
+
 	const std::vector<vec3>& points = pset->points();
+	const std::vector<vec3>& colors = pset->colors();
+	const std::vector<vec3>& normals = pset->normals();
+	const std::vector<VertexGroup::Ptr>& groups = pset->groups();
+	ProgressLogger progress(points.size() + colors.size() + normals.size() + groups.size());
+
 	output << "num_points: " << points.size() << std::endl;
-	ProgressLogger progress(points.size());
 	for (std::size_t i = 0; i < points.size(); ++i) {
 		output << points[i] << " ";
 		progress.next();
 	}
 	output << std::endl;
 
-	const std::vector<vec3>& colors = pset->colors();
 	output << "num_colors: " << colors.size() << std::endl;
-	progress.reset(colors.size());
 	for (std::size_t i = 0; i < colors.size(); ++i) {
 		output << colors[i] << " ";
 		progress.next();
 	}
 	output << std::endl;
 
-	const std::vector<vec3>& normals = pset->normals();
 	output << "num_normals: " << normals.size() << std::endl;
-	progress.reset(normals.size());
 	for (std::size_t i = 0; i < normals.size(); ++i) {
 		output << normals[i] << " ";
 		progress.next();
 	}
 	output << std::endl;
 
-	const std::vector<VertexGroup::Ptr>& groups = pset->groups();
-	std::size_t num = groups.size();
-	output << "num_groups: " << num << std::endl;
-	progress.reset(num);
-	for (std::size_t i = 0; i < num; ++i) {
+	output << "num_groups: " << groups.size() << std::endl;
+	for (std::size_t i = 0; i < groups.size(); ++i) {
 		VertexGroup* g = groups[i];
 		write_ascii_group(output, g);
 
@@ -170,42 +168,50 @@ void PointSetSerializer_vg::load_vg(PointSet* pset, const std::string& file_name
 		return;
 	}
 
+	// get length of file
+	input.seekg(0, input.end);
+	std::streamoff length = input.tellg();
+	input.seekg(0, input.beg);
+	ProgressLogger progress(length);
+
 	std::string dumy;
 	std::size_t num;
 
 	input >> dumy >> num;
 	std::vector<vec3>& points = pset->points();
 	points.resize(num);
-	ProgressLogger progress(num);
 	for (int i = 0; i < num; ++i) {
 		input >> points[i];
-		progress.next();
+
+		std::streamoff pos = input.tellg();
+		progress.notify(pos);
 	}
 
 	input >> dumy >> num;
 	std::vector<vec3>& colors = pset->colors();
 	colors.resize(num);
-	progress.reset(num);
 	for (int i = 0; i < num; ++i) {
 		input >> colors[i];
-		progress.next();
+
+		std::streamoff pos = input.tellg();
+		progress.notify(pos);
 	}
 
 	input >> dumy >> num;
 	std::vector<vec3>& normals = pset->normals();
 	normals.resize(num);
-	progress.reset(num);
 	for (int i = 0; i < num; ++i) {
 		input >> normals[i];
-		progress.next();
+
+		std::streamoff pos = input.tellg();
+		progress.notify(pos);
 	}
 
 	//////////////////////////////////////////////////////////////////////////
 
 	std::size_t num_groups = 0;
 	input >> dumy >> num_groups;
-	progress.reset(num_groups);
-	for (int i = 0; i < num_groups; ++i) {
+	for (int i = 0; i<num_groups; ++i) {
 		VertexGroup::Ptr g = read_ascii_group(input);
 
 		if (!g->empty()) {
@@ -215,14 +221,16 @@ void PointSetSerializer_vg::load_vg(PointSet* pset, const std::string& file_name
 
 		int num_children = 0;
 		input >> dumy >> num_children;
-		for (int j = 0; j < num_children; ++j) {
+		for (int j = 0; j<num_children; ++j) {
 			VertexGroup::Ptr chld = read_ascii_group(input);
 			if (!chld->empty()) {
 				chld->set_point_set(pset);
 				g->add_child(chld);
 			}
 		}
-		progress.next();
+
+		std::streamoff pos = input.tellg();
+		progress.notify(pos);
 	}
 }
 

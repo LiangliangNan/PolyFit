@@ -36,7 +36,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 PointSetRender::PointSetRender(Canvas* cvs)
 	: canvas_(cvs)
 {
-	per_point_color_ = true;
+	per_point_color_ = false;
 
 	point_set_style_.visible = true;
 	point_set_style_.color = Color(85 / 255.0f, 170 / 255.0f, 1.0f);
