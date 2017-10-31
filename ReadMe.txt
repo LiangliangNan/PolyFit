@@ -34,7 +34,7 @@ Project file(s) for Visual Studio 2017 are provided.
 The code should also be compiled by compilers under other platforms, but not tested yet.
 
 Exectuable/binary files (may not be up-to-date).
-      Pre-built binary files are available for 64-bit Window users:
+      Pre-built binary files are available for 64-bit Windows (tested under Win 8.1 and Win 10):
       http://web.siat.ac.cn/~liangliang/publications/2017/polyfit/polyfit.html
 
 ====================================================================================================
