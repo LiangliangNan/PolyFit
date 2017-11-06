@@ -66,7 +66,7 @@ public:
 
 public Q_SLOTS:
 	bool open();
-	bool saveReconstructedMesh();
+	bool save();
 	void updateStatusBar();
 
 	void resetWeights();

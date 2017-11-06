@@ -473,7 +473,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionOpen"/>
-   <addaction name="actionSaveReconstructedMesh"/>
+   <addaction name="actionSave"/>
    <addaction name="separator"/>
    <addaction name="actionSnapshot"/>
   </widget>
@@ -587,13 +587,13 @@
     <string>Compute Point/Face Confidences</string>
    </property>
   </action>
-  <action name="actionSaveReconstructedMesh">
+  <action name="actionSave">
    <property name="icon">
     <iconset resource="Resources/PolyFit.qrc">
      <normaloff>:/Resources/filesave.png</normaloff>:/Resources/filesave.png</iconset>
    </property>
    <property name="text">
-    <string>Save The Reconstructed Mesh</string>
+    <string>Save</string>
    </property>
    <property name="iconText">
     <string>Save</string>

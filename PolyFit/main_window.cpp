@@ -196,7 +196,7 @@ void MainWindow::dropEvent(QDropEvent *e) {
 
 void MainWindow::createActions() {
 	connect(actionOpen, SIGNAL(triggered()), this, SLOT(open()));
-	connect(actionSaveReconstructedMesh, SIGNAL(triggered()), this, SLOT(saveReconstructedMesh()));
+	connect(actionSave, SIGNAL(triggered()), this, SLOT(save()));
 
 	connect(actionSnapshot, SIGNAL(triggered()), mainCanvas_, SLOT(snapshotScreen()));
 
@@ -469,18 +469,27 @@ bool MainWindow::open()
 }
 
 
-bool MainWindow::saveReconstructedMesh()
+bool MainWindow::save()
 {
 	QString fileName = QFileDialog::getSaveFileName(this,
 		tr("Save file"), optimizedMeshFileName_,
-		tr("Mesh (*.obj)")
+		tr(
+			"Mesh (*.obj)\n"
+			"Point Cloud (*.vg *.bvg)")
 		);
 
 	if (fileName.isEmpty())
 		return false;
 
+	bool success = false;
+	std::string ext = FileUtils::extension(fileName.toStdString());
+	String::to_lowercase(ext);
 
-	bool success = MapIO::save(fileName.toStdString(), canvas()->optimizedMesh());
+	if (ext == "obj")
+		success = MapIO::save(fileName.toStdString(), canvas()->optimizedMesh());
+	else 
+		success = PointSetIO::save(fileName.toStdString(), canvas()->pointSet());
+
 	if (success) {
 		setCurrentFile(fileName);
 		status_message("File saved", 500);
