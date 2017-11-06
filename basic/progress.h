@@ -54,7 +54,7 @@ public:
 
 	static Progress* instance() ;
 
-	virtual void notify(int new_val) ;
+	virtual void notify(std::size_t new_val) ;
 
 	void set_client(ProgressClient* c) { client_ = c ; }
 
@@ -78,7 +78,7 @@ private:
 */
 class BASIC_API ProgressClient {
 public:
-	virtual void notify_progress(int new_val) = 0;
+	virtual void notify_progress(std::size_t new_val) = 0;
 	virtual ~ProgressClient() ;
 } ;
 
@@ -86,25 +86,25 @@ public:
 
 class BASIC_API ProgressLogger {
 public:
-	ProgressLogger(int max_val = 100, const std::string& task_name = "", bool quiet = false) ;
+	ProgressLogger(std::size_t max_val = 100, const std::string& task_name = "", bool quiet = false) ;
 	virtual ~ProgressLogger() ;
 
-	virtual void notify(int new_val) ;
+	virtual void notify(std::size_t new_val) ;
 	virtual void next() ;
 	bool is_canceled() const {
 		return Progress::instance()->is_canceled() ;
 	}
 	void reset() { notify(0) ; }
-	void reset(int max_val) ;
+	void reset(std::size_t max_val) ;
 
 protected:
 	virtual void update() ;
 
 private:
-	int max_val_ ;
+	std::size_t max_val_ ;
 	std::string task_name_ ;
-	int cur_val_ ;
-	int cur_percent_ ;
+	std::size_t cur_val_ ;
+	std::size_t cur_percent_ ;
 	bool quiet_ ;
 } ;
 

@@ -60,7 +60,7 @@ void Progress::pop() {
 	level_-- ;
 }
 
-void Progress::notify(int new_val) {
+void Progress::notify(std::size_t new_val) {
 	if(client_ != nil && level_ < 2) {
 		client_->notify_progress(new_val) ;
 	}
@@ -84,7 +84,7 @@ ProgressClient::~ProgressClient() {
 
 //_________________________________________________________
 
-ProgressLogger::ProgressLogger(int max_val, const std::string& task_name, bool quiet) 
+ProgressLogger::ProgressLogger(std::size_t max_val, const std::string& task_name, bool quiet)
 : max_val_(max_val), task_name_(task_name), quiet_(quiet) 
 {
 	cur_val_ = 0 ; 
@@ -95,7 +95,7 @@ ProgressLogger::ProgressLogger(int max_val, const std::string& task_name, bool q
 	}
 }
 
-void ProgressLogger::reset(int max_val)  {
+void ProgressLogger::reset(std::size_t max_val)  {
 	max_val_ = max_val ;
 	reset() ;
 }
@@ -111,18 +111,20 @@ void ProgressLogger::next() {
 	update() ;
 }
 
-void ProgressLogger::notify(int new_val) {
+void ProgressLogger::notify(std::size_t new_val) {
 	cur_val_ = new_val ;
 	update() ;
 }
 
 
 void ProgressLogger::update() {
-	int percent = cur_val_ * 100 / ogf_max(1, max_val_-1) ;
+	std::size_t percent = cur_val_ * 100 / ogf_max<std::size_t>(1, max_val_-1) ;
+	
 	if(percent != cur_percent_) {
 		cur_percent_ = percent ;
+
 		if(!quiet_) {
-			Progress::instance()->notify(ogf_min(cur_percent_, 100)) ;
+			Progress::instance()->notify(ogf_min<std::size_t>(cur_percent_, 100)) ;
 		}
 	}
 }

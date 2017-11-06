@@ -54,7 +54,7 @@ public:
 	virtual void warn_message(const std::string& msg);
 	virtual void err_message(const std::string& msg);
 	virtual void status_message(const std::string& msg, int timeout);
-	virtual void notify_progress(int value);
+	virtual void notify_progress(std::size_t value);
 
 	void updateWeights();
 	void disableActions(bool b);

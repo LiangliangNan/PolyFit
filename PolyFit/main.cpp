@@ -34,6 +34,18 @@ int main(int argc, char **argv)
 	srand(time(0));
 	QApplication app(argc, argv);
 
+	//Locale management
+	//Force 'english' locale so as to get a consistent behavior everywhere
+	QLocale locale = QLocale(QLocale::English);
+	locale.setNumberOptions(QLocale::c().numberOptions());
+	QLocale::setDefault(locale);
+
+#ifdef Q_OS_UNIX
+	//We reset the numeric locale for POSIX functions
+	//See http://qt-project.org/doc/qt-5/qcoreapplication.html#locale-settings
+	setlocale(LC_NUMERIC, "C");
+#endif
+
 	MainWindow window;	
 	window.show();
 

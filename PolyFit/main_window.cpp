@@ -173,7 +173,7 @@ void MainWindow::status_message(const std::string& msg, int timeout) {
 }
 
 
-void MainWindow::notify_progress(int value) {
+void MainWindow::notify_progress(std::size_t value) {
 	progress_bar_->setValue(value);
 	progress_bar_->setTextVisible(value != 0);
 	mainCanvas_->update_all();
