@@ -62,7 +62,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ObjectFileName>$(IntDir)/%(RelativeDir)</ObjectFileName>
-      <AdditionalIncludeDirectories>$(GUROBI_HOME)\include;..\3rd_ransac_v1.1;$(CGAL_DIR)\include;$(BOOST_DIR);$(CGAL_DIR)\auxiliary\gmp\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(GUROBI_HOME)\include;$(CGAL_DIR)\include;$(BOOST_DIR);$(CGAL_DIR)\auxiliary\gmp\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -88,7 +88,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ObjectFileName>$(IntDir)/%(RelativeDir)</ObjectFileName>
-      <AdditionalIncludeDirectories>$(GUROBI_HOME)\include;..\3rd_ransac_v1.1;$(CGAL_DIR)\include;$(BOOST_DIR);$(CGAL_DIR)\auxiliary\gmp\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(GUROBI_HOME)\include;$(CGAL_DIR)\include;$(BOOST_DIR);$(CGAL_DIR)\auxiliary\gmp\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>false</GenerateDebugInformation>
