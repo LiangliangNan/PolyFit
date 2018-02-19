@@ -138,7 +138,7 @@ AlphaShape::AlphaShape(InputIterator first, InputIterator beyond) {
 		initialize_alpha_spectrum();
 	}
 
-	double alpha = *find_optimal_alpha(1);
+	double alpha = find_optimal_alpha_value(1);
 	set_alpha(alpha);
 }
 

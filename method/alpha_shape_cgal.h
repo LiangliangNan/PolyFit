@@ -706,7 +706,8 @@ private:
 
 public:
 
-  Alpha_iterator find_optimal_alpha(size_type nb_components);  	
+	Alpha_iterator find_optimal_alpha(size_type nb_components);
+	double find_optimal_alpha_value(size_type nb_components);
 
 private:
 
@@ -1431,6 +1432,67 @@ Alpha_shape_2<Dt,EACT>::find_optimal_alpha(size_type nb_components)
     return first;
 }
 
+
+template < class Dt, class EACT >
+double Alpha_shape_2<Dt, EACT>::find_optimal_alpha_value(size_type nb_components)
+{
+	// find the minimum alpha that satisfies the properties
+	// (1) nb_components solid components
+	// (2) all data points on the boundary or in its interior
+	Type_of_alpha alpha = find_alpha_solid();
+	// from this alpha on the alpha_solid satisfies property (2)
+
+	Alpha_iterator first = alpha_lower_bound(alpha);
+	if (first == alpha_end())
+		return 0;
+
+	if (number_of_solid_components(alpha) == nb_components)
+	{
+		if ((first + 1) < alpha_end())
+			return *(first + 1);
+		else
+			return *first;
+	}
+
+	// do binary search on the alpha values
+	// number_of_solid_components() is a monotone function 
+	// if we start with find_alpha_solid
+
+	Alpha_iterator last = alpha_end();
+	Alpha_iterator middle;
+
+	std::ptrdiff_t len = last - first - 1;
+	std::ptrdiff_t half;
+
+	while (len > 0)
+	{
+		half = len / 2;
+		middle = first + half;
+
+#ifdef CGAL_DEBUG_ALPHA_SHAPE_2
+		std::cout << "first : " << *first << " last : " << *(first + len)
+			<< " mid : " << *middle
+			<< " nb comps : " << number_of_solid_components(*middle)
+			<< std::endl;
+#endif // CGAL_DEBUG_ALPHA_SHAPE_2
+
+		if (number_of_solid_components(*middle) > nb_components)
+		{
+			first = middle + 1;
+			len = len - half - 1;
+		}
+		else
+		{ // number_of_solid_components(*middle) <= nb_components
+			len = half;
+		}
+	}
+	if ((first + 1) < alpha_end())
+		return *(first + 1);
+	else
+		return *first;
+}
+
+
 //-------------------------------------------------------------------------
 
 template < class Dt, class EACT >
@@ -1444,7 +1506,9 @@ Alpha_shape_2<Dt,EACT>::find_alpha_solid() const
   // takes O(#alpha_shape) time
   Type_of_alpha alpha_solid = 0;
   
-  if (number_of_vertices()<3) return alpha_solid;
+  // Liangliang: in very rare cases, _interval_face_map can be empty.
+  if (number_of_vertices() < 3 || _interval_face_map.empty())
+	  return alpha_solid;
 
   Finite_vertices_iterator vertex_it;
   // only finite vertices
