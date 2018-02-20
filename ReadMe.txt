@@ -10,9 +10,9 @@ Please consider citing the above paper if you use the code/program (or part of i
 
 ====================================================================================================
 
-How to compile the code?
-    This implementation is based on the following third party libraries (only the version specified 
-    here has been tested):
+How to compile PolyFit from source code?
+	- Download the source code of PolyFit from GitHub: https://github.com/LiangliangNan/PolyFit
+	- Dependencies (only the versions specified here have been tested, while other versions should also work):
       -) Qt (version 5.8.0, 5.9.2). https://www.qt.io/
       -) CGAL (version 4.10). http://www.cgal.org/index.html
       -) boost (version 1.64. Not a direct dependence, but CGAL relies on it). http://www.boost.org/
@@ -35,7 +35,7 @@ The code should also be compiled by compilers under other platforms, but not tes
 
 Exectuable/binary files (may not be up-to-date).
       Pre-built binary files are available for 64-bit Windows (tested under Windows 10):
-      http://web.siat.ac.cn/~liangliang/publications/2017/polyfit/polyfit.html
+      https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
 ====================================================================================================
 
@@ -45,13 +45,24 @@ How to run the program?
       to these steps respectively. Please follow the hints on the screen to produce your results.
 
 NOTE: This implementation incorporates a progress logger into the user interface. Thus, running 
-      times should be (slightly) longer than what have been reported in our paper.	  
+      times should be (slightly) longer than what have been reported in our paper.	 
+	
+------------------
+About the solvers:
+------------------
+	Two solvers (Gurobi and lp_solve) were linked against these binary files. However, the Gurobi 
+	solver is more reliable and is always your first choice. The open source lp_solve solver can 
+	solve very small problems only. It is too slow and may not guarantee to succeed. For example, 
+	for the data "000-bld_02", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes.  
+	The dynamic library of Gurobi (version 7.51) is included in this distribution, but you may 
+	still need to obtain a license from https://user.gurobi.com/download/licenses/free-academic. 
+	The academic license for Gurobi is free.
 
 ====================================================================================================
 
 Data.
       Test data can be downloaded from the project page of PolyFit:
-      http://web.siat.ac.cn/~liangliang/publications/2017/polyfit/polyfit.html
+      https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
 ====================================================================================================
 
