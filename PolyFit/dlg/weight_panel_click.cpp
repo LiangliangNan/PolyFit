@@ -50,9 +50,10 @@ WeightPanelClick::WeightPanelClick(QWidget *parent)
 
 	mainWindow_ = dynamic_cast<MainWindow*>(parent);
 
-	pos_fitting_ = QPointF(160, 24);
-	pos_coverage_ = QPointF(80, 180);
-	pos_complexity_ = QPointF(250, 180);
+	int x_offset = -40;
+	pos_fitting_ = QPointF(160 + x_offset, 24);
+	pos_coverage_ = QPointF(80 + x_offset, 180);
+	pos_complexity_ = QPointF(250 + x_offset, 180);
 
 	triangle_[0] = pos_fitting_;
 	triangle_[1] = pos_coverage_;
@@ -94,8 +95,8 @@ void WeightPanelClick::paintEvent(QPaintEvent* event) {
 
 	// paint the shape name
 	painter.setBrush(pal.text());
-	QString text_fitting = QString("Fitting (%1)").arg(fitting_);			painter.drawText(pos_fitting_.x() - 40, pos_fitting_.y() - 5, text_fitting);
-	QString text_coverage = QString("Coverage (%1)").arg(coverage_);		painter.drawText(pos_coverage_.x() - 60, pos_coverage_.y() + 20, text_coverage);
+	QString text_fitting = QString("Fitting (%1)").arg(fitting_);			painter.drawText(pos_fitting_.x() - 30, pos_fitting_.y() - 5, text_fitting);
+	QString text_coverage = QString("Coverage (%1)").arg(coverage_);		painter.drawText(pos_coverage_.x() - 40, pos_coverage_.y() + 20, text_coverage);
 	QString text_complexity = QString("Complexity (%1)").arg(complexity_);	painter.drawText(pos_complexity_.x() - 60, pos_complexity_.y() + 20, text_complexity);
 
 	painter.setPen(Qt::red);

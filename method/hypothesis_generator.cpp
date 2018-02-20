@@ -583,16 +583,26 @@ void HypothesisGenerator::compute_intersections(
 			existing_vts.push_back(h->vertex());
 		}
 		else if (plane->squared_ditance(s) > on_plane_threshold) {	// cut at the edge
-			if (edge_source_planes_[h].size() == 2) {  // if the edge was computed from two faces, I use the source faces for computing the intersecting point
+			const std::set<Plane3d*>& source_planes = edge_source_planes_[h];
+			if (source_planes.size() == 2) {  // if the edge was computed from two faces, I use the source faces for computing the intersecting point
 				if (plane->intersection(s, t)) {
-					Plane3d* plane1 = *(edge_source_planes_[h].begin());
-					Plane3d* plane2 = *(edge_source_planes_[h].rbegin());
+					Plane3d* plane1 = *(source_planes.begin());
+					Plane3d* plane2 = *(source_planes.rbegin());
 					Plane3d* plane3 = plane;
-					vec3 p;
-					if (query_intersection(plane1, plane2, plane3, p))
-						new_vts.push_back(EdgePos(h, p));
-					else
-						Logger::warn("-") << "fatal error. should have intersection. " << new_vts.size() << std::endl;
+
+					if (plane3 != plane1 && plane3 != plane2) {
+						vec3 p;
+						if (query_intersection(plane1, plane2, plane3, p))
+							new_vts.push_back(EdgePos(h, p));
+						else {
+							if (intersection_plane_triplet(plane1, plane2, plane3, p)) {
+								triplet_intersection_[plane1][plane2][plane3] = p; // store the intersection in our data base
+								new_vts.push_back(EdgePos(h, p));
+							}
+							else
+								Logger::warn("-") << "fatal error. should have intersection. " << new_vts.size() << std::endl;
+						}
+					}
 				}
 			}
 			else {
@@ -764,13 +774,15 @@ void HypothesisGenerator::pairwise_cut(Map* mesh, const std::vector<Plane3d*>& s
 }
 
 
-static bool intersection_plane_triplet(const Plane3d* plane1, const Plane3d* plane2, const Plane3d* plane3, vec3& p) {
+// compute the intersection of a plane triplet
+// returns true if the intersection exists (p returns the point)
+bool HypothesisGenerator::intersection_plane_triplet(const Plane3d* plane1, const Plane3d* plane2, const Plane3d* plane3, vec3& p) {
 	if (plane1 == nil || plane2 == nil || plane3 == nil) {
-		std::cout << "fatal error: null planes" << std::endl;
+		Logger::err("-") << "null planes" << std::endl;
 		return false;
 	}
 	if (plane1 == plane2 || plane2 == plane3) {
-		std::cout << "fatal error: identical planes" << std::endl;
+		Logger::err("-") << "identical planes" << std::endl;
 		return false;
 	}
 
@@ -782,11 +794,11 @@ static bool intersection_plane_triplet(const Plane3d* plane1, const Plane3d* pla
 		return true;
 	}
 	else if (const Plane3* plane = CGAL::object_cast<Plane3>(&obj)) {
-		std::cout << "3 faces lie on the same supporting plane" << std::endl;
+		Logger::warn("-") << "3 faces lie on the same supporting plane" << std::endl;
 		return false;
 	}
 	else if (const Line3* line = CGAL::object_cast<Line3>(&obj)) {
-		std::cout << "3 faces intersect at the same line" << std::endl;
+		Logger::warn("-") << "3 faces intersect at the same line" << std::endl;
 		return false;
 	}
 
@@ -812,7 +824,7 @@ void HypothesisGenerator::triplet_intersection(const std::vector<Plane3d*>& supp
 
 				vec3 p;
 				if (intersection_plane_triplet(plane1, plane2, plane3, p))
-					triplet_intersection_[plane1][plane2][plane3] = p;
+					triplet_intersection_[plane1][plane2][plane3] = p; // store the intersection in our data base
 			}
 		}
 	}

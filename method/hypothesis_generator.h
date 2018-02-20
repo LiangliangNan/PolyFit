@@ -97,7 +97,12 @@ private:
 
 	void triplet_intersection(const std::vector<Plane3d*>& supporting_planes);
 
+	// query the intersecting point for existing data base, i.e., triplet_intersection_
 	bool query_intersection(Plane3d* plane1, Plane3d* plane2, Plane3d* plane3, vec3& p);
+
+	// compute the intersection of a plane triplet
+	// returns true if the intersection exists (p returns the point)
+	bool intersection_plane_triplet(const Plane3d* plane1, const Plane3d* plane2, const Plane3d* plane3, vec3& p);
 
 private:
 	PointSet* pset_;
