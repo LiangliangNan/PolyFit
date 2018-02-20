@@ -13,7 +13,7 @@ Please consider citing the above paper if you use the code/program (or part of i
 How to compile the code?
     This implementation is based on the following third party libraries (only the version specified 
     here has been tested):
-      -) Qt (version 5.8.0). https://www.qt.io/
+      -) Qt (version 5.8.0, 5.9.2). https://www.qt.io/
       -) CGAL (version 4.10). http://www.cgal.org/index.html
       -) boost (version 1.64. Not a direct dependence, but CGAL relies on it). http://www.boost.org/
 
@@ -34,7 +34,7 @@ Project file(s) for Visual Studio 2017 are provided.
 The code should also be compiled by compilers under other platforms, but not tested yet.
 
 Exectuable/binary files (may not be up-to-date).
-      Pre-built binary files are available for 64-bit Windows (tested under Win 8.1 and Win 10):
+      Pre-built binary files are available for 64-bit Windows (tested under Windows 10):
       http://web.siat.ac.cn/~liangliang/publications/2017/polyfit/polyfit.html
 
 ====================================================================================================
@@ -67,7 +67,7 @@ Should you have any questions, comments, or suggestions, please contact me at:
 liangliang.nan@gmail.com
 
 Liangliang Nan
-http://web.siat.ac.cn/~liangliang/
+https://3d.bk.tudelft.nl/liangliang/
 
 July 18, 2017
 Copyright (C) 2017 
