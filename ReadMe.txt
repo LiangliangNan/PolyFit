@@ -19,7 +19,7 @@ How to compile PolyFit from source code?
 
     Besides, you need either Gurobi or lp_solve for solving the Integer Linear Programs formulated 
     by our method.
-      -) Gurobi (version 7.5.1, 64 bit). You may download it and obtain an academic license from 
+      -) Gurobi (version 7.5.1, 7.52, 64 bit). You may download it and obtain an academic license from 
 	 http://www.gurobi.com/
       -) lp_solve (version 5.5, source code included in this distribution). 
 	 http://lpsolve.sourceforge.net/5.5/
