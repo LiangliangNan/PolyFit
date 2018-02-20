@@ -14,6 +14,7 @@
     <ProjectGuid>{BD2ABD61-B17B-4EFA-BA63-91A6623894D5}</ProjectGuid>
     <RootNamespace>algorithm</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
