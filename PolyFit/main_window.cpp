@@ -415,14 +415,18 @@ void MainWindow::about()
 		
 		"<p>--------------------------------------------------------------------------<br>"
 		"<span style=\"font-style:italic;\">Liangliang Nan</span> and <span style=\"font-style:italic;\">Peter Wonka</span>.<br>"
-		"PolyFit: Polygonal Surface Reconstruction from Point Clouds.<br>"
+		"<a href=\"https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html\">PolyFit: Polygonal Surface Reconstruction from Point Clouds.</a><br>"
 		"ICCV 2017.<br>"
 		"--------------------------------------------------------------------------</p>"
 
-		"<p>For comments, suggestions, or any issues, please contact me at:<br>"
+		"<p>Extract planes? You can use my <a href=\"https://3d.bk.tudelft.nl/liangliang/software.html\">Mapple</a> program for plane extraction. Please refer to the ReadMe files for more details.</p>"
+
+		"<p>For comments, suggestions, or any issues, please contact me at<br>"
 		"<a href=\"mailto:liangliang.nan@gmail.com\">liangliang.nan@gmail.com</a>.</p>"
-		"<p>@July.18, 2017</p>"
-		);
+		"<p>Liangliang Nan<br>"
+		"<a href=\"https://3d.bk.tudelft.nl/liangliang/\">https://3d.bk.tudelft.nl/liangliang/</a><br>"
+		"@July.18, 2017</p>"
+	);
 
 	QMessageBox::about(this, "About PolyFit", title + text);
 }
