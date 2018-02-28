@@ -62,13 +62,19 @@ About the solvers:
 
 Data:
       Test data can be downloaded from the project page of PolyFit:
-      https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
+          https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
 Plane extraction: 
       PolyFit assumes that the planar segments are provided as input. 
-      Extracting planes has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be fine if some regions of the planes are missing), so I isolated this part from the PolyFit implementation. You can use my Mapple to extract planes from point clouds. Here is the link to Mapple:
-	  https://3d.bk.tudelft.nl/liangliang/software.html
-	  After you load the point cloud to Mapple, click 'Extract Primitives' (under 'Partition' menu) to extract planes. To visualize the planes, change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes as bvg format(vg also works but a little bit slow).
+      Extracting planes has some randomness (due to the nature of RANSAC) and the data quality can 
+      vary a lot (it should be fine if some regions of the planes are missing), so I isolated this 
+      part from the PolyFit implementation. You can use my Mapple to extract planes from point clouds. 
+      Here is the link to Mapple:
+          https://3d.bk.tudelft.nl/liangliang/software.html    
+      After you load the point cloud to Mapple, click 'Extract Primitives' (under 'Partition' menu) 
+      to extract planes. To visualize the planes, change the renderer from 'Plain' to 'Group' in the 
+      Rendering panel (at the left side of Mapple). You can save the planes as bvg format(vg also 
+      works but a little bit slow).
 
 ====================================================================================================
 
