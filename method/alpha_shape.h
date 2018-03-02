@@ -21,7 +21,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define _ALPHA_SHAPE_H_
 
 #include "cgal_types.h"
-#include "alpha_shape_cgal.h"
+
+/*
+Breaking change since CGAL 4.11: The dangerous implicit conversions between weighted Points
+and points in the concept Kernel have been disabled.
+Constructors offering to build a weighted point from a point(and reversely)
+are still requested by the concept Kernel but must now be marked with the
+explicit specifier.
+*/
+#if CGAL_VERSION_NR >= 1041100000 
+#include "alpha_shape_CGAL4.11_and_later.h"
+#else
+#include "alpha_shape_CGAL4.10_and_earlier.h"
+#endif
+
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_hierarchy_2.h>
 
@@ -138,8 +151,11 @@ AlphaShape::AlphaShape(InputIterator first, InputIterator beyond) {
 		initialize_alpha_spectrum();
 	}
 
-	double alpha = find_optimal_alpha_value(1);
-	set_alpha(alpha);
+	Alpha_iterator alpha = find_optimal_alpha(1);
+	if (alpha == alpha_end())
+		set_alpha(0.0f);
+	else 
+		set_alpha(*alpha);
 }
 
 

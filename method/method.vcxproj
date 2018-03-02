@@ -121,6 +121,8 @@
     <ClInclude Include="alpha_shape.h" />
     <ClInclude Include="alpha_shape_boundary.h" />
     <ClInclude Include="alpha_shape_cgal.h" />
+    <ClInclude Include="alpha_shape_CGAL4.10_and_earlier.h" />
+    <ClInclude Include="alpha_shape_CGAL4.11_and_later.h" />
     <ClInclude Include="alpha_shape_mesh.h" />
     <ClInclude Include="method_global.h" />
     <ClInclude Include="hypothesis_generator.h" />

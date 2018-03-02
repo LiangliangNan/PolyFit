@@ -41,6 +41,12 @@
     <ClInclude Include="alpha_shape_cgal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="alpha_shape_CGAL4.10_and_earlier.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="alpha_shape_CGAL4.11_and_later.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="hypothesis_generator.cpp">
