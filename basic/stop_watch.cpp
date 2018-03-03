@@ -50,11 +50,10 @@ double StopWatch::elapsed() const {
 	QueryPerformanceCounter(&largeInteger);
 	LONGLONG now_count = largeInteger.QuadPart;
 	double time = (double)( (now_count - start_count_) / static_cast<double>(freq_) );
-	return truncate_digits(time, 2);
 #else
 	timeval now;
 	gettimeofday(&now, 0);
     double time = (now.tv_sec - start_time_.tv_sec) + (now.tv_usec - start_time_.tv_usec) / 1.0e6;
-    return round(time, 2);
 #endif  // WIN32
+    return truncate_digits(time, 2);
 }

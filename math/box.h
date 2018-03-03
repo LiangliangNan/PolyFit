@@ -69,7 +69,7 @@ public:
 		return vecng<2, T>((x_max() + x_min()) / 2, (y_max() + y_min()) / 2);
 	}
 	T radius() const {
-		return FT(0.5) * ::sqrt(ogf_sqr(x_max() - x_min()) + ogf_sqr(y_max() - y_min()));
+        return T(0.5) * ::sqrt(ogf_sqr(x_max() - x_min()) + ogf_sqr(y_max() - y_min()));
 	}
 
 

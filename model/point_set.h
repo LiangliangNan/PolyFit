@@ -42,7 +42,7 @@ public:
 	PointSet();
 	~PointSet();
 
-	unsigned int  num_points() const { return unsigned int (points_.size()); }
+    unsigned int  num_points() const { return static_cast<unsigned int>(points_.size()); }
 
 	std::vector<vec3>& points() { return points_; }
 	std::vector<vec3>& colors() { return colors_; }
