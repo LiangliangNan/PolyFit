@@ -30,11 +30,15 @@ NOTE: Though lp_solve is included and can be used as an alternative solver, it c
       only 0.02 seconds. So don't doubt to use the Gurobi solver (academic licenses are free) that
       is much faster and reliable. 
 
-Project file(s) for Visual Studio 2017 are provided.
-The code should also be compiled by compilers under other platforms, but not tested yet.
+Project file(s) for the following IDE (Integrated Development Environment) are provided in the 
+current distribution:
+      - QtCreator (for macOS, Linux, Windows, etc., but only tested under macOS);
+      - Visual Studio 2017 (for Windows, only tested under 64bits Windows 10).
+You should be able to compile and run PolyFit under most platforms with little effort to edit the
+project files.
 
 Exectuable/binary files (may not be up-to-date).
-      Pre-built binary files are available for 64-bit Windows (tested under Windows 10):
+      Pre-built binary files are available for 64-bit Windows (tested under Windows 10) and macOS:
       https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
 ====================================================================================================
