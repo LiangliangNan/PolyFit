@@ -26,7 +26,7 @@ About the timing
 
 ====================================================================================================
 
-Compile PolyFit from source code
+Build PolyFit from source code
     - Download the source code of PolyFit from GitHub: 
       https://github.com/LiangliangNan/PolyFit
     - Install the dependencies (though versions specified have been tested, other versions should also work):
