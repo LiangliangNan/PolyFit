@@ -10,17 +10,17 @@ Please consider citing the above paper if you use the code/program (or part of i
 ====================================================================================================
 
 Run PolyFit
-      Download executable/binary files (tested on 64-bit Windows 10):      
+    - Download executable/binary files (tested on 64-bit Windows 10):      
       https://github.com/LiangliangNan/PolyFit/releases
       Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
-      Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) corresponding to these steps. Please follow the hints on the screen to produce your results.
+    - Follow the hints on the screen to produce your results.
+      Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps.
 
 About the solvers
       Two solvers (Gurobi and lp_solve) are available in PolyFit. The Gurobi solver is more reliable and is always your first choice. The open source lp_solve solver can only solve tiny problems. It is too slow and may not guarantee to succeed. For example the data "000-bld_02", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes.  
-      For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license from     
+      For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license (free for academic use) from     
       https://user.gurobi.com/download/licenses/free-academic. 
-      The academic license for Gurobi is free.
-
+      
 About the timing
       This implementation incorporates a progress logger into the user interface. Thus, running times should be (slightly) longer than what has been reported in our paper.     
 
@@ -39,8 +39,8 @@ Compile PolyFit from source code
       -) Gurobi (v7.5.1, v7.52, 64 bit). You may download it and obtain an academic license from 
          http://www.gurobi.com/
     - Build PolyFit. Project files for the following IDEs (Integrated Development Environment) are provided:
-      -) QtCreator (for macOS, Linux, Windows, etc., but only tested on macOS);
-      -) Visual Studio 2017 (for Windows, only tested on 64bits Windows 10).
+      -) QtCreator (for macOS, Linux, Windows, etc., but only tested on macOS): PolyFit.pro
+      -) Visual Studio 2017 (for Windows, only tested on 64bits Windows 10): PolyFit.sln
          You should be able to build PolyFit on most platforms with little effort in editing the project files.
 
 ====================================================================================================
