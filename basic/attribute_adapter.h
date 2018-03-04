@@ -232,17 +232,6 @@ protected:
 			default:
 				ogf_assert_not_reached ;
 				}
-			case ATTR_COMPLEX:
-				switch(secondary_type_) {
-			case ATTR_X:
-				return complex_attr_[r].real() ;
-			case ATTR_Y:
-				return complex_attr_[r].imaginary() ;
-			case ATTR_NORM:
-				return complex_attr_[r].modulus() ;
-			default:
-				ogf_assert_not_reached ;
-				}
 			default:
 				ogf_assert_not_reached ;
 		}

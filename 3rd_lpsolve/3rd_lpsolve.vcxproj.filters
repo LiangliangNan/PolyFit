@@ -78,9 +78,6 @@
     <ClCompile Include="colamd\colamd.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="bfp\bfp_LUSOL\bfp_LUSOL.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="bfp\bfp_LUSOL\lp_LUSOL.c">
       <Filter>Source Files</Filter>
     </ClCompile>

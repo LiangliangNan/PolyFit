@@ -29,11 +29,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../3rd_lpsolve/lp_lib.h"
 
 
-#ifdef _DEBUG
-#pragma comment(lib, "../x64/Debug/3rd_lpsolve.lib")
-#else
-#pragma comment(lib, "../x64/Release/3rd_lpsolve.lib")
-#endif
+// PolyFit is always linked against both lpsolve and Gurobi.
+// Let the user chose the solver.
+
+//#ifdef _DEBUG
+//#pragma comment(lib, "../x64/Debug/3rd_lpsolve.lib")
+//#else
+//#pragma comment(lib, "../x64/Release/3rd_lpsolve.lib")
+//#endif
 
 
 int FaceSelection::num_of_constriants(const std::vector<FaceStar>& fans) {

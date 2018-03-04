@@ -93,7 +93,7 @@ std::vector<unsigned int> PointSet::idle_points() const {
 	std::vector<unsigned int> results;
 	for (std::size_t i = 0; i < num_points(); ++i) {
 		if (remained[i])
-			results.push_back(unsigned int(i));
+            results.push_back(static_cast<unsigned int>(i));
 	}
 	return results;
 }
