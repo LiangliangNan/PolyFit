@@ -44,11 +44,11 @@ This implementation incorporates a progress logger into the user interface. Thus
 =========================================================================
 
 ### Data
-Test data can be downloaded from the project page of PolyFit: 
+Test data can be downloaded from the project page of PolyFit:
 https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
 #### Data format
-Please have a look at: 
+Please have a look at:
 https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.txt
 
 #### Plane extraction
