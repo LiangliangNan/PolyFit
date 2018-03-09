@@ -16,8 +16,7 @@ Please consider citing the above paper if you use the code/program (or part of i
 
 ### About the solvers
 Two solvers (Gurobi and lp_solve) are available in PolyFit. The Gurobi solver is more reliable and is always your first choice. The open source lp_solve solver can only solve tiny problems. It is too slow and may not guarantee to succeed. For example the data "000-bld_02", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes.  
-For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license (free for academic use) from 
-https://user.gurobi.com/download/licenses/free-academic. 
+For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license (free for academic use) from https://user.gurobi.com/download/licenses/free-academic. 
       
 ### About the timing
 This implementation incorporates a progress logger into the user interface. Thus, running times should be (slightly) longer than what has been reported in our paper.     
@@ -25,11 +24,9 @@ This implementation incorporates a progress logger into the user interface. Thus
 =========================================================================
 
 ### Build PolyFit from source code
-* Download the source code of PolyFit from GitHub: 
-  https://github.com/LiangliangNan/PolyFit
+* Download the source code of PolyFit from GitHub: https://github.com/LiangliangNan/PolyFit
 * Install the dependencies (though versions specified have been tested, other versions should also work):
-  - Qt (v5.8.0, v5.9.2, v5.10.1):
-    https://www.qt.io/
+  - Qt (v5.8.0, v5.9.2, v5.10.1): https://www.qt.io/
   - CGAL (v4.10, v4.11.1):
     http://www.cgal.org/index.html
   - boost (v1.64. Not a direct dependence, but CGAL relies on it):
@@ -67,6 +64,7 @@ Should you have any questions, comments, or suggestions, please contact me at:
 liangliang.nan@gmail.com
 
 Liangliang Nan
+
 https://3d.bk.tudelft.nl/liangliang/
 
 July 18, 2017
