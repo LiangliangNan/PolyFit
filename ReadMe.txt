@@ -1,4 +1,3 @@
-
 PolyFit implements the hypothesis and selection based surface reconstruction method described in the following paper:
       --------------------------------------------------------------
       Liangliang Nan and Peter Wonka. 

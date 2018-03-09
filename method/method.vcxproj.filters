@@ -38,9 +38,6 @@
     <ClInclude Include="face_selection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="alpha_shape_cgal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="alpha_shape_CGAL4.10_and_earlier.h">
       <Filter>Header Files</Filter>
     </ClInclude>
