@@ -25,7 +25,6 @@ This implementation incorporates a progress logger into the user interface. Thus
 =========================================================================
 
 ### Build PolyFit from source code
-```
 * Download the source code of PolyFit from GitHub: 
   https://github.com/LiangliangNan/PolyFit
 * Install the dependencies (though versions specified have been tested, other versions should also work):
@@ -41,7 +40,7 @@ This implementation incorporates a progress logger into the user interface. Thus
       -) QtCreator (for macOS, Linux, Windows, etc., but only tested on macOS): PolyFit.pro
       -) Visual Studio 2017 (for Windows, only tested on 64bits Windows 10): PolyFit.sln
          You should be able to build PolyFit on most platforms with little effort in editing the project files.
-```
+
 =========================================================================
 
 ### Data
