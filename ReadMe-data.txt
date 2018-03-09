@@ -11,7 +11,9 @@ The data (along with additional test data and the reconstructed 3D models) are a
 
 For you own data, you can use my Mapple to extract planes. Here is the link to Mapple: 
       https://3d.bk.tudelft.nl/liangliang/software.html    
-After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extract Primitives'. To visualize the planes, change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes as bvg (Binary Vertex Group) format. The ASCII format vg also works but slow. 
+After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extract Primitives'. To visualize the planes, 
+change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes 
+as bvg (Binary Vertex Group) format. The ASCII format vg also works but slow. 
 
 Below you will find the description of the file format and an simple example file.
  
@@ -19,13 +21,17 @@ Below you will find the description of the file format and an simple example fil
 
 File format:
 
-PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format I have developed for my research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
+PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format I have developed 
+for my research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
   - For each point, its coordinates, normal, and color. 
-  - For each segment (a group of points representing a primitive or an object), its label, model parameters, color, and the indices of the points that belong to this segment.
+  - For each segment (a group of points representing a primitive or an object), its label, model parameters, color, and the 
+    indices of the points that belong to this segment.
 
-PolyFit handles planes only, so the model parameters are simply the plane parameters (e.g., a, b, c, and d in the plane equation ax + by + cz + d = 0).
+PolyFit handles planes only, so the model parameters are simply the plane parameters (e.g., a, b, c, and d in the plane 
+equation ax + by + cz + d = 0).
 
-Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary format. Please refer to 'point_set_serializer_vg.cpp' of the source code for more information.
+Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary 
+format. Please refer to 'point_set_serializer_vg.cpp' of the source code for more information.
 
 ------------------------------------------------------------------------------------------------------------------------------
 
@@ -52,7 +58,7 @@ nxN  nyN  nzN
 num_groups: M   // M is an integer denoting the number of segments/primitives/objects in this point cloud
 
 // now the information for the 1st segment/primitive/object
-group_type: 0              // must be 0 standing for a plane (1, 2, 3, 4, 5 for cylinder, sphere, cylinder, cone, and general object, respectively)
+group_type: 0              // must be 0 standing for a plane (1 to 5 are other types of primitives)
 num_group_parameters: 4    // must be 4 (planes are represented using 4 parameters) 
 group_parameters: a b c d  // 4 floating point numbers (e.g., a, b, c, and d for a plane)
 group_lable: label         // the label (a string) of the 1st vertex group
@@ -60,7 +66,7 @@ group_color: r g b         // 3 floating point numbers denoting the color of the
 group_num_points: N        // N is an integer denoting the number of points in the 1st vertex group
 id1 ... idN                // N integer numbers denoting the indices of the points in the 1st vertex group
 num_children: 0            // a segment/primitive/object may contain subgroups, but for PolyFit this must be 0
-¡­	
+...
 group_type: 0              // here starts the last segment in the point cloud (similar to the 1st one)
 num_group_parameters: 4    
 group_parameters: a b c d
@@ -90,7 +96,7 @@ num_groups: 7                 // there are 7 segments in this point cloud
 group_type: 0                 // the first segment is a plane
 num_group_parameters: 4       // there are 4 parameters for the plane
 group_parameters: -0.00494 -0.11430 0.99343 -0.03321  //a,b,c,and d in the plane equation ax+by+cz+d=0
-group_label: unknown          // the label for the plane is ¡°unknown¡± (not given)
+group_label: unknown          // the label for the plane is Â¡Â°unknownÂ¡Â± (not given)
 group_color: 0.1 0.6 0.2
 group_num_point: 14433        // the plane consists of 14433 points
 30493 ... 8798                // here are the indices of the 14433 points
@@ -109,7 +115,10 @@ num_children: 0
 
 Parameters. 
 
-The parameters for most examples are as follows: fitting = 0.46, coverage = 0.27, and complexity = 0.27 (Note that weights in a wide range can produce the same results). Slightly different weights (fitting = 0.3, coverage = 0.4, and complexity = 0.3) are used for the sofa example in Figure 4(i), where the background (ground plane) has a much higher density than the object (sofa), thus the smaller data fitting weight. In case non-default parameters are used, these parameters are provided in the files names.
+The parameters for most examples are as follows: fitting = 0.46, coverage = 0.27, and complexity = 0.27 (Note that weights in a 
+wide range can produce the same results). Slightly different weights (fitting = 0.3, coverage = 0.4, and complexity = 0.3) are 
+used for the sofa example in Figure 4(i), where the background (ground plane) has a much higher density than the object (sofa), 
+thus the smaller data fitting weight. In case non-default parameters are used, these parameters are provided in the files names.
 
 ==============================================================================================================================
 
