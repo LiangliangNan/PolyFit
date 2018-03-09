@@ -15,6 +15,7 @@ Please consider citing the above paper if you use the code/program (or part of i
   Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
 
 - Follow the hints on the screen to produce your results.
+  
   Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps.
 
 ### About the solvers
