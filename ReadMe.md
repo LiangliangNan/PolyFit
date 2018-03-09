@@ -36,6 +36,7 @@ This implementation incorporates a progress logger into the user interface. Thus
 * Build PolyFit. Project files for the following IDEs (Integrated Development Environment) are provided:
   - QtCreator (for macOS, Linux, Windows, etc., but only tested on macOS): PolyFit.pro
   - Visual Studio 2017 (for Windows, only tested on 64bits Windows 10): PolyFit.sln
+  
     You should be able to build PolyFit on most platforms with little effort in editing the project files.
 
 =========================================================================
