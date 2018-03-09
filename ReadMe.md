@@ -6,13 +6,14 @@ ICCV 2017.
 ```
 Please consider citing the above paper if you use the code/program (or part of it). 
 
+=========================================================================
 
 ### Run PolyFit
 - Download executable/binary files (tested on 64-bit Windows 10 only):      
-https://github.com/LiangliangNan/PolyFit/releases
-Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
+  https://github.com/LiangliangNan/PolyFit/releases
+  Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
 - Follow the hints on the screen to produce your results.
-Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps.
+  Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps.
 
 ### About the solvers
 Two solvers (Gurobi and lp_solve) are available in PolyFit. The Gurobi solver is more reliable and is always your first choice. The open source lp_solve solver can only solve tiny problems. It is too slow and may not guarantee to succeed. For example the data "000-bld_02", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes.  
@@ -25,10 +26,10 @@ This implementation incorporates a progress logger into the user interface. Thus
 
 ### Build PolyFit from source code
 ```
-- Download the source code of PolyFit from GitHub: 
-https://github.com/LiangliangNan/PolyFit
-- Install the dependencies (though versions specified have been tested, other versions should also work):
-  - Qt (v5.8.0, v5.9.2, v5.10.1):
+* Download the source code of PolyFit from GitHub: 
+  https://github.com/LiangliangNan/PolyFit
+* Install the dependencies (though versions specified have been tested, other versions should also work):
+      -) Qt (v5.8.0, v5.9.2, v5.10.1):
          https://www.qt.io/
       -) CGAL (v4.10, v4.11.1):
          http://www.cgal.org/index.html
