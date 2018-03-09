@@ -10,10 +10,9 @@ Please consider citing the above paper if you use the code/program (or part of i
 
 - Download executable/binary files (tested on 64-bit Windows 10 only):      
       https://github.com/LiangliangNan/PolyFit/releases
-      Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
+Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
 - Follow the hints on the screen to produce your results.
-      Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered 
-      icons) and screen hints corresponding to these steps.
+Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps.
 
 
 ## About the solvers
@@ -29,9 +28,9 @@ Please consider citing the above paper if you use the code/program (or part of i
 
 ## Build PolyFit from source code
 ```
-    - Download the source code of PolyFit from GitHub: 
+- Download the source code of PolyFit from GitHub: 
       https://github.com/LiangliangNan/PolyFit
-    - Install the dependencies (though versions specified have been tested, other versions should also work):
+- Install the dependencies (though versions specified have been tested, other versions should also work):
       -) Qt (v5.8.0, v5.9.2, v5.10.1):
          https://www.qt.io/
       -) CGAL (v4.10, v4.11.1):
@@ -40,23 +39,23 @@ Please consider citing the above paper if you use the code/program (or part of i
          http://www.boost.org/
       -) Gurobi (v7.5.1, v7.52, 64 bit). You may download it and obtain an academic license from 
          http://www.gurobi.com/
-    - Build PolyFit. Project files for the following IDEs (Integrated Development Environment) are provided:
+- Build PolyFit. Project files for the following IDEs (Integrated Development Environment) are provided:
       -) QtCreator (for macOS, Linux, Windows, etc., but only tested on macOS): PolyFit.pro
       -) Visual Studio 2017 (for Windows, only tested on 64bits Windows 10): PolyFit.sln
          You should be able to build PolyFit on most platforms with little effort in editing the project files.
 ```
 
 ## Data
-      Test data can be downloaded from the project page of PolyFit:
-      https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
+Test data can be downloaded from the project page of PolyFit:
+https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
 ## Data format
-      Please have a look at:
-      https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.txt
+Please have a look at:
+https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.txt
 
 ## Plane extraction
-      PolyFit assumes that the planar segments are provided as input. 
-      Extracting planes has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be 
+PolyFit assumes that the planar segments are provided as input. 
+Extracting planes has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be 
       fine if some regions of the planes are missing), so I isolated this part from this demo version implementation. You 
       can use my Mapple to extract planes from point clouds. Here is the link to Mapple: 
       https://3d.bk.tudelft.nl/liangliang/software.html    
@@ -67,7 +66,7 @@ Please consider citing the above paper if you use the code/program (or part of i
 =========================================================================
 
 ## License
-      This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License 
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License 
       as published by the Free Software Foundation; either version 2 of the License or (at your option) any later version. The 
       full text of the license can be found in the accompanying License.txt file.
 
