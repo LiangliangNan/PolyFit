@@ -19,8 +19,7 @@ Please consider citing the above paper if you use the code/program (or part of i
   Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps.
 
 ### About the solvers
-Two solvers (Gurobi and lp_solve) are available in PolyFit. The Gurobi solver is more reliable and is always your first choice. The open source lp_solve solver can only solve tiny problems. It is too slow and may not guarantee to succeed. For example the data "000-bld_02", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes.  
-For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license (free for academic use) from 
+Two solvers, namely Gurobi and lp_solve, are available in PolyFit. The Gurobi solver is more reliable and is always your first choice. The open source lp_solve solver can only solve tiny problems. It is too slow and may not guarantee to succeed. For example the data "000-bld_02", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license (free for academic use) from 
 https://user.gurobi.com/download/licenses/free-academic. 
       
 ### About the timing
@@ -39,7 +38,8 @@ This implementation incorporates a progress logger into the user interface. Thus
     http://www.boost.org/
   - Gurobi (v7.5.1, v7.52, 64 bit). You may download it and obtain an academic license from 
     http://www.gurobi.com/
-* Build PolyFit. Project files for the following IDEs (Integrated Development Environment) are provided:
+* Build PolyFit. 
+  Project files for the following IDEs (Integrated Development Environment) are provided:
   - QtCreator (for macOS, Linux, Windows, etc., but only tested on macOS): PolyFit.pro
   - Visual Studio 2017 (for Windows, only tested on 64bits Windows 10): PolyFit.sln
   
