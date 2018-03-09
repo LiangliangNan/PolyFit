@@ -26,9 +26,9 @@ This implementation incorporates a progress logger into the user interface. Thus
 ### Build PolyFit from source code
 ```
 - Download the source code of PolyFit from GitHub: 
-      https://github.com/LiangliangNan/PolyFit
+https://github.com/LiangliangNan/PolyFit
 - Install the dependencies (though versions specified have been tested, other versions should also work):
-      -) Qt (v5.8.0, v5.9.2, v5.10.1):
+  - Qt (v5.8.0, v5.9.2, v5.10.1):
          https://www.qt.io/
       -) CGAL (v4.10, v4.11.1):
          http://www.cgal.org/index.html
@@ -44,11 +44,11 @@ This implementation incorporates a progress logger into the user interface. Thus
 =========================================================================
 
 ### Data
-Test data can be downloaded from the project page of PolyFit:
+Test data can be downloaded from the project page of PolyFit: 
 https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
 #### Data format
-Please have a look at:
+Please have a look at: 
 https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.txt
 
 #### Plane extraction
@@ -56,10 +56,12 @@ PolyFit assumes that the planar segments are provided as input.
 Extracting planes has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be fine if some regions of the planes are missing), so I isolated this part from this demo version implementation. You can use my Mapple to extract planes from point clouds. Here is the link to Mapple: https://3d.bk.tudelft.nl/liangliang/software.html    
 After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extract Primitives'. To visualize the planes, change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes as bvg (Binary Vertex Group) format. The ASCII format vg also works but slow.
 
+=========================================================================
 
 ### License
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License or (at your option) any later version. The full text of the license can be found in the accompanying License.txt file.
 
+=========================================================================
 
 Should you have any questions, comments, or suggestions, please contact me at: 
 liangliang.nan@gmail.com
