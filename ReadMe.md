@@ -63,8 +63,8 @@ This program is free software; you can redistribute it and/or modify it under th
 Should you have any questions, comments, or suggestions, please contact me at: 
 liangliang.nan@gmail.com
 
-**Liangliang Nan**
-https://3d.bk.tudelft.nl/liangliang/
+**_Liangliang Nan_**
+ https://3d.bk.tudelft.nl/liangliang/
 
 July 18, 2017
 Copyright (C) 2017 
