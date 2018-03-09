@@ -115,10 +115,11 @@ In case non-default parameters are used, these parameters are provided in the fi
 
 ==============================================================================================================================
 
-Should you have any questions, comments, suggestions, or you want to report issues, please contact me at: 
+Should you have any questions, comments, or suggestions, please contact me at: 
+liangliang.nan@gmail.com
 
-Liangliang Nan (liangliang.nan@gmail.com)
+Liangliang Nan
 https://3d.bk.tudelft.nl/liangliang/
 
-
 July 18, 2017
+Copyright (C) 2017 

@@ -48,6 +48,10 @@ Data
       Test data can be downloaded from the project page of PolyFit:
       https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
+Data format
+      Please have a look at:
+      https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.txt
+
 Plane extraction
       PolyFit assumes that the planar segments are provided as input. 
       Extracting planes has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be fine if some regions of the planes are missing), so I isolated this part from this demon version implementation. You can use my Mapple to extract planes from point clouds. Here is the link to Mapple: 
