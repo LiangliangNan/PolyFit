@@ -19,7 +19,7 @@ Below you will find the description of the file format and an simple example fil
  
 ==============================================================================================================================
 
-File format:
+### File format:
 
 PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format I have developed 
 for my research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
