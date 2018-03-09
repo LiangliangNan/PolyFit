@@ -1,14 +1,14 @@
 PolyFit implements the hypothesis and selection based surface reconstruction method described in the following paper:
 ```
-      Liangliang Nan and Peter Wonka. 
-      PolyFit: Polygonal Surface Reconstruction from Point Clouds. 
-      ICCV 2017.
+Liangliang Nan and Peter Wonka. 
+PolyFit: Polygonal Surface Reconstruction from Point Clouds. 
+ICCV 2017.
 ```
 Please consider citing the above paper if you use the code/program (or part of it). 
 
 ## Run PolyFit
 
-- Download executable/binary files (tested on 64-bit Windows 10):      
+- Download executable/binary files (tested on 64-bit Windows 10 only):      
       https://github.com/LiangliangNan/PolyFit/releases
       Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
 - Follow the hints on the screen to produce your results.
