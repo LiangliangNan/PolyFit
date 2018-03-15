@@ -6,7 +6,7 @@ ICCV 2017.
 ```
 Please consider citing the above paper if you use the code/program (or part of it). 
 
-=========================================================================
+---
 
 ### Run PolyFit
 - Download executable/binary files (tested on 64-bit Windows 10 only): 
@@ -25,7 +25,7 @@ https://user.gurobi.com/download/licenses/free-academic.
 ### About the timing
 This implementation incorporates a progress logger into the user interface. Thus, running times should be (slightly) longer than what has been reported in our paper.     
 
-=========================================================================
+---
 
 ### Build PolyFit from source code
 * Download the source code of PolyFit from GitHub: https://github.com/LiangliangNan/PolyFit
@@ -45,7 +45,7 @@ This implementation incorporates a progress logger into the user interface. Thus
   
 You should be able to build PolyFit on most platforms with little effort in editing the project files.
 
-=========================================================================
+---
 
 ### Data
 Test data can be downloaded from the project page of PolyFit:
@@ -61,12 +61,12 @@ Extracting planes has some randomness (due to the nature of RANSAC) and the data
 
 After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extract Primitives'. To visualize the planes, change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes as bvg (**B**inary **V**ertex **G**roup) format. The ASCII format vg also works but slow.
 
-=========================================================================
+---
 
 ### License
 This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License or (at your option) any later version. The full text of the license can be found in the accompanying License.txt file.
 
-=========================================================================
+---
 
 Should you have any questions, comments, or suggestions, please contact me at: 
 liangliang.nan@gmail.com
