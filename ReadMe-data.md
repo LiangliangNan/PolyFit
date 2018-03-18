@@ -8,7 +8,7 @@ Please consider citing the above paper if you use any of our data.
 
 ---
 
-###Data for PolyFit
+### Data for PolyFit
 
 The example data (along with additional test data and the reconstructed 3D models) are available at:
 https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
@@ -23,7 +23,7 @@ Below you will find the description of the file format and an simple example fil
  
 ---
 
-###File format:
+### File format:
 
 PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format I have developed 
 for my research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
@@ -82,7 +82,7 @@ num_children: 0
 
 ---
 
-Below is a tiny example file (comments are NOT part of the file):
+### A tiny example file (comments are NOT part of the file):
 
 num_points: 210882            // there are 210882 points in this point cloud
 -0.06324 0.03597 0.04208 
