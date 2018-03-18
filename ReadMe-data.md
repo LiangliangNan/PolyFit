@@ -1,30 +1,34 @@
 This file describes the point cloud data used in the the following paper:
-      --------------------------------------------------------------
-      Liangliang Nan and Peter Wonka. 
-      PolyFit: Polygonal Surface Reconstruction from Point Clouds. 
-      ICCV 2017.
-      --------------------------------------------------------------
+```
+Liangliang Nan and Peter Wonka. 
+PolyFit: Polygonal Surface Reconstruction from Point Clouds. 
+ICCV 2017.
+```
 Please consider citing the above paper if you use any of our data. 
 
-The data (along with additional test data and the reconstructed 3D models) are available at:
-      https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
+---
+
+###Data for PolyFit
+
+The example data (along with additional test data and the reconstructed 3D models) are available at:
+https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
 For you own data, you can use my Mapple to extract planes. Here is the link to Mapple: 
-      https://3d.bk.tudelft.nl/liangliang/software.html    
+https://3d.bk.tudelft.nl/liangliang/software.html    
 After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extract Primitives'. To visualize the planes, 
 change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes 
 as bvg (Binary Vertex Group) format. The ASCII format vg also works but slow. 
 
 Below you will find the description of the file format and an simple example file.
  
-==============================================================================================================================
+---
 
-File format:
+###File format:
 
 PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format I have developed 
 for my research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
-  - For each point, its coordinates, normal, and color. 
-  - For each segment (a group of points representing a primitive or an object), its label, model parameters, color, and the 
+- For each point, its coordinates, normal, and color. 
+- For each segment (a group of points representing a primitive or an object), its label, model parameters, color, and the 
     indices of the points that belong to this segment.
 
 PolyFit handles planes only, so the model parameters are simply the plane parameters (e.g., a, b, c, and d in the plane 
@@ -33,7 +37,7 @@ equation ax + by + cz + d = 0).
 Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary 
 format. Please refer to 'point_set_serializer_vg.cpp' of the source code for more information.
 
-------------------------------------------------------------------------------------------------------------------------------
+---
 
 // the coordinates of the points 
 num_points: N   // N is an integer denoting the number of points
@@ -76,9 +80,9 @@ group_num_points: N
 id1 ... idN
 num_children: 0
 
-------------------------------------------------------------------------------------------------------------------------------
+---
 
-Below is an example file (comments are NOT part of the file):
+Below is a tiny example file (comments are NOT part of the file):
 
 num_points: 210882            // there are 210882 points in this point cloud
 -0.06324 0.03597 0.04208 
@@ -111,16 +115,16 @@ group_num_point: 9155
 38812 ... 140417 
 num_children: 0
 
-==============================================================================================================================
+---
 
-Parameters. 
+### Parameters. 
 
 The parameters for most examples are as follows: fitting = 0.46, coverage = 0.27, and complexity = 0.27 (Note that weights in a 
 wide range can produce the same results). Slightly different weights (fitting = 0.3, coverage = 0.4, and complexity = 0.3) are 
 used for the sofa example in Figure 4(i), where the background (ground plane) has a much higher density than the object (sofa), 
 thus the smaller data fitting weight. In case non-default parameters are used, these parameters are provided in the files names.
 
-==============================================================================================================================
+---
 
 Should you have any questions, comments, or suggestions, please contact me at: 
 liangliang.nan@gmail.com
