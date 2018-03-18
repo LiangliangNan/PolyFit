@@ -37,8 +37,7 @@ equation ax + by + cz + d = 0).
 Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary 
 format. Please refer to 'point_set_serializer_vg.cpp' of the source code for more information.
 
----
-
+```
 // the coordinates of the points 
 num_points: N   // N is an integer denoting the number of points
 x1  y1  z1	// 3 floating point numbers
@@ -79,11 +78,12 @@ group_color: r g b
 group_num_points: N
 id1 ... idN
 num_children: 0
+```
 
 ---
 
 ### A tiny example file (comments are NOT part of the file):
-
+```
 num_points: 210882            // there are 210882 points in this point cloud
 -0.06324 0.03597 0.04208 
 ...
@@ -114,6 +114,7 @@ group_color: 0.7 0.2 0.4
 group_num_point: 9155
 38812 ... 140417 
 num_children: 0
+```
 
 ---
 
