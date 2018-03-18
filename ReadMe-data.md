@@ -130,8 +130,10 @@ thus the smaller data fitting weight. In case non-default parameters are used, t
 Should you have any questions, comments, or suggestions, please contact me at: 
 liangliang.nan@gmail.com
 
-Liangliang Nan
+**_Liangliang Nan_**
+
 https://3d.bk.tudelft.nl/liangliang/
 
 July 18, 2017
+
 Copyright (C) 2017 
