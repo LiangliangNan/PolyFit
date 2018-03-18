@@ -64,7 +64,7 @@ After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extr
 ---
 
 ### License
-This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License or (at your option) any later version. The full text of the license can be found in the accompanying License.txt file.
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 3 of the License or (at your option) any later version. The full text of the license can be found in the accompanying LICENSE file.
 
 ---
 
