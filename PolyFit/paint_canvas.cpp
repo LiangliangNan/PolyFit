@@ -275,14 +275,16 @@ void PaintCanvas::keyPressEvent(QKeyEvent *e) {
 }
 
 
-void PaintCanvas::snapshotScreen() {
+void PaintCanvas::snapshotScreen(const QString& fileName) {
 	bool need_hide = show_coord_sys_;
 	if (need_hide)
 		show_coord_sys_ = false;  // hide the coord system temporally
 
 	show_hint_text_ = false;
 	show_mouse_hint_ = false;
-	saveSnapshot(false);
+	setSnapshotFileName(fileName);
+	setSnapshotFormat("png");
+	saveImageSnapshot(fileName);
 	show_hint_text_ = true;
 	show_mouse_hint_ = true;
 

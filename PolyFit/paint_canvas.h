@@ -68,6 +68,8 @@ public:
 	SurfaceRender*	mesh_render() const { return mesh_render_; }
 	PointSetRender* point_set_render() const { return point_set_render_; }
 
+	void snapshotScreen(const QString& fileName);
+
 	void clear();
 
 	//////////////////////////////////////////////////////////////////////////
@@ -84,8 +86,6 @@ protected:
 
 public Q_SLOTS:
 	void fitScreen() ;
-
-	void snapshotScreen();
 
 	void showCoordinateSystem(bool);
 

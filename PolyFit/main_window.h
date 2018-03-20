@@ -69,6 +69,8 @@ public Q_SLOTS:
 	bool save();
 	void updateStatusBar();
 
+	void snapshotScreen();
+
 	void resetWeights();
 	void setManualInputWeights(bool);
 

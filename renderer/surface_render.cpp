@@ -103,6 +103,8 @@ void SurfaceRender::draw_surface(Map* mesh) {
 	if (per_face_color_)
 		facet_color_.bind_if_defined(mesh, "color");
 
+	glEnable(GL_MULTISAMPLE);
+
 	glEnable(GL_LIGHTING);
 	glColor4fv(surface_style_.color.data());
 

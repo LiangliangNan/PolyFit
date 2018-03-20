@@ -198,7 +198,7 @@ void MainWindow::createActions() {
 	connect(actionOpen, SIGNAL(triggered()), this, SLOT(open()));
 	connect(actionSave, SIGNAL(triggered()), this, SLOT(save()));
 
-	connect(actionSnapshot, SIGNAL(triggered()), mainCanvas_, SLOT(snapshotScreen()));
+	connect(actionSnapshot, SIGNAL(triggered()), this, SLOT(snapshotScreen()));
 
 	connect(actionRefinePlanes, SIGNAL(triggered()), mainCanvas_, SLOT(refinePlanes()));
 	connect(actionGenerateFacetHypothesis, SIGNAL(triggered()), mainCanvas_, SLOT(generateFacetHypothesis()));
@@ -462,8 +462,7 @@ bool MainWindow::open()
 {
 	QString fileName = QFileDialog::getOpenFileName(this,
 		tr("Open file"), curDataDirectory_,
-		tr("Point Cloud (*.vg *.bvg)\n"
-			"Mesh (*.obj)")
+		tr("Supported Format (*.vg *.bvg *.obj *.png)")
 		);
 
 	if (fileName.isEmpty())
@@ -477,8 +476,7 @@ bool MainWindow::save()
 {
 	QString fileName = QFileDialog::getSaveFileName(this,
 		tr("Save file"), optimizedMeshFileName_,
-		tr(
-			"Mesh (*.obj)\n"
+		tr("Mesh (*.obj)\n"
 			"Point Cloud (*.vg *.bvg)")
 		);
 
@@ -570,4 +568,17 @@ bool MainWindow::doOpen(const QString &fileName)
 QString MainWindow::strippedName(const QString &fullFileName)
 {
 	return QFileInfo(fullFileName).fileName();
+}
+
+
+void MainWindow::snapshotScreen() {
+	const std::string& fileName = optimizedMeshFileName_.toStdString();
+	const std::string& snapshot = FileUtils::replace_extension(fileName, "png");
+
+	QString snapshotFileName = QFileDialog::getSaveFileName(this,
+		tr("Save Snapshot"), QString::fromStdString(snapshot),
+		tr("PNG Image (*.png)")
+	);
+
+	canvas()->snapshotScreen(snapshotFileName);
 }
