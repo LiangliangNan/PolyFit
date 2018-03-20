@@ -21,9 +21,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3rd_lpsolve", "3rd_lpsolve\
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{45EEA339-E627-4DA0-A19F-1527A4AE58F4}"
 	ProjectSection(SolutionItems) = preProject
-		License.txt = License.txt
-		ReadMe-data.txt = ReadMe-data.txt
-		ReadMe.txt = ReadMe.txt
+		LICENSE = LICENSE
+		ReadMe-data.md = ReadMe-data.md
+		ReadMe.md = ReadMe.md
 		Tricks for pairwise intersection.pdf = Tricks for pairwise intersection.pdf
 	EndProjectSection
 EndProject
@@ -70,8 +70,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		QtVersion = 4.8.0
 		SolutionGuid = {7856704D-9E73-45AE-988F-95F8DE6A1429}
+		QtVersion = 4.8.0
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True
