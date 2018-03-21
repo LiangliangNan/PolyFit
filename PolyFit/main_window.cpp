@@ -462,7 +462,7 @@ bool MainWindow::open()
 {
 	QString fileName = QFileDialog::getOpenFileName(this,
 		tr("Open file"), curDataDirectory_,
-		tr("Supported Format (*.vg *.bvg *.obj *.png)")
+		tr("Supported Format (*.vg *.bvg *.obj *.png *.jpg)")
 		);
 
 	if (fileName.isEmpty())
