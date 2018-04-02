@@ -67,7 +67,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX64</TargetMachine>
-      <AdditionalLibraryDirectories>$(CGAL_DIR)\lib;$(BOOST_DIR)\lib64-msvc-12.0;$(CGAL_DIR)\auxiliary\gmp\lib;$(GUROBI_HOME)\lib</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(CGAL_DIR)\lib;$(BOOST_DIR)\lib64-msvc-14.1;$(CGAL_DIR)\auxiliary\gmp\lib;$(GUROBI_HOME)\lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>libgmp-10.lib;libmpfr-4.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
