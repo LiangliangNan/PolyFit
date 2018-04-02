@@ -281,7 +281,7 @@ void PointSetSerializer_vg::load_bvg(PointSet* pset, const std::string& file_nam
 		return;
 	}
 
-	long num;
+	int num;
 	input.read((char*)(&num), sizeof(int));
 	if (num <= 0) {
 		Logger::err("-") << "no point exists in file\'" << file_name << "\'" << std::endl;
