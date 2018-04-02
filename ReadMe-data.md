@@ -1,4 +1,4 @@
-This file describes the point cloud data used in the the following paper:
+This file describes the point cloud data used in the following paper:
 ```
 Liangliang Nan and Peter Wonka. 
 PolyFit: Polygonal Surface Reconstruction from Point Clouds. 
@@ -13,20 +13,18 @@ Please consider citing the above paper if you use any of our data.
 The example data (along with additional test data and the reconstructed 3D models) are available at:
 https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
-For you own data, you can use my Mapple to extract planes. Here is the link to Mapple: 
+For your own data, you can use my Mapple to extract planes. Here is the link to Mapple: 
 https://3d.bk.tudelft.nl/liangliang/software.html    
 After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extract Primitives'. To visualize the planes, 
-change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes 
-as bvg (Binary Vertex Group) format. The ASCII format vg also works but slow. 
+change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes as bvg (Binary Vertex Group) format. The ASCII format vg also works but slow. 
 
-Below you will find the description of the file format and an simple example file.
+Below you will find the description of the file format and a simple example file.
  
 ---
 
 ### File format:
 
-PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format I have developed 
-for my research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
+PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format I have developed for my research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
 - For each point, its coordinates, normal, and color. 
 - For each segment (a group of points representing a primitive or an object), its label, model parameters, color, and the 
     indices of the points that belong to this segment.
@@ -34,8 +32,7 @@ for my research projects. The general vg format allows you to save a point cloud
 PolyFit handles planes only, so the model parameters are simply the plane parameters (e.g., a, b, c, and d in the plane 
 equation ax + by + cz + d = 0).
 
-Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary 
-format. Please refer to 'point_set_serializer_vg.cpp' of the source code for more information.
+Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary format. Please refer to 'point_set_serializer_vg.cpp' of the source code for more information.
 
 ```
 // the coordinates of the points 
@@ -45,14 +42,14 @@ x1  y1  z1	// 3 floating point numbers
 xN  yN  zN
 
 // the colors of the points 
-num_colors: N   // N is an integer denoting the number of colors (can be different from number of points)
+num_colors: N   // N is an integer denoting the number of colors (can be different from the number of points)
 r1 g1 b1	// 3 floating point numbers
 ...
 rN gN bN
 
 // the normals of the points 
 
-num_normals: N  // N is an integer denoting the number of normals (can be different from number of points or colors)
+num_normals: N  // N is an integer denoting the number of normals (can be different from the number of points or colors)
 nx1  ny1  nz1	// 3 floating point numbers
 ...
 nxN  nyN  nzN
@@ -121,8 +118,7 @@ num_children: 0
 ### Parameters. 
 
 The parameters for most examples are as follows: fitting = 0.46, coverage = 0.27, and complexity = 0.27 (Note that weights in a 
-wide range can produce the same results). Slightly different weights (fitting = 0.3, coverage = 0.4, and complexity = 0.3) are 
-used for the sofa example in Figure 4(i), where the background (ground plane) has a much higher density than the object (sofa), 
+wide range can produce the same results). Slightly different weights (fitting = 0.3, coverage = 0.4, and complexity = 0.3) are used for the sofa example in Figure 4(i), where the background (ground plane) has a much higher density than the object (sofa), 
 thus the smaller data fitting weight. In case non-default parameters are used, these parameters are provided in the files names.
 
 ---
