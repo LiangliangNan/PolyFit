@@ -26,7 +26,7 @@
     <ClCompile Include="quaternion.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="binary_program.cpp">
+    <ClCompile Include="linear_program_solver_GUROBI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -64,7 +64,10 @@
     <ClInclude Include="quaternion.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="binary_program.h">
+    <ClInclude Include="linear_program.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="linear_program_solver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -51,7 +51,7 @@
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>$(BOOST_DIR);$(CGAL_DIR)\include;$(CGAL_DIR)\auxiliary\gmp\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BOOST_DIR);$(CGAL_DIR)\include;$(CGAL_DIR)\build\include;$(CGAL_DIR)\auxiliary\gmp\include</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
     </ClCompile>
@@ -72,7 +72,7 @@
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_WINDOWS;_USRDLL;METHOD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <OpenMPSupport>true</OpenMPSupport>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>$(BOOST_DIR);$(CGAL_DIR)\include;$(CGAL_DIR)\auxiliary\gmp\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BOOST_DIR);$(CGAL_DIR)\include;$(CGAL_DIR)\build\include;$(CGAL_DIR)\auxiliary\gmp\include</AdditionalIncludeDirectories>
       <DebugInformationFormat>None</DebugInformationFormat>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>

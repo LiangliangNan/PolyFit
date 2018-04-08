@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "method_common.h"
 #include "polyfit_info.h"
 #include "../math/math_types.h"
-#include "../math/binary_program.h"
+#include "../math/linear_program.h"
 #include "../model/map_attributes.h"
 
 
@@ -36,7 +36,6 @@ class Map;
 class PointSet;
 class VertexGroup;
 class PolyFitInfo;
-class BinaryProgram;
 
 namespace MapTypes {
 	class Vertex;
@@ -59,7 +58,7 @@ private:
 	PointSet* pset_;
 	Map*      model_;
 
-	BinaryProgram program_;
+	LinearProgram<double> program_;
 
 	MapFacetAttribute<VertexGroup*> facet_attrib_supporting_vertex_group_;
 	MapFacetAttribute<double>		facet_attrib_supporting_point_num_;

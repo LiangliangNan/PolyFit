@@ -1,4 +1,4 @@
-#include "binary_program.h"
+#include "linear_program_solver.h"
 #include "../basic/logger.h"
 #include "../basic/basic_types.h"
 
@@ -30,8 +30,17 @@
 #endif
 
 
-bool BinaryProgram::solve(Solver solver /* = GUROBI */) const {
+bool LinearProgramSolver::solve(const LinearProgram* program, LP_Solver solver /* = GUROBI */) {
 	try {
+		typedef Variable<double>			Variable;
+		typedef LinearExpression<double>	Objective;
+		typedef LinearConstraint<double>	Constraint;
+
+		const std::vector<Variable>& variables = program->variables();
+		if (variables.empty()) {
+			std::cerr << "variable set is empty" << std::endl;
+			return false;
+		}
 
 		GRBEnv env = GRBEnv();
 		env.set(GRB_IntParam_LogToConsole, 0);
@@ -39,9 +48,20 @@ bool BinaryProgram::solve(Solver solver /* = GUROBI */) const {
 		GRBModel model = GRBModel(env);
 
 		// create variables
-		std::vector<GRBVar> X(num_variables_);
-		for (std::size_t i = 0; i < num_variables_; ++i) {
-			X[i] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY);
+		std::vector<GRBVar> X(variables.size());
+		for (std::size_t i = 0; i < variables.size(); ++i) {
+			const Variable& var = variables[i];
+			double lb = 0.0;
+			double ub = 1.0;
+			if (var.bound_type() == Variable::DOUBLE)
+				var.get_bound(lb, ub);
+
+			char vtype = GRB_CONTINUOUS;
+			if (var.variable_type() == Variable::INTEGER)
+				vtype = GRB_INTEGER;
+			else if (var.variable_type() == Variable::BINARY)
+				vtype = GRB_BINARY;
+			X[i] = model.addVar(lb, ub, 0.0, vtype);
 		}
 
 		// Integrate new variables
@@ -50,7 +70,8 @@ bool BinaryProgram::solve(Solver solver /* = GUROBI */) const {
 		// Set objective
 		GRBLinExpr obj;
 
-		const std::unordered_map<std::size_t, double>& obj_coeffs = objective_.coefficients();
+		const Objective& objective = program->objective();
+		const std::unordered_map<std::size_t, double>& obj_coeffs = objective.coefficients();
 		std::unordered_map<std::size_t, double>::const_iterator it = obj_coeffs.begin();
 		for (; it != obj_coeffs.end(); ++it) {
 			std::size_t var_idx = it->first;
@@ -60,9 +81,10 @@ bool BinaryProgram::solve(Solver solver /* = GUROBI */) const {
 		model.setObjective(obj, GRB_MINIMIZE);
 
 		// Add constraints
-		for (std::size_t i = 0; i < constraints_.size(); ++i) {
+		const std::vector<Constraint>& constraints = program->constraints();
+		for (std::size_t i = 0; i < constraints.size(); ++i) {
 			GRBLinExpr expr;
-			const Constraint& cstr = constraints_[i];
+			const Constraint& cstr = constraints[i];
 			const std::unordered_map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
 			std::unordered_map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
 			for (; cur != cstr_coeffs.end(); ++cur) {
@@ -74,17 +96,17 @@ bool BinaryProgram::solve(Solver solver /* = GUROBI */) const {
 			switch (cstr.bound_type())
 			{
 			case Constraint::FIXED:
-				model.addConstr(expr == cstr.get_fixed_bound());
+				model.addConstr(expr == cstr.get_bound());
 				break;
 			case Constraint::LOWER:
-				model.addConstr(expr >= cstr.get_lower_bound());
+				model.addConstr(expr >= cstr.get_bound());
 				break;
 			case Constraint::UPPER:
-				model.addConstr(expr <= cstr.get_upper_bound());
+				model.addConstr(expr <= cstr.get_bound());
 				break;
 			case Constraint::DOUBLE: {
 				double lb, ub;
-				cstr.get_double_bound(lb, ub);
+				cstr.get_bound(lb, ub);
 				model.addConstr(expr >= lb);
 				model.addConstr(expr <= ub);
 				break;
@@ -102,10 +124,9 @@ bool BinaryProgram::solve(Solver solver /* = GUROBI */) const {
 			double objval = model.get(GRB_DoubleAttr_ObjVal);
 			//Logger::out("-") << "done. objective: " << truncate_digits(objval, 3) << std::endl;
 
-			std::vector<int>& output = const_cast<BinaryProgram*>(this)->result_;
-			output.resize(num_variables_);
-			for (std::size_t i=0; i<num_variables_; ++i) {
-				output[i] = static_cast<int>(X[i].get(GRB_DoubleAttr_X));
+			result_.resize(variables.size());
+			for (std::size_t i=0; i<variables.size(); ++i) {
+				result_[i] = X[i].get(GRB_DoubleAttr_X);
 			}
 			return true;
 		}

@@ -81,7 +81,8 @@
   <ItemGroup>
     <ClInclude Include="box.h" />
     <ClInclude Include="line.h" />
-    <ClInclude Include="binary_program.h" />
+    <ClInclude Include="linear_program.h" />
+    <ClInclude Include="linear_program_solver.h" />
     <ClInclude Include="math_common.h" />
     <ClInclude Include="math_types.h" />
     <ClInclude Include="matrix.h" />
@@ -93,7 +94,7 @@
     <ClInclude Include="vecg.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="binary_program.cpp" />
+    <ClCompile Include="linear_program_solver_GUROBI.cpp" />
     <ClCompile Include="math_types.cpp" />
     <ClCompile Include="polygon2d.cpp" />
     <ClCompile Include="principal_axes.cpp" />
