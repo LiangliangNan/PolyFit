@@ -9,7 +9,7 @@ namespace Method {
 
 	double coincident_threshold = 1e-5;
 
-	bool  face_selection_using_GUROBI_solver = true;
+	LinearProgramSolver::LP_Solver LP_solver = LinearProgramSolver::GUROBI;
 
 	//________________ names for various quality measures ____________________
 

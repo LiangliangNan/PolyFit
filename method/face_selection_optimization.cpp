@@ -234,7 +234,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 	w.start();
 
 	LinearProgramSolver solver;
-	if (solver.solve(&program_, LinearProgramSolver::GUROBI)) {
+	if (solver.solve(&program_, Method::LP_solver)) {
 		const std::vector<double>& X = solver.get_result();
 		Logger::out("-") << "solving the binary program done. " << w.elapsed() << " sec" << std::endl;
 

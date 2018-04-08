@@ -29,6 +29,18 @@
     <ClCompile Include="linear_program_solver_GUROBI.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="linear_program_solver_LPSOLVE.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="linear_program_solver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="linear_program_solver_GLPK.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="linear_program_solver_SCIP.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="box.h">

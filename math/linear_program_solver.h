@@ -30,6 +30,12 @@ public:
 	}
 
 private:
+	bool _solve_GUROBI(const LinearProgram* program);
+	bool _solve_SCIP(const LinearProgram* program);
+	bool _solve_LPSOLVE(const LinearProgram* program);
+	bool _solve_GLPK(const LinearProgram* program);
+
+private:
 	std::vector<double> result_;
 };
 

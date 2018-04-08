@@ -457,12 +457,16 @@ PointSet* PaintCanvas::pointSet() const {
 
 
 void PaintCanvas::setActiveSolver(const QString& solver) {
-	if (solver == "GUROBI") {
-		Method::face_selection_using_GUROBI_solver = true;
-	}
-	else if (solver == "LP_SOLVE") {
-		Method::face_selection_using_GUROBI_solver = false;
-	}
+	if (solver == "GUROBI")
+		Method::LP_solver = LinearProgramSolver::GUROBI;
+	else if (solver == "SCIP")
+		Method::LP_solver = LinearProgramSolver::SCIP;
+	else if (solver == "LP_SOLVE")
+		Method::LP_solver = LinearProgramSolver::LPSOLVE;
+	else if (solver == "GLPK")
+		Method::LP_solver = LinearProgramSolver::GLPK;
+	else 
+		Logger::err("-") << "no such solver: " << solver.toStdString() << std::endl;
 
 	Logger::out("-") << "PolyFit will use " << solver.toStdString() << " solver" << std::endl;
 }

@@ -94,7 +94,11 @@
     <ClInclude Include="vecg.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="linear_program_solver.cpp" />
+    <ClCompile Include="linear_program_solver_GLPK.cpp" />
     <ClCompile Include="linear_program_solver_GUROBI.cpp" />
+    <ClCompile Include="linear_program_solver_LPSOLVE.cpp" />
+    <ClCompile Include="linear_program_solver_SCIP.cpp" />
     <ClCompile Include="math_types.cpp" />
     <ClCompile Include="polygon2d.cpp" />
     <ClCompile Include="principal_axes.cpp" />
@@ -102,6 +106,12 @@
     <ClCompile Include="semi_definite_symmetric_eigen.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\3rd_glpk\3rd_glpk.vcxproj">
+      <Project>{2048e60d-2ae8-3654-9e9c-aa3ca59e181f}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\3rd_lpsolve\3rd_lpsolve.vcxproj">
+      <Project>{1597a9ce-c201-4394-af0d-212e93f3b89c}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\basic\basic.vcxproj">
       <Project>{b83a04f9-4270-4440-9d1a-80dcaab009c4}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

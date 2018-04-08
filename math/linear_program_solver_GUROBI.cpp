@@ -30,7 +30,7 @@
 #endif
 
 
-bool LinearProgramSolver::solve(const LinearProgram* program, LP_Solver solver /* = GUROBI */) {
+bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 	try {
 		typedef Variable<double>			Variable;
 		typedef LinearExpression<double>	Objective;

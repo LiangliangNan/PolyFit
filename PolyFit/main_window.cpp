@@ -343,8 +343,9 @@ void MainWindow::createToolBar()
 	solverBox->setFixedHeight(23);
 	solverBox->setEditable(false);
 	solverBox->addItem("GUROBI");
+	solverBox->addItem("SCIP");
 	solverBox->addItem("LP_SOLVE");
-
+	solverBox->addItem("GLPK");
 	connect(solverBox, SIGNAL(currentIndexChanged(const QString&)), mainCanvas_, SLOT(setActiveSolver(const QString&)));
 
 	QLabel* label = new QLabel(this);
