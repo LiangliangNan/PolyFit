@@ -1,5 +1,4 @@
 #include "linear_program_solver.h"
-#include "../basic/logger.h"
 #include "../basic/basic_types.h"
 
 #include <gurobi_c++.h>
@@ -51,16 +50,17 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		std::vector<GRBVar> X(variables.size());
 		for (std::size_t i = 0; i < variables.size(); ++i) {
 			const Variable& var = variables[i];
-			double lb = 0.0;
-			double ub = 1.0;
-			if (var.bound_type() == Variable::DOUBLE)
-				var.get_bound(lb, ub);
 
 			char vtype = GRB_CONTINUOUS;
 			if (var.variable_type() == Variable::INTEGER)
 				vtype = GRB_INTEGER;
 			else if (var.variable_type() == Variable::BINARY)
 				vtype = GRB_BINARY;
+
+			double lb = -DBL_MAX;
+			double ub = DBL_MAX;
+			if (var.bound_type() == Variable::DOUBLE)
+				var.get_bound(lb, ub);
 			X[i] = model.addVar(lb, ub, 0.0, vtype);
 		}
 
@@ -130,22 +130,22 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 			}
 		}
 		else if (optimstatus == GRB_INF_OR_UNBD) 
-			Logger::err("-") << "model is infeasible or unbounded" << std::endl;
+			std::cerr << "model is infeasible or unbounded" << std::endl;
 		else if (optimstatus == GRB_INFEASIBLE) 
-			Logger::err("-") << "model is infeasible" << std::endl;
+			std::cerr << "model is infeasible" << std::endl;
 		else if (optimstatus == GRB_UNBOUNDED) 
-			Logger::err("-") << "model is unbounded" << std::endl;
+			std::cerr << "model is unbounded" << std::endl;
 		else 
-			Logger::err("-") << "optimization was stopped with status = " << optimstatus << std::endl;
+			std::cerr << "optimization was stopped with status = " << optimstatus << std::endl;
 
 		return (optimstatus == GRB_OPTIMAL);
 	}
 	catch (GRBException e) {
-		Logger::err("-") << "Error code = " << e.getErrorCode() << std::endl;
-		Logger::err("-") << e.getMessage() << std::endl;
+		std::cerr << "Error code = " << e.getErrorCode() << std::endl;
+		std::cerr << e.getMessage() << std::endl;
 	}
 	catch (...) {
-		Logger::err("-") << "Exception during optimization" << std::endl;
+		std::cerr << "Exception during optimization" << std::endl;
 	}
 
 	return false;

@@ -1,7 +1,8 @@
 #include "linear_program_solver.h"
-#include "../basic/logger.h"
 #include "../basic/basic_types.h"
 #include "../3rd_lpsolve/lp_lib.h"
+
+#include <iostream>
 
 
 bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
@@ -19,7 +20,7 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 		/* Create a new LP model */
 		lprec* lp = make_lp(0, variables.size());
 		if (!lp) {
-			Logger::err("-") << "error in creating a LP model" << std::endl;
+			std::cerr << "error in creating a LP model" << std::endl;
 			return false;
 		}
 		set_verbose(lp, SEVERE);
@@ -27,10 +28,6 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 		// create variables
 		for (std::size_t i = 0; i < variables.size(); ++i) {
 			const Variable& var = variables[i];
-			double lb = 0.0;
-			double ub = 1.0;
-			if (var.bound_type() == Variable::DOUBLE)
-				var.get_bound(lb, ub);
 
 			if (var.variable_type() == Variable::INTEGER)
 				set_int(lp, i+1, TRUE);		// lp_solve uses 1-based arrays
@@ -40,6 +37,11 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 				//std::cout << "continuous variable" << std::endl;
 			}
 
+			double lb = -DBL_MAX;
+			double ub = DBL_MAX;
+			if (var.bound_type() == Variable::DOUBLE)
+				var.get_bound(lb, ub);
+			set_bounds(lp, i + 1, lb, ub);
 		}
 
 		// set objective 
@@ -114,34 +116,34 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 			get_variables(lp, result_.data());
 			break;
 		case -2:
-			Logger::err("-") << "Out of memory" << std::endl;
+			std::cerr << "Out of memory" << std::endl;
 			break;
 		case 1:
-			Logger::err("-") << "The model is sub-optimal. Only happens if there are integer variables and there is already an integer solution found. The solution is not guaranteed the most optimal one." << std::endl;
+			std::cerr << "The model is sub-optimal. Only happens if there are integer variables and there is already an integer solution found. The solution is not guaranteed the most optimal one." << std::endl;
 			break;
 		case 2:
-			Logger::err("-") << "The model is infeasible" << std::endl;
+			std::cerr << "The model is infeasible" << std::endl;
 			break;
 		case 3:
-			Logger::err("-") << "The model is unbounded" << std::endl;
+			std::cerr << "The model is unbounded" << std::endl;
 			break;
 		case 4:
-			Logger::err("-") << "The model is degenerative" << std::endl;
+			std::cerr << "The model is degenerative" << std::endl;
 			break;
 		case 5:
-			Logger::err("-") << "Numerical failure encountered" << std::endl;
+			std::cerr << "Numerical failure encountered" << std::endl;
 			break;
 		case 6:
-			Logger::err("-") << "The abort() routine was called" << std::endl;
+			std::cerr << "The abort() routine was called" << std::endl;
 			break;
 		case 7:
-			Logger::err("-") << "A timeout occurred" << std::endl;
+			std::cerr << "A timeout occurred" << std::endl;
 			break;
 		case 9:
-			Logger::err("-") << "The model could be solved by presolve. This can only happen if presolve is active via set_presolve()" << std::endl;
+			std::cerr << "The model could be solved by presolve. This can only happen if presolve is active via set_presolve()" << std::endl;
 			break;
 		case 25:
-			Logger::err("-") << "Accuracy error encountered" << std::endl;
+			std::cerr << "Accuracy error encountered" << std::endl;
 			break;
 		default:
 			break;
@@ -152,10 +154,10 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 		return (ret == 0);
 	}
 	catch (std::exception e) {
-		Logger::err("-") << "Error code = " << e.what() << std::endl;
+		std::cerr << "Error code = " << e.what() << std::endl;
 	}
 	catch (...) {
-		Logger::err("-") << "Exception during optimization" << std::endl;
+		std::cerr << "Exception during optimization" << std::endl;
 	}
 
 	return false;

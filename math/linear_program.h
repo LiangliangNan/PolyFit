@@ -19,8 +19,8 @@ enum BoundType { FIXED, LOWER, UPPER, DOUBLE, FREE };
 public:
 	Bound()
 		: bound_type_(FREE)
-		, bound_(0.0)
-		, bound2_(1.0)
+		, bound_(-DBL_MAX)
+		, bound2_(DBL_MAX)
 	{
 	}
 
@@ -66,7 +66,7 @@ enum VariableType { CONTINUOUS, INTEGER, BINARY };
 public:
 	Variable(VariableType type) : variable_type_(type) {
 		if (type == BINARY)
-			set_bound(0.0, 1.0);
+			Bound<FT>::set_bound(0.0, 1.0);
 	}
 
 	void set_variable_type(VariableType type) { variable_type_ = type; }

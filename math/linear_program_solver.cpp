@@ -1,5 +1,4 @@
 #include "linear_program_solver.h"
-#include "../basic/logger.h"
 
 
 bool LinearProgramSolver::solve(const LinearProgram* program, LP_Solver solver /* = GUROBI */) {
@@ -13,7 +12,7 @@ bool LinearProgramSolver::solve(const LinearProgram* program, LP_Solver solver /
 	case GLPK:
 		return _solve_GLPK(program);
 	default:
-		Logger::warn("-") << "no such solver" << std::endl;
+		std::cerr << "no such solver" << std::endl;
 		return false;
 	}
 }

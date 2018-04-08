@@ -182,7 +182,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 	}
 
 	// Add constraints: for the sharp edges
-	double M = 3.0;
+	double M = 1.0;
 	for (std::size_t i = 0; i < fans.size(); ++i) {
 		const FaceStar& fan = fans[i];
 		if (fan.size() != 4)
@@ -265,13 +265,13 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 				continue;
 
 			std::size_t idx_sharp_var = edge_sharp_status[&fan];
-			if (X[idx_sharp_var] == 1) {
+			if (static_cast<int>(X[idx_sharp_var]) == 1) {
 				for (std::size_t j = 0; j < fan.size(); ++j) {
 					Map::Halfedge* e = fan[j];
 					Map::Facet* f = e->facet();
 					if (f) { // some faces may be deleted
 						std::size_t fid = facet_indices[f];
-						if (X[fid] == 1) {
+						if (static_cast<int>(X[fid]) == 1) {
 							edge_is_sharp[e] = true;
 							break;
 						}
