@@ -33,9 +33,13 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 				var.get_bound(lb, ub);
 
 			if (var.variable_type() == Variable::INTEGER)
-				set_int(lp, i, TRUE);		/* sets variable i to binary */
+				set_int(lp, i+1, TRUE);		// lp_solve uses 1-based arrays
 			else if (var.variable_type() == Variable::BINARY)
-				set_binary(lp, i, TRUE);	/* sets variable i to binary */
+				set_binary(lp, i+1, TRUE);	// lp_solve uses 1-based arrays
+			else {
+				//std::cout << "continuous variable" << std::endl;
+			}
+
 		}
 
 		// set objective 
@@ -144,6 +148,8 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 		}
 
 		delete_lp(lp);
+
+		return (ret == 0);
 	}
 	catch (std::exception e) {
 		Logger::err("-") << "Error code = " << e.what() << std::endl;

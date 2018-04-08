@@ -128,24 +128,17 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 			for (std::size_t i=0; i<variables.size(); ++i) {
 				result_[i] = X[i].get(GRB_DoubleAttr_X);
 			}
-			return true;
 		}
-		else if (optimstatus == GRB_INF_OR_UNBD) {
+		else if (optimstatus == GRB_INF_OR_UNBD) 
 			Logger::err("-") << "model is infeasible or unbounded" << std::endl;
-			return false;
-		}
-		else if (optimstatus == GRB_INFEASIBLE) {
+		else if (optimstatus == GRB_INFEASIBLE) 
 			Logger::err("-") << "model is infeasible" << std::endl;
-			return false;
-		}
-		else if (optimstatus == GRB_UNBOUNDED) {
+		else if (optimstatus == GRB_UNBOUNDED) 
 			Logger::err("-") << "model is unbounded" << std::endl;
-			return false;
-		}
-		else {
+		else 
 			Logger::err("-") << "optimization was stopped with status = " << optimstatus << std::endl;
-			return false;
-		}
+
+		return (optimstatus == GRB_OPTIMAL);
 	}
 	catch (GRBException e) {
 		Logger::err("-") << "Error code = " << e.getErrorCode() << std::endl;

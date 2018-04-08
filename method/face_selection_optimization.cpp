@@ -105,7 +105,6 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 	double coeff_coverage = total_points * Method::lambda_model_coverage / model_->bbox().area();
 	double coeff_complexity = total_points * Method::lambda_model_complexity / double(fans.size());
 
-
 	typedef Variable<double>			Variable;
 	typedef LinearExpression<double>	Objective;
 	typedef LinearConstraint<double>	Constraint;
