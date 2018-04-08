@@ -55,12 +55,4 @@ x64
 PolyFit/GeneratedFiles
 PolyFit/PolyFit.log
 PolyFit/PolyFit.vcxproj.user
-.vs/PolyFit/v15/.suo
-.vs/PolyFit/v15/.suo
 *.user
-TestLinearProgramSolver/stdafx.cpp
-TestLinearProgramSolver/stdafx.h
-TestLinearProgramSolver/targetver.h
-TestLinearProgramSolver/TestLinearProgramSolver.cpp
-TestLinearProgramSolver/TestLinearProgramSolver.vcxproj
-TestLinearProgramSolver/TestLinearProgramSolver.vcxproj.filters

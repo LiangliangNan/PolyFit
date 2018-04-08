@@ -31,6 +31,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3rd_glpk", "3rd_glpk\3rd_gl
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestLinearProgramSolver", "TestLinearProgramSolver\TestLinearProgramSolver.vcxproj", "{60DA54F6-602C-48AB-9006-E2B93065F604}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{E68C9BBE-3D6E-4B56-B603-1153E8A11C22}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -104,6 +106,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{60DA54F6-602C-48AB-9006-E2B93065F604} = {E68C9BBE-3D6E-4B56-B603-1153E8A11C22}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7856704D-9E73-45AE-988F-95F8DE6A1429}
