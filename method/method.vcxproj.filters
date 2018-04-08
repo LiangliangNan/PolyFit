@@ -64,10 +64,7 @@
     <ClCompile Include="face_selection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="face_selection_gurobi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="face_selection_lpsolve.cpp">
+    <ClCompile Include="face_selection_optimization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

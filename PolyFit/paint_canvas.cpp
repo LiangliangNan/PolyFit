@@ -703,10 +703,7 @@ void PaintCanvas::optimization() {
 
 	Map* mesh = Geom::duplicate(hypothesis_mesh_);
 	FaceSelection selector(point_set_, mesh);
-	if (Method::face_selection_using_GUROBI_solver)
-		selector.optimize_Gurobi(&polyfit_info_);
-	else
-		selector.optimize_lp_solve(&polyfit_info_);
+	selector.optimize(&polyfit_info_);
 
 	optimized_mesh_ = mesh;
 

@@ -27,6 +27,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Tricks for pairwise intersection.pdf = Tricks for pairwise intersection.pdf
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3rd_glpk", "3rd_glpk\3rd_glpk.vcxproj", "{2048E60D-2AE8-3654-9E9C-AA3CA59E181F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -65,13 +67,17 @@ Global
 		{1597A9CE-C201-4394-AF0D-212E93F3B89C}.Debug|x64.Build.0 = Debug|x64
 		{1597A9CE-C201-4394-AF0D-212E93F3B89C}.Release|x64.ActiveCfg = Release|x64
 		{1597A9CE-C201-4394-AF0D-212E93F3B89C}.Release|x64.Build.0 = Release|x64
+		{2048E60D-2AE8-3654-9E9C-AA3CA59E181F}.Debug|x64.ActiveCfg = Debug|x64
+		{2048E60D-2AE8-3654-9E9C-AA3CA59E181F}.Debug|x64.Build.0 = Debug|x64
+		{2048E60D-2AE8-3654-9E9C-AA3CA59E181F}.Release|x64.ActiveCfg = Release|x64
+		{2048E60D-2AE8-3654-9E9C-AA3CA59E181F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {7856704D-9E73-45AE-988F-95F8DE6A1429}
 		QtVersion = 4.8.0
+		SolutionGuid = {7856704D-9E73-45AE-988F-95F8DE6A1429}
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True

@@ -48,34 +48,6 @@ FaceSelection::FaceSelection(PointSet* pset, Map* model)
 }
 
 
-FaceSelection::~FaceSelection()
-{
-}
-
-
-void FaceSelection::prune_boundary_faces(Map* model) {
-	std::vector<MapTypes::Facet*> boundary_faces;
-
-	FOR_EACH_FACET(Map, model, it) {
-		MapTypes::Halfedge* h = it->halfedge();
-		do {
-			if (h->is_border_edge()) {
-				boundary_faces.push_back(it);
-				break;
-			}
-			h = h->next();
-		} while (h != it->halfedge());
-	}
-
-	MapEditor editor(model);
-	for (std::size_t i = 0; i < boundary_faces.size(); ++i) {
-		Map::Facet* f = boundary_faces[i];
-		editor.erase_facet(f->halfedge());
-	}
-	Logger::out("-") << boundary_faces.size() << " boundary faces pruned" << std::endl;
-}
-
-
 void FaceSelection::IntersectionAdjacency::init(Map* model, const std::vector<Plane3d*>& supporting_planes) {
 	edge_container_.clear();
 	plane_index_.clear();
@@ -126,7 +98,7 @@ void FaceSelection::IntersectionAdjacency::init(Map* model, const std::vector<Pl
 }
 
 
-std::vector<FaceStar> FaceSelection::IntersectionAdjacency::extract(Map* model, const std::vector<Plane3d*>& supporting_planes) {
+std::vector<FaceSelection::FaceStar> FaceSelection::IntersectionAdjacency::extract(Map* model, const std::vector<Plane3d*>& supporting_planes) {
 	init(model, supporting_planes);
 
 #ifdef DISPLAY_ADJACENCY_STATISTICS
