@@ -20,6 +20,7 @@
 #pragma warning( disable : 4101 ) 
 #endif
 
+
 /* static char SpaceChars[3] = {" " "\7"}; */
 /* static char NumChars[14]  = {"0123456789-+."}; */
 

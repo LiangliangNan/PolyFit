@@ -55,6 +55,7 @@
   -------------------------------------------------------------------------- */
 /* Define user program feature option switches                               */
 /* ------------------------------------------------------------------------- */
+
 // Windows DLL export macros
 #if defined (_WIN32) || defined (WIN32) || defined (_WIN64) || defined (WIN64)
 // Disable a warning message about dll. This is a temporary solution
@@ -623,7 +624,7 @@
                                        upper iteration limit is divided by this threshold */
 #define MIN_TIMEPIVOT      5.0e-02  /* Minimum time per pivot for reinversion optimization
                                        purposes; use active monitoring only if a pivot
-                                       takes more than MINTIMEPIVOT sec.  5.0e-2 is
+                                       takes more than MINTIMEPIVOT seconds.  5.0e-2 is
                                        roughly suitable for a 1GHz system.  */
 #define MAX_STALLCOUNT          12  /* The absolute upper limit to the number of stalling or
                                        cycling iterations before switching rule */
@@ -1933,7 +1934,7 @@ void __EXPORT_TYPE __WINAPI set_break_numeric_accuracy(lprec *lp, REAL accuracy)
 REAL __EXPORT_TYPE __WINAPI get_break_numeric_accuracy(lprec *lp);
 
 REAL __EXPORT_TYPE __WINAPI time_elapsed(lprec *lp);
-/* Return the number of sec since start of solution process */
+/* Return the number of seconds since start of solution process */
 
 void __EXPORT_TYPE __WINAPI put_bb_nodefunc(lprec *lp, lphandleint_intfunc newnode, void *bbnodehandle);
 void __EXPORT_TYPE __WINAPI put_bb_branchfunc(lprec *lp, lphandleint_intfunc newbranch, void *bbbranchhandle);

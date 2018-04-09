@@ -1,0 +1,2008 @@
+GLPK 4.64 (release date: Dec 02, 2017)
+
+        The dual simplex solver routine was changed to perform more
+        aggressive perturbation to prevent dual degeneracy and avoid
+        stalling even if the current dual basic solution is strongly
+        feasible (mainly if the objective is zero). Thanks to David
+        Monniaux <David.Monniaux@univ-grenoble-alpes.fr> for bug report
+        and example model.
+
+        The exact simplex solver routine was changed to perform
+        terminal output according to the verbosity level (specified by
+        the control parameter smcp.msg_lev). Thanks to Jeroen Demeyer
+        <jdemeyer@cage.ugent.be> for bug report.
+
+        A minor bug (related to MS Windows version) was fixed. Thanks
+        to Heinrich Schuchardt <xypron.glpk@gmx.de> for bug report.
+
+        An example model (Graceful Tree Labeling Problem) in MathProg
+        was added. Thanks to Mike Appleby <mike@app.leby.org> for
+        contribution.
+
+        Three example models (Power plant LP scheduler, Neumann CA
+        grid emulator generator) in MathProg and one in Cplex LP format
+        were added. Thanks to Peter Naszvadi <vuk@cs.elte.hu> for
+        contribution.
+
+GLPK 4.63 (release date: Jul 25, 2017)
+
+        A "smart" LP perturbation was implemented in the primal and
+        dual simplex solvers. Now LP is perturbed only if it is
+        necessary, and by default perturbation is not activated.
+        The sum of primal infeasibilites that appears in the terminal
+        output of the primal simplex solver (as "inf = ...") now
+        corresponds to the original bounds of variables. This allows to
+        see how much perturbed solution violates the original bounds.
+
+        The long-step technique was implemented for phase I of the
+        primal simplex solver. This feature can be enabled by
+        specifying --flip option for glpsol or by specifying
+        glp_smcp.r_test = GLP_RT_FLIP on api level. For many LP
+        instances the long-step technique allows reducing the number
+        of simplex iterations to 30-70%. Please note that unlike the
+        dual simplex, where this technique can be used on both phase I
+        and II, for the primal simplex it can be used only on phase I,
+        where the sum of primal infeasibilities (which is a convex
+        piecewise linear function) is minimized.
+
+        An internal objective scaling was included in both primal and
+        dual simplex solvers. For many LP/MIP instances this feature
+        improves numerical stability (for the dual solver) and prevents
+        cycling near the optimum (for the primal solver).
+
+        The Posix version of glp_time (glpk/src/env/time.c) was changed
+        to resolve time_t issue on msys2. Thanks to Rob Schroeder
+        <Rob.Schroeder@graphicpkg.com> for bug report.
+
+        Three new example models in MathProg were added:
+        life_goe.mod (Conway's Game of Life garden of eden checker);
+        tiling.mod (Rectifiable polyomino tilings generator);
+        toto.mod (Covering code generator).
+        Thanks to Peter Naszvadi <vuk@cs.elte.hu> for contribution.
+
+GLPK 4.62 (release date: Jun 14, 2017)
+
+        The bound perturbation technique was included in the primal
+        simplex solver to improve numerical stability and avoid cycling.
+        Currently this feature is enabled by default.
+
+        A range bug was fixed in the MPS reading routine. Thanks to
+        Chris Matrakidis <cmatraki@gmail.com> for bug report and patch.
+
+        Changes were made to provide 64-bit portability of the Minisat
+        solver. Thanks to Chris Matrakidis <cmatraki@gmail.com> for
+        patch.
+
+        Calls to non-thread-safe functions gmtime, strerror, and strtok
+        were replaced by calls to corresponding thread-safe equivalents
+        (gmtime_r, strerror_r, and strtok_r for GNU/Linux).
+
+GLPK 4.61 (release date: Jan 22, 2017)
+
+        An option was added to build a re-entrant version of the
+        package suitable for running in a multi-threaded environment.
+        This option is enabled by default on configuring the package
+        if the compiler used supports the thread local storage class
+        specifier (e.g. _Thread_local or __thread). Thanks to
+        David Monniaux <david.monniaux@imag.fr> for suggestion and
+        Chris Matrakidis <cmatraki@gmail.com> for configure.ac patch.
+
+        A re-entrant version of the package allows running multiple
+        independent instances of glpk in different threads of a multi-
+        threaded application. Note that glpk is not thread-safe by
+        design, so if the application calls glpk routines from multiple
+        threads, no thread may access glpk program objects (glp_prob,
+        glp_tree, etc.) created by other threads; besides, each thread
+        before termination should call the API routine glp_free_env to
+        prevent memory leak.
+
+        A DLL support was added. Thanks to Heinrich Schuchardt
+        <xypron.glpk@gmx.de> for contribution.
+
+        Some changes were made to allow compiling the package using
+        stdcall calling convention (this is needed only on compiling
+        GLPK with MSVC to run under MS Windows).
+
+GLPK 4.60 (release date: Apr 01, 2016)
+
+        Some improvements were made in the primal and dual simplex
+        solvers to make the solution process more numerically stable.
+
+        An experimental long-step ratio test feature was added to the
+        dual simplex. On API level this feature is available thru the
+        GLP_RT_FLIP option. For glpsol it is available thru the options
+        --flip (for MIP) or --flip and --dual (for LP). This feature is
+        not documented yet.
+
+        Additional check was added to reject wrong solutions sometimes
+        reported by the PROXY heuristic.
+
+        A bug (memory leak) was fixed in the FPUMP heuristic routine.
+        Thanks to <nicolas.derhy@engie.com> for bug report.
+
+        The header sql.h was renamed to avoid conflicts with standard
+        ODBC headers. Thanks to Noli Sicad <nsicad@gmail.com> for bug
+        report.
+
+GLPK 4.59 (release date: Mar 11, 2016)
+
+        This is a maintainer release.
+
+        Some bugs were fixed and some improvements were made in the MIP
+        solver. Thanks to Chris Matrakidis <cmatraki@gmail.com> for bug
+        reports and patches.
+
+        The data file format used by API routines glp_read_graph and
+        glp_write_graph was changed. For more details please see the
+        document "GLPK: Graph and Network Routines" included in the
+        distribution.
+
+        Translation of the document "Modeling Language GNU MathProg"
+        to Brazilian Portuguese (pt-BR) was included (in LaTeX and pdf
+        formats). Thanks to Joao Flavio de Freitas Almeida
+        <joao.flavio@dep.ufmg.br> for contribution.
+
+GLPK 4.58 (release date: Feb 18, 2016)
+
+        The solution file format used by API routines glp_read_sol,
+        glp_write_sol, glp_read_ipt, glp_write_ipt, glp_read_mip, and
+        glp_write_mip was changed. For more details please see the GLPK
+        reference manual included in the distribution.
+
+        The tan function (trigonometric tangent) was added to
+        GNU MathProg modeling language. Thanks to Chris Matrakidis
+        <cmatraki@gmail.com> for contribution.
+
+        A new version of the document "Modeling Language GNU MathProg"
+        in Spanish was included (in LaTeX and pdf formats). Thanks to
+        Pablo Yapura <ypf@agro.unlp.edu.ar> for contribution.
+
+        A check to determine if libtool needs '-no-undefined' flag to
+        build shared libraries on some platforms was added.
+        Thanks to Marco Atzeri <marco.atzeri@gmail.com> and Heinrich
+        Schuchardt <xypron.glpk@gmx.de> for suggestion.
+
+        A script to regenerate the configure script and the Makefiles
+        was added. Thanks to Heinrich Schuchardt <xypron.glpk@gmx.de>.
+
+GLPK 4.57 (release date: Nov 08, 2015)
+
+        A new, more efficient implementation of the dual simplex method
+        was included in the package. This new implementation replaces
+        the old one, which was removed.
+
+        Option sr_heur was added to struct glp_iocp to enable/disable
+        the simple rounding heuristic used by the MIP solver. Thanks to
+        Chris Matrakidis <cmatraki@gmail.com> for suggestion.
+
+        New API routine glp_at_error was added and documented. Thanks
+        to Jeroen Demeyer <jdemeyer@cage.ugent.be> for suggestion.
+
+        Some minor typos were corrected in the GLPK documentation.
+        Thanks to Anton Voropaev <anton.n.voropaev@gmail.com> for typo
+        report.
+
+        An example application program TSPSOL was added. It uses the
+        GLPK MIP optimizer to solve the Symmetric Traveling Salesman
+        Problem and illustrates "lazy" constraints generation. For more
+        details please see glpk/examples/tsp/README.
+
+GLPK 4.56 (release date: Oct 01, 2015)
+
+        A new, more efficient and more robust implementation of the
+        primal simplex method was included in the package. This new
+        implementation replaces the old one, which was removed.
+
+        A bug was fixed in a basis factorization routine. (The bug
+        appeared if the basis matrix was structurally singular having
+        duplicate row and/or column singletons.) Thanks to Martin Jacob
+        <mj@bahntechnik.de> for bug report.
+
+        Scripts to build GLPK with Microsoft Visual Studio 2015 were
+        added. Thanks to Xypron <xypron.glpk@gmx.de> for contribution
+        and testing.
+
+GLPK 4.55 (release date: Aug 22, 2014)
+
+        Some internal (non-API) routines to estimate the condition of
+        the basis matrix were added. These routines are mainly intended
+        to be used by the simplex-based solvers.
+
+        Two open modes "a" and "ab" were added to GLPK I/O routines.
+        Thanks to Pedro P. Wong <d00604@taipower.com.tw> for bug report.
+
+        Minor bug was fixed in the solver glpsol (command-line options
+        --btf, --cbg, and --cgr didn't work properly).
+
+        A serious bug was fixed in a basis factorization routine used
+        on the dense phase. (The bug might appear only if the number of
+        rows exceeded sqrt(2**31) ~= 46,340 and caused access violation
+        exception because of integer overflow.) Thanks to Mark Meketon
+        <Marc.Meketon@oliverwyman.com> for bug report.
+
+        Two API routines glp_alloc and glp_realloc were documented.
+        Thanks to Brian Gladman <brg@gladman.plus.com> for suggestion.
+
+        Translation of the document "Modeling Language GNU MathProg"
+        to Spanish was included (in LaTeX and pdf formats). Thanks to
+        Pablo Yapura <ypf@agro.unlp.edu.ar> for contribution.
+
+GLPK 4.54 (release date: Mar 28, 2014)
+
+        Block-triangular LU-factorization was implemented to be used
+        on computing an initial factorization of the basis matrix.
+
+        A new version of the Schur-complement-based factorization
+        module was included in the package. Now it can be used along
+        with plain as well as with block-triangular LU-factorization.
+
+        Currently the following flags can be used to specify the type
+        of the basis matrix factorization (glp_bfcp.type):
+
+        GLP_BF_LUF + GLP_BF_FT   LUF, Forrest-Tomlin update (default)
+        GLP_BF_LUF + GLP_BF_BG   LUF, Schur complement, Bartels-Golub
+                                 update
+        GLP_BF_LUF + GLP_BF_GR   LUF, Schur complement, Givens rotation
+                                 update
+        GLP_BF_BTF + GLP_BF_BG   BTF, Schur complement, Bartels-Golub
+                                 update
+        GLP_BF_BTF + GLP_BF_GR   BTF, Schur complement, Givens rotation
+                                 update
+
+        In case of GLP_BF_FT the update is applied to matrix U, while
+        in cases of GLP_BF_BG and GLP_BF_GR the update is applied to
+        the Schur complement.
+
+        Corresponding new options --luf and --btf were added to glpsol.
+
+        For more details please see a new edition of the GLPK reference
+        manual included in the distribution.
+
+        A minor bug (in reporting the mip solution status) was fixed.
+        Thanks to Remy Roy <remyroyster@gmail.com> for bug report.
+
+        A call to "iodbc-config --cflags" was added in configure.ac
+        to correctly detect iodbc flags. Thanks to Sebastien Villemot
+        <sebastien@debian.org> for patch.
+
+GLPK 4.53 (release date: Feb 13, 2014)
+
+        The API routine glp_read_mps was changed to remove free rows.
+
+        A bug was fixed in the API routine glp_read_lp. Thanks to
+        Gabriel Hackebeil <gabehack@gmail.com> for bug report.
+
+        The zlib compression library used by some GLPK routines and
+        included in the package was downgraded from 1.2.7 to 1.2.5 (as
+        in GLPK 4.50) because of addressability bugs on some 64-bit
+        platforms. Thanks to Carlo Baldassi <carlobaldassi@gmail.com>
+        for bug report.
+
+        A bug was fixed in a routine that reads gzipped files. Thanks
+        to Achim Gaedke <achim.gaedke@gmail.com> for bug report.
+
+        Two API routines glp_get_it_cnt and glp_set_it_cnt were added.
+        Thanks to Joey Rios <joeylrios@hotmail.com> for suggestion.
+
+        All obsolete GLPK API routines (prefixed with lpx) were removed
+        from the package.
+
+        A set of routines that simulate the old GLPK API (as defined
+        in 4.48) were added; see examples/oldapi/api/lpx.c. Thanks to
+        Jan Engelhardt <jengelh@inai.de> for suggestion.
+
+        A namespace bug was fixed in the SQL table drive module. Thanks
+        to Dennis Schridde <devurandom@gmx.net> for bug report.
+
+GLPK 4.52.1 (release date: Jul 28, 2013)
+
+        This is a bug-fix release.
+
+        A version information bug in Makefile.am was fixed. Thanks to
+        Sebastien Villemot <sebastien@debian.org> for bug report.
+
+GLPK 4.52 (release date: Jul 18, 2013)
+
+        The clique cut generator was essentially reimplemented, and now
+        it is able to process very large and/or dense conflict graphs.
+
+        A simple rounding heuristic was added to the MIP optimizer.
+
+        Some bugs were fixed in the proximity search heuristic routine.
+        Thanks to Giorgio Sartor <0gioker0@gmail.com>.
+
+        New command-line option '--proxy [nnn]' was added to glpsol to
+        enable using the proximity search heuristic.
+
+        A bug (incorrect processing of LI column indicator) was fixed
+        in the mps format reading routine. Thanks to Charles Brixko for
+        bug report.
+
+GLPK 4.51 (release date: Jun 19, 2013)
+
+        Singleton and dense phases were implemented on computing
+        LU-factorization with Gaussian elimination. The singleton phase
+        is a feature that allows processing row and column singletons
+        on initial elimination steps more efficiently. The dense phase
+        is a feature used on final elimination steps when the active
+        submatrix becomes relatively dense. It significantly reduces
+        the time needed, especially if the active submatrix fits in CPU
+        cache, and improves numerical accuracy due to full pivoting.
+
+        The API routine glp_adv_basis that constructs advanced initial
+        LP basis was replaced by an improved version, which (unlike the
+        old version) takes into account numerical values of constraint
+        coefficients.
+
+        The proximity search heuristic for MIP was included in the GLPK
+        integer optimizer glp_intopt. On API level the heuristic can be
+        enabled by setting the parameter ps_heur in glp_iocp to GLP_ON.
+        This feature is also available in the solver glpsol through
+        command-line option '--proxy'. Many thanks to Giorgio Sartor
+        <0gioker0@gmail.com> for contribution.
+
+        A bug was fixed that caused numerical instability in the FPUMP
+        heuristic.
+
+GLPK 4.50 (release date: May 24, 2013)
+
+        A new version of LU-factorization routines were added.
+        Currently this version provides the same functionality as the
+        old one, however, the new version allows further improving.
+
+        Old routines for FHV-factorization used to update the basis
+        factorization were replaced by a new version conforming to the
+        new version of LU-factorization.
+
+        Some clarifications about using the name index routines were
+        added. Thanks to Xypron <xypron.glpk@gmx.de> for suggestion.
+
+        Some typos were corrected in the MathProg language reference.
+        Thanks to Jeffrey Kantor <Kantor.1@nd.edu> for report.
+
+        A serious bug (out-of-range indexing error) was *tentatively*
+        fixed in the routine glp_relax4. Unfortunatly, this bug is
+        inherited from the original Fortran version of the RELAX-IV
+        code (for details please see ChangeLog), and since the code is
+        very intricate, the bug is still under investigation. Thanks to
+        Sylvain Fournier for bug report.
+
+GLPK 4.49 (release date: Apr 16, 2013)
+
+        The new API routine glp_mincost_relax4, which is a driver to
+        relaxation method of Bertsekas and Tseng (RELAX-IV), was added
+        to the package. RELAX-IV is a code for solving minimum cost
+        flow problems. On large instances it is 100-1000 times faster
+        than the standard primal simplex method. Prof. Bertsekas, the
+        author of the original RELAX-IV Fortran code, kindly permitted
+        to include a C translation of his code in GLPK under GPLv3.
+
+        A bug (wrong dual feasibility test) was fixed in API routine
+        glp_warm_up. Thanks to David T. Price <dtprice@speakeasy.net>
+        for bug report.
+
+        Obsolete API routine lpx_check_kkt was replaced by new routine
+        glp_check_kkt.
+
+        IMPORTANT: All old API routines whose names begin with 'lpx_'
+        were removed from API level and NO MORE AVAILABLE.
+
+GLPK 4.48 (release date: Jan 28, 2013)
+
+        This is a maintainer release.
+
+        Some minor changes in API (glpk.h) were made. For details
+        please see ChangeLog.
+
+        Some bugs/typos were fixed. Thanks to
+        Raniere Gaia Costa da Silva,
+        Heinrich Schuchardt <xypron.glpk@gmx.de>, and
+        Robbie Morrison <robbie@actrix.co.nz> for reports.
+
+GLPK 4.47 (release date: Sep 09, 2011)
+
+        The new API routine glp_intfeas1 was added to the package.
+        This routine is a tentative implementation of the integer (0-1)
+        feasibility solver based on the CNF-SAT solver (which currently
+        is MiniSat). It may be used in the same way as glp_intopt to
+        find either any integer feasible solution or a solution, for
+        which the objective function is not worse than the specified
+        value. Detailed description of this routine can be found in the
+        document "CNF Satisfiability Problem", which is included in the
+        distribution (see doc/cnfsat.pdf).
+
+        The following two options were added to glpsol:
+
+        --minisat       translate 0-1 feasibility problem to CNF-SAT
+                        problem and solve it with glp_intfeas1/MiniSat
+                        (if the problem instance is already in CNF-SAT
+                        format, no translation is performed)
+
+        --objbnd bound  add inequality obj <= bound (minimization) or
+                        obj >= bound (maximization) to 0-1 feasibility
+                        problem (this option assumes --minisat)
+
+        The paint-by-numbers puzzle model (pbn.mod) included in the
+        distribution is a nice example of the 0-1 feasibility problem,
+        which can be efficiently solved with glp_intfeas1/MiniSat. This
+        model along with a brief instruction (pbn.pdf) and benchmark
+        examples from <webpbn.com> encoded in GNU MathProg (*.dat) can
+        be found in subdirectory examples/pbn/.
+
+        The glpsol lp/mip solver was modified to bypass postprocessing
+        of MathProg models if the solution reported is neither optimal
+        nor feasible.
+
+        A minor bug in examples/Makefile.am was fixed to correctly
+        build glpk in a separate directory. Thanks to Marco Atzeri
+        <marco.atzeri@gmail.com> for bug report and patch.
+
+GLPK 4.46 (release date: Aug 09, 2011)
+
+        The following new API routines were added:
+
+        glp_read_cnfsat    read CNF-SAT problem data in DIMACS format
+        glp_check_cnfsat   check for CNF-SAT problem instance
+        glp_write_cnfsat   write CNF-SAT problem data in DIMACS format
+        glp_minisat1       solve CNF-SAT problem instance with MiniSat
+
+        The routine glp_minisat1 is a driver to MiniSat, a CNF-SAT
+        solver developed by Niklas Een and Niklas Sorensson, Chalmers
+        University of Technology, Sweden. This routine is similar to
+        the routine glp_intopt, however, it is intended to solve a 0-1
+        programming problem instance, which is the MIP translation of
+        a CNF-SAT problem instance.
+
+        Detailed description of these new API routines can be found in
+        the document "CNF Satisfiability Problem", which is included in
+        the distribution (see files doc/cnfsat.tex and doc/cnfsat.pdf).
+
+        The following new glpsol command-line options were added:
+
+        --cnf filename     read CNF-SAT problem instance in DIMACS
+                           format from filename and translate it to MIP
+        --wcnf filename    write CNF-SAT problem instance in DIMACS
+                           format to filename
+        --minisat          solve CNF-SAT problem instance with MiniSat
+                           solver
+
+        The zlib compression library (version 1.2.5) was ANSIfied,
+        modified according to GLPK requirements and included in the
+        distribution as an external software module. Thus, now this
+        feature is platform independent.
+
+        Some bugs were fixed in the SQL table driver. Thanks to Xypron
+        <xypron.glpk@gmx.de>.
+
+GLPK 4.45 (release date: Dec 05, 2010)
+
+        This is a bug-fix release.
+
+        Several bugs/typos were fixed. Thanks to
+        Xypron <xypron.glpk@gmx.de>,
+        Robbie Morrison <robbie@actrix.co.nz>, and
+        Ali Baharev <ali.baharev@gmail.com> for reports.
+
+        Some glpk documents was re-formatted and merged into a single
+        document. Now the glpk documentation consists of the following
+        three main documents (all included in the distribution):
+
+        GLPK: Reference Manual
+
+        GLPK: Graph and Network Routines
+
+        Modeling Language GNU MathProg: Language Reference
+
+GLPK 4.44 (release date: Jun 03, 2010)
+
+        The following suffixes for variables and constraints were
+        implemented in the MathProg language:
+
+        .lb     (lower bound),
+        .ub     (upper bound),
+        .status (status in the solution),
+        .val    (primal value), and
+        .dual   (dual value).
+
+        Thanks to Xypron <xypron.glpk@gmx.de> for draft implementation
+        and testing.
+
+        Now the MathProg language allows comment records (marked by
+        '#' in the very first position) in CSV data files read with the
+        table statements. Note that the comment records may appear only
+        in the beginning of a CSV data file.
+
+        The API routine glp_cpp to solve the Critical Path Problem was
+        added and documented.
+
+GLPK 4.43 (release date: Feb 20, 2010)
+
+        This is a maintainer release.
+
+        `configure.ac' was changed to allow building the package under
+        Mac OS and Darwin with ODBC support.
+        Thanks to Xypron <xypron.glpk@gmx.de> for suggestions and Noli
+        Sicad <nsicad@gmail.com> for testing.
+
+        The SQL table driver was improved to process NULL data. Thanks
+        to Xypron <xypron.glpk@gmx.de>.
+
+        Some bugs were fixed in the LP/MIP preprocessor.
+
+GLPK 4.42 (release date: Jan 13, 2010)
+
+        The following new API routines were added:
+
+        glp_check_dup         check for duplicate elements in sparse
+                              matrix
+        glp_sort_matrix       sort elements of the constraint matrix
+        glp_read_prob         read problem data in GLPK format
+        glp_write_prob        write problem data in GLPK format
+        glp_analyze_bound     analyze active bound of non-basic variable
+        glp_analyze_coef      analyze objective coefficient at basic
+                              variable
+        glp_print_ranges      print sensitivity analysis report (this
+                              routine replaces lpx_print_sens_bnds and
+                              makes it deprecated)
+
+        For description of these new routines and the GLPK LP/MIP
+        format see a new edition of the reference manual included in
+        the distribution. (Chapter "Graph and network API routines" was
+        carried out from the main reference manual and included in the
+        distribution as a separate document.)
+
+        The following new command-line options were added to the stand-
+        alone solver glpsol:
+        --glp filename        read problem data in GLPK format
+        --wglp filename       write problem data in GLPK format
+        --ranges filename     print sensitivity analysis report (this
+                              option replaces --bounds)
+
+        Now all GLPK routines performing file I/O support special
+        filenames "/dev/stdin", "/dev/stdout", and "/dev/stderr", which
+        can be specified in the same way as regular filenames. This
+        feature is plaform-independent.
+
+GLPK 4.41 (release date: Dec 21, 2009)
+
+        The following new API routies were added:
+
+        glp_transform_row     transform explicitly specified row
+        glp_transform_col     transform explicitly specified column
+        glp_prim_rtest        perform primal ratio test
+        glp_dual_rtest        perform dual ratio test
+
+        For description of these new routines see a new edition of the
+        reference manual included in the distribution.
+
+        The following API routines are deprecated: lpx_transform_row,
+        lpx_transform_col, lpx_prim_ratio_test, lpx_dual_ratio_test.
+
+        Some improvements were made in the MIP solver (glp_intopt).
+
+        The SQL table driver used to read/write data in MathProg models
+        was changed to allow multiple arguments separated by semicolon
+        in SQL statements. Thanks to Xypron <xypron.glpk@gmx.de>.
+
+        Two new options were added to the glpsol stand-alone solver:
+        --seed value (to initialize the pseudo-random number generator
+        used in MathProg models with specified value), and
+        --ini filename (to use a basis previously saved with -w option
+        as an initial basis on solving similar LP's).
+
+        Two new MathProg example models were included. Thanks to
+        Nigel Galloway <nigel_galloway@operamail.com> and Noli Sicad
+        <nsicad@gmail.com> for contribution.
+
+        Scripts to build GLPK with Microsoft Visual Studio 2010 for
+        both 32-bit and 64-bit Windows were included. Thanks to Xypron
+        <xypron.glpk@gmx.de> for contribution and testing.
+
+GLPK 4.40 (release date: Nov 03, 2009)
+
+        The following new API routines were added:
+
+        glp_del_vertices      remove vertices from graph
+        glp_del_arc           remove arc from graph
+        glp_wclique_exact     find maximum weight clique with the exact
+                              algorithm developed by Prof. P. Ostergard
+        glp_read_ccdata       read graph in DIMACS clique/coloring
+                              format
+        glp_write_ccdata      write graph in DIMACS clique/coloring
+                              format
+
+        For description of these new routines see a new edition of the
+        reference manual included in the distribution.
+
+        The hybrid pseudocost branching heuristic was included in the
+        MIP solver. It is available on API level (iocp.br_tech should
+        be set to GLP_BR_PCH) and in the stand-alone solver glpsol
+        (via the command-line option --pcost). This heuristic may be
+        useful on solving hard MIP instances.
+
+        The branching heuristic by Driebeck and Tomlin (used in the
+        MIP solver by default) was changed to switch to branching on
+        most fractional variable if an lower bound of degradation of
+        the objective is close to zero for all branching candidates.
+
+        A bug was fixed in the LP preprocessor (routine npp_empty_col).
+        Thanks to Stefan Vigerske <stefan@math.hu-berlin.de> for the
+        bug report.
+
+        A bug was fixed and some improvements were made in the FPUMP
+        heuristic module. Thanks to Xypron <xypron.glpk@gmx.de>.
+
+        A bug was fixed in the API routine glp_warm_up (dual
+        feasibility test was incorrect in maximization case). Thanks to
+        Uday Venkatadri <Uday.Venkatadri@dal.ca> for the bug report.
+
+GLPK 4.39 (release date: Jul 26, 2009)
+
+        The following new API routines were added:
+
+        glp_warm_up           "warm up" LP basis
+        glp_set_vertex_name   assign (change) vertex name
+        glp_create_v_index    create vertex name index
+        glp_find_vertex       find vertex by its name
+        glp_delete_v_index    delete vertex name index
+        glp_read_asnprob      read assignment problem data in DIMACS
+                              format
+        glp_write_asnprob     write assignment problem data in DIMACS
+                              format
+        glp_check_asnprob     check correctness of assignment problem
+                              data
+        glp_asnprob_lp        convert assignment problem to LP
+        glp_asnprob_okalg     solve assignment problem with the
+                              out-of-kilter algorithm
+        glp_asnprob_hall      find bipartite matching of maxumum
+                              cardinality with Hall's algorithm
+
+        Also were added some API routines to read plain data files.
+
+        The API routines glp_read_lp and glp_write_lp to read/write
+        files in CPLEX LP format were re-implemented. Now glp_write_lp
+        correctly writes double-bounded (ranged) rows by introducing
+        slack variables rather than by duplicating the rows.
+
+        For description of these new routines see a new edition of the
+        reference manual included in the distribution.
+
+        The 'xfree(NULL)' bug was fixed in the AMD routines. Thanks to
+        Niels Klitgord <niels@bu.edu> for bug report.
+
+        The message "Crashing..." was changed to "Constructing initial
+        basis..." due to suggestion by Thomas Kahle <tom111@gmx.de>.
+
+        Some typos were corrected in glpsol output messages. Thanks to
+        Xypron <xypron.glpk@gmx.de> for patch.
+
+GLPK 4.38 (release date: May 02, 2009)
+
+        API routines glp_read_mps and glp_write_mps were improved.
+
+        Some improvements were made in the dual simplex routines.
+
+        Two external software modules AMD and COLAMD were included in
+        the distribution (for more details please see src/amd/README
+        and src/colamd/README). Now they are used in the interior-point
+        solver to reorder the matrix prior to Cholesky factorization.
+
+        API routine glp_ipt_status may return two new statuses due to
+        changes in the routine glp_interior. For details please see the
+        reference manual included in the distribution.
+
+        A minor bug was fixed in the graph/network routines. Thanks to
+        Nelson H. F. Beebe <beebe@math.utah.edu> for bug report.
+
+GLPK 4.37 (release date: Mar 29, 2009)
+
+        The 0-1 Feasibility Pump heuristic was included in the GLPK
+        integer optimizer glp_intopt. On API level the heuristic can be
+        enabled by setting the parameter fp_heur in glp_iocp to GLP_ON.
+        This feature is also available in the solver glpsol through
+        command-line option '--fpump'. For more details please see the
+        reference manual included in the distribution.
+
+        The following new API routines were added:
+
+        glp_print_sol         write basic solution in printable format
+        glp_print_ipt         write interior-point solution in printable
+                              format
+        glp_print_mip         write MIP solution in printable format
+        glp_read_graph        read (di)graph from plain text file
+        glp_write_graph       write (di)graph to plain text file
+        glp_weak_comp         find all weakly connected components
+        glp_strong_comp       find all strongly connected components
+
+        The following API routines are deprecated: lpx_print_sol,
+        lpx_print_ips, lpx_print_mip, lpx_print_prob (the latter is
+        equivalent to glp_write_lp).
+
+        A bug was fixed in the interior-point solver (glp_interior) to
+        correctly compute dual solution components when the problem is
+        scaled.
+
+        The files configure.ac and Makefile.am were changed:
+        (a) to allow using autoreconf/autoheader;
+        (b) to allow building the package in a directory other than its
+            source directory.
+        Thanks to Marco Atzeri <marco_atzeri@yahoo.it> for bug report.
+
+        An example model in the GNU MathProg language was added.
+        Thanks to Larry D'Agostino <Larry.D'Agostino@gmacrescap.com> for
+        contribution.
+
+GLPK 4.36 (release date: Feb 06, 2009)
+
+        The following new API routines were added to the package:
+
+        glp_mincost_okalg     find minimum-cost flow with out-of-kilter
+                              algorithm
+        glp_maxflow_ffalg     find maximal flow with Ford-Fulkerson
+                              algorithm
+
+        For detailed description of these new routines and related data
+        structures see chapter "Graph and Network API Routines" in a new
+        edition of the reference manual included in the distribution.
+
+        The following two new command-line options were added to the
+        solver glpsol:
+
+        --mincost             read min-cost flow data in DIMACS format
+        --maxflow             read maximum flow data in DIMACS format
+
+        Duplicate symbols in the header glpk.h were removed to allow
+        using swig.
+        Thanks to Kelly Westbrooks <kellywestbrooks@yahoo.com> and
+        Nigel Galloway <nigel_galloway@operamail.com> for suggestion.
+
+        A minor defect was fixed in the routine glp_write_lp.
+        Thanks to Sebastien Briais <sbriais@free.fr> for bug report.
+
+        A minor bug was fixed in the SQL module.
+        Thanks to Xypron <xypron.glpk@gmx.de> for patch.
+
+        Some new example models in the GNU MathProg modeling language
+        were added. Thanks to Sebastian Nowozin <nowozin@gmail.com> and
+        Nigel Galloway <nigel_galloway@operamail.com> for contribution.
+
+GLPK 4.35 (release date: Jan 09, 2009)
+
+        The following new API routines were added to the package:
+
+        glp_create_graph      create graph
+        glp_set_graph_name    assign (change) graph name
+        glp_add_vertices      add new vertices to graph
+        glp_add_arc           add new arc to graph
+        glp_erase_graph       erase graph content
+        glp_delete_graph      delete graph
+        glp_read_mincost      read minimum cost flow problem data in
+                              DIMACS format
+        glp_write_mincost     write minimum cost flow problem data in
+                              DIMACS format
+        glp_mincost_lp        convert minimum cost flow problem to LP
+        glp_netgen            Klingman's network problem generator
+        glp_gridgen           grid-like network problem generator
+        glp_read_maxflow      read maximum flow problem data in DIMACS
+                              format
+        glp_write_maxflow     write maximum flow problem data in DIMACS
+                              format
+        glp_maxflow_lp        convert maximum flow problem to LP
+        glp_rmfgen            Goldfarb's maximum flow problem generator
+
+        For detailed description of these new routines and related data
+        structures see chapter "Graph and Network API Routines" in a new
+        edition of the reference manual included in the distribution.
+
+        A minor change were made in the internal routine xputc. Thanks
+        to Luiz Bettoni <bettoni@cpgei.ct.utfpr.edu.br> for suggestion.
+
+        A minor bug was fixed in the internal routine mpl_fn_time2str.
+        Thanks to Stefan Vigerske <stefan@vigerske.de> for bug report.
+
+GLPK 4.34 (release date: Dec 04, 2008)
+
+        The GNU MathProg modeling language was supplemented with three
+        new built-in functions:
+
+        gmtime    obtaining current calendar time
+        str2time  converting character string to calendar time
+        time2str  converting calendar time to character string
+
+        (Thanks to Xypron <xypron.glpk@gmx.de>.)
+
+        For detailed description of these functions see Appendix A in
+        the document "Modeling Language GNU MathProg", a new edition of
+        which was included in the distribution.
+
+        A bug was fixed in the MIP solver. Thanks to Nigel Galloway
+        <nigel_galloway@operamail.com> for bug report.
+
+        A new makefile was added to build the GLPK DLL with Microsoft
+        Visual Studio Express 2008 for 64-bit Windows. Thanks to Xypron
+        <xypron.glpk@gmx.de> for contribution and testing.
+
+GLPK 4.33 (release date: Oct 30, 2008)
+
+        The following new API routines were added to the package:
+        glp_copy_prob         copy problem object content
+        glp_exact             solve LP in exact arithmetic
+                              (makes lpx_exact deprecated)
+        glp_get_unbnd_ray     determine variable causing unboundedness
+                              (makes lpx_get_ray_info deprecated)
+        glp_interior          solve LP with interior-point method
+                              (makes lpx_interior deprecated)
+
+        The following new API routines for processing models written in
+        the GNU Mathprog language were added to the package:
+        glp_mpl_alloc_wksp    allocate the translator workspace
+        glp_mpl_read_model    read and translate model section
+        glp_mpl_read_data     read and translate data section
+        glp_mpl_generate      generate the model
+        glp_mpl_build_prob    build LP/MIP instance from the model
+        glp_mpl_postsolve     postsolve the model
+        glp_mpl_free_wksp     deallocate the translator workspace
+        (These routines make lpx_read_model deprecated.)
+
+        For description of all these new API routines see the reference
+        manual included in the distribution.
+
+        A crude implementation of CPLEX-like interface to GLPK API was
+        added to the package. Currently it allows using GLPK as a core
+        LP solver for Concorde, a well known computer code for solving
+        the symmetric TSP. For details see examples/cplex/README.
+
+        Some bugs were fixed in the SQL table driver. Thanks to Xypron
+        <xypron.glpk@gmx.de>.
+
+GLPK 4.32 (release date: Oct 03, 2008)
+
+        The following new features were included in the MIP solver
+        (the API routine glp_intopt):
+
+        *  MIP presolver
+        *  mixed cover cut generator
+        *  clique cut generator
+        *  Euclidean reduction of the objective value
+
+        Due to changes the routine glp_intopt may additionally return
+        GLP_ENOPFS, GLP_ENODFS, and GLP_EMIPGAP.
+
+        The API routines lpx_integer are lpx_intopt are deprecated,
+        since they are completely superseded by glp_intopt.
+
+        The following new branch-and-cut API routines were added:
+        glp_ios_row_attr      determine additional row attributes
+        glp_ios_pool_size     determine current size of the cut pool
+        glp_ios_add_row       add constraint to the cut pool
+        glp_ios_del_row       delete constraint from the cut pool
+        glp_ios_clear_pool    delete all constraints from the cut pool
+
+        For description of these new routines see the reference manual
+        included in the distribution.
+
+        The stand-alone solver glpsol was changed to allow multiple
+        data files.
+
+        A new edition of the supplement "Using Data Tables in the GNU
+        MathProg Modeling Language" was included.
+
+        As usual, some bugs were fixed (in the MathProg translator).
+        Thanks to Xypron <xypron.glpk@gmx.de>.
+
+GLPK 4.31 (release date: Sep 02, 2008)
+
+        The core LP solver based on the dual simplex method was
+        re-implemented and now it provides both phases I and II.
+
+        The following new API routines were added:
+        glp_scale_prob  automatic scaling of problem data
+        glp_std_basis   construct standard initial LP basis
+        glp_adv_basis   construct advanced initial LP basis
+        glp_cpx_basis   construct Bixby's initial LP basis
+
+        For description of these new routines see the reference manual
+        included in the distribution.
+
+        The following API routines are deprecated:
+        lpx_scale_prob, lpx_std_basis, lpx_adv_basis, lpx_cpx_basis.
+
+        Necessary changes were made in memory allocation routines to
+        resolve portability issues for 64-bit platforms.
+
+        New version of the routine lpx_write_pb to write problem data
+        in OPB (pseudo boolean format) was added to the package. Thanks
+        to Oscar Gustafsson <oscarg@isy.liu.se> for the contribution.
+
+        Two new makefiles were added to build the package for 32- and
+        64-bit Windows with Microsoft Visual Studio Express 2008.
+        Thanks to Heinrich Schuchardt <heinrich.schuchardt@gmx.de> (aka
+        Xypron) for the contribution and testing.
+
+        Two new makefiles were added to build the package with Digital
+        Mars C/C++ 8.50 and Open Watcom C/C++ 1.6 (for 32-bit Windows).
+
+GLPK 4.30 (release date: Aug 13, 2008)
+
+        The core LP solver based on the primal simplex method was
+        re-implemented to allow its further improvements. Currently the
+        new version provides the same features as the old one, however,
+        it is a bit faster and more numerically stable.
+
+        Some changes were made in the MathProg translator to allow <,
+        <=, >=, and > on comparing symbolic values. Thanks to Heinrich
+        Schuchardt <heinrich.schuchardt@gmx.de> for patches.
+
+        Internal routine set_d_eps in the exact LP solver was changed
+        to prevent approximation errors in case of integral data.
+        Thanks to Markus Pilz <pilz@cs.uni-bonn.de> for bug report.
+
+GLPK 4.29 (release date: Jul 06, 2008)
+
+        The configure script was changed to disable all optional
+        features by default. For details please see file INSTALL.
+
+        The following new API routines were added:
+        glp_erase_prob  erase problem object content
+        glp_read_mps    read problem data in MPS format
+        glp_write_mps   write problem data in MPS format
+        glp_read_lp     read problem data in CPLEX LP format
+        glp_write_lp    write problem data in CPLEX LP format
+
+        For description of these new routines see the reference manual
+        included in the distribution.
+
+        The following API routines are deprecated:
+        lpx_read_mps, lpx_read_freemps, lpx_write_mps,
+        lpx_write_freemps, lpx_read_cpxlp, and lpx_write_cpxlp.
+
+        Two bugs were fixed. Thanks to
+        Anne-Laurence Putz <anne-laurence.putz@eurodecision.com> and
+        Xypron <xypron.glpk@gmx.de> for bug report.
+
+GLPK 4.28 (release date: Mar 25, 2008)
+
+        The iODBC and MySQL table drivers, which allows transmitting
+        data between MathProg model objects and relational databases,
+        were re-implemented to replace a static linking by a dynamic
+        linking to corresponding shared libraries.
+        Many thanks to Heinrich Schuchardt <heinrich.schuchardt@gmx.de>
+        for the contribution, Rafael Laboissiere <rafael@debian.org>
+        for useful advices concerning the shared library support under
+        GNU/Linux, and Vijay Patil <vijay.patil@gmail.com> for testing
+        this feature under Windows XP.
+
+        A new optional feature was added to the package. This feature
+        is based on the zlib data compression library and allows GLPK
+        API routines and the stand-alone solver to read and write
+        compressed data files performing compression/decompression "on
+        the fly" (compressed data files are recognized by suffix `.gz'
+        in the file name). It may be useful in case of large MPS files
+        to save the disk space (up to ten times).
+
+        The `configure' script was re-implemented. Now it supports the
+        following specific options:
+
+        --with-gmp           Enable using the GNU MP bignum library
+        --without-gmp        Disable using the GNU MP bignum library
+        --with-zlib          Enable using the zlib data compression
+                             library
+        --without-zlib       Disable using the zlib data compression
+                             library
+        --enable-dl          Enable shared library support (auto check)
+        --enable-dl=ltdl     Enable shared library support (GNU)
+        --enable-dl=dlfcn    Enable shared library support (POSIX)
+        --disable-dl         Disable shared library support
+        --enable-odbc        Enable using ODBC table driver
+        --disable-odbc       Disable using ODBC table driver
+        --enable-mysql       Enable using MySQL table driver
+        --disable-mysql      Disable using MySQL table driver
+
+        For more details please see file INSTALL.
+
+GLPK 4.27 (release date: Mar 02, 2008)
+
+        Three new table drivers were added to the MathProg translator:
+
+        xBASE built-in table driver, which allows reading and writing
+        data in .dbf format (only C and N fields are supported);
+
+        MySQL table driver, which provides connection to a MySQL
+        database;
+
+        iODBC table driver, which provides connection to a database
+        through ODBC.
+
+        The MySQL and iODBC table drivers were contributed to GLPK by
+        Heinrich Schuchardt <heinrich.schuchardt@gmx.de>.
+
+        The table driver is a program module which allows transmitting
+        data between MathProg model objects and external data tables.
+
+        For detailed description of the table statement and table
+        drivers see the document "Using Data Tables in the GNU MathProg
+        Modeling Language" (file doc/tables.txt) included in the
+        distribution. Some examples which demonstrate using MySQL and
+        iODBC table drivers can be found in subdirectory examples/sql.
+
+GLPK 4.26 (release date: Feb 17, 2008)
+
+        The table statement was implemented in the GNU MathProg
+        modeling language. This new feature allows reading data from
+        external tables into model objects such as sets and parameters
+        as well as writing results of computations to external tables.
+
+        A table is a (unordered) set of records, where each record
+        consists of the same number of fields, and each field is
+        provided with a unique symbolic name called the field name.
+
+        Currently the GLPK package has the only built-in table driver,
+        which supports tables in the CSV (comma-separated values) file
+        format. This format is very simple and supported by almost all
+        spreadsheets and database management systems.
+
+        Detailed description of the table statement and CSV format can
+        be found in file doc/tables.txt, included in the distribution.
+
+GLPK 4.25 (release date: Dec 19, 2007)
+
+        A tentative implementation of Gomory's mixed integer cuts was
+        included in the branch-and-cut solver. To enable generating
+        Gomory's cuts the control parameter gmi_cuts passed to the
+        routine glp_intopt should be set to GLP_ON. This feature is
+        also available in the solver glpsol through command-line option
+        '--gomory'. For more details please see the reference manual
+        included in the distribution.
+
+GLPK 4.24 (release date: Nov 21, 2007)
+
+        A tentative implementation of MIR (mixed integer rounding) cuts
+        was included in the MIP solver. To enable generating MIR cuts
+        the control parameter mir_cuts passed to the routine glp_intopt
+        should be set to GLP_ON. This feature is also available in the
+        stand-alone solver glpsol via command-line option '--mir'. For
+        more details please see the reference manual included in the
+        distribution.
+
+        The implementation is mainly based on the following two papers:
+
+        1. H. Marchand and L. A. Wolsey. Aggregation and mixed integer
+           rounding to solve MIPs. CORE discussion paper 9839, CORE,
+           Universite catholique de Louvain, June 1998.
+
+        2. G. Andreello, A. Caprara, and M. Fischetti. Embedding cuts
+           in a Branch&Cut framework. Preliminary draft, October 2003.
+
+        MIR cuts can be generated on any level of the search tree that
+        makes the GLPK MIP solver to be a real branch-and-cut solver.
+
+        A bug was fixed in the routine lpx_write_cpxlp. If a variable
+        x has upper bound and no lower bound, it should appear in the
+        bounds section as "-inf <= x <= u", not as "x <= u". Thanks to
+        Enric Rodriguez <erodri@lsi.upc.edu> for the bug report.
+
+GLPK 4.23 (release date: Oct 28, 2007)
+
+        The following new API routines were added:
+
+        glp_read_sol    read basic solution from text file
+        glp_write_sol   write basic solution to text file
+        glp_read_ipt    read interior-point solution from text file
+        glp_write_ipt   write interior-point solution to text file
+        glp_read_mip    read MIP solution from text file
+        glp_write_mip   write MIP solution to text file
+
+        For description of these routines and corresponding file
+        formats see Chapter "API Routines", Section "Utility routines"
+        in the reference manual included in the distribution.
+
+        Advanced API routine glp_free_env was added. It may be used by
+        the application program to free all resources allocated by GLPK
+        routines.
+
+        The following three new command-line options were added to the
+        solver glpsol:
+
+        --mipgap tol    set relative MIP gap tolerance
+        -r filename     read solution from filename
+        -w filename     write solution to filename
+
+GLPK 4.22 (release date: Sep 19, 2007)
+
+        This is a maintainer release.
+
+        A bug was fixed in the MIP preprocessor (ios_preprocess_node).
+        Thanks to Roberto Bagnara <bagnara@cs.unipr.it> (Department of
+        Mathematics, University of Parma, Italy) for the bug report.
+
+        A bug was fixed in the MIP preprocessor (col_implied_bounds),
+        due to which constraint coefficients with small magnitude could
+        lead to wrong implied bounds of structural variables.
+
+        A similar bug was fixed in the routine reduce_bounds.
+
+        A bug was fixed in the routines glp_set_mat_row and
+        glp_set_mat_col. (The bug appeared due to incorrect removing
+        zero elements from the row/column lists.)
+
+        A bug was fixed in the API routines lpx_read_mps and
+        lpx_read_freemps, due to which bounds of type LI specified in
+        BOUNDS section were incorrectly processed.
+
+        A call to standard function vsprintf was replaced by a call to
+        vsnprintf for security reasons. Many thanks to Peter T. Breuer
+        <ptb@inv.it.uc3m.es> and Rafael Laboissiere <rafael@debian.org>.
+
+GLPK 4.21 (release date: Aug 28, 2007)
+
+        Additional reasons for calling the callback routine used in the
+        MIP solver (glp_intopt) were introduced. Currently the following
+        reasons are supported:
+
+        * request for subproblem selection
+        * request for preprocessing
+        * request for row generation
+        * request for heuristic solution
+        * request for cut generation
+        * request for branching
+        * better integer solution found
+
+        A basic preprocessing component used to improve subproblem
+        formulations by tightening bounds of variables was included in
+        the MIP solver. Depending on the control parameter pp_tech
+        passed to the routine glp_intopt the preprocessing can be
+        performed either on the root level or on all levels (default)
+        or can be disabled.
+
+        Backtracking heuristic used by default in the MIP solver was
+        changed to the "best local bound".
+
+        For more details see Chapter "Advanced API routines", Section
+        "Branch-and-bound interface routines" in a new edition of the
+        reference manual included in the distribution.
+
+GLPK 4.20 (release date: Jul 26, 2007)
+
+        API routine lpx_integer was replaced by API routine glp_intopt,
+        which provides equivalent functionality and additionally allows
+        the application to control the solution process by means of the
+        user-written callback routine, which is called by the solver at
+        various points of the branch-and-bound algorithm. Besides, the
+        new MIP solver allows generating "lazy" constraints and cutting
+        planes on all levels of the branch-and-bound tree, not only on
+        the root level. The routine lpx_integer is also still available
+        for the backward compatibility.
+
+        The following new advanced API routines, which may be called
+        from the B&B callback routine, were included in the package:
+
+        glp_ios_reason     determine reason for calling callback
+                           routine
+        glp_ios_get_prob   access the problem object
+        glp_ios_tree_size  determine size of the branch-and-bound tree
+        glp_ios_curr_node  determine current active subproblem
+        glp_ios_next_node  determine next active subproblem
+        glp_ios_prev_node  determine previous active subproblem
+        glp_ios_up_node    determine parent subproblem
+        glp_ios_node_level determine subproblem level
+        glp_ios_node_bound determine subproblem local bound
+        glp_ios_mip_gap    compute relative MIP gap
+        glp_ios_heur_sol   provide solution found by heuristic
+        glp_ios_terminate  terminate the solution process
+
+        For description of these routines see Chapter "Advanced API
+        routines", Section "Branch-and-bound interface routines" in a
+        new edition of the reference manual, which was included in the
+        distribution.
+
+        Old version of the integer optimization suite (IOS) as well as
+        TSP solver tspsol based on it are no longer supported and were
+        removed from the package.
+
+        A minor error in the MIP presolver was fixed; thanks to Graham
+        Rockwell <bionomicron@gmail.com> for the bug report.
+
+GLPK 4.19 (release date: Jul 05, 2007)
+
+        The principal change is upgrading to GPLv3.
+
+        A serious bug in the routine glp_del_cols was fixed; thanks to
+        Cedric[FR] <fox2113@wanadoo.fr> for the bug report. The bug
+        appeared because on deleting non-basic columns the basis header
+        remained valid, however, contained invalid (old) column ordinal
+        numbers.
+
+        A new advanced API routine glp_mem_limit was added.
+
+        The case GLP_EBOUND was added to the routine lpx_simplex.
+        Thanks to Cameron Kellough <Cameron.Kellough@sri.com> for the
+        bug report.
+
+        An API routine lpx_write_pb to write the problem instance in
+        OPB (pseudo boolean) format format was added. Thanks to Oscar
+        Gustafsson <oscarg@isy.liu.se> for the contribution.
+
+        Two new options --wpb and --wnpb were added to glpsol to write
+        the problem instance in OPB format.
+
+GLPK 4.18 (release date: Jun 25, 2007)
+
+        The following new API routines were added:
+
+        glp_set_rii        set (change) row scale factor
+        glp_set_sjj        set (change) column scale factor
+        glp_get_rii        retrieve row scale factor
+        glp_get_sjj        retrieve column scale factor
+        glp_simplex        solve LP problem with the simplex method
+                           (this routine replaces lpx_simplex, which is
+                           also available for backward compatibility)
+        glp_init_smcp      initialize simplex method control params
+        glp_bf_exists      check if the basis factorization exists
+        glp_factorize      compute the basis factorization
+        glp_bf_updated     check if the basis factorization has been
+                           updated
+        glp_get_bfcp       retrieve basis factorization control params
+        glp_set_bfcp       change basis factorization control params
+        glp_get_bhead      retrieve the basis header information
+        glp_get_row_bind   retrieve row index in the basis header
+        glp_get_col_bind   retrieve column index in the basis header
+        glp_ftran          perform forward transformation
+        glp_btran          perform backward transformation
+
+        For description of all these routines see a new edition of the
+        reference manual included in the distribution.
+
+        Type names ulong_t and uldiv_t were changed to glp_ulong and
+        glp_uldiv to avoid conflicts with standard type names on some
+        platforms. Thanks to Boris Wirtz <Boris.Wirtz@uni-oldenburg.de>
+        for the bug report.
+
+        Some new examples in the MathProg language were added. Thanks
+        to Sebastian Nowozin <nowozin@gmail.com>.
+
+GLPK 4.17 (release date: May 26, 2007)
+
+        API routines glp_set_mat_row, glp_set_mat_col, and glp_load_mat
+        were modified to allow zero constraint coefficients (which are
+        not stored in the constraint matrix). Note that constraint
+        coefficients with duplicate row/column indices are not allowed.
+
+        Another form of LP basis factorization was implemented in the
+        package. It is based on LU-factorization of an initial basis
+        and Schur complement to reflect changes in the basis. Currently
+        the implementation is incomplete and provides only updating the
+        factorization on replacing a column of the basis matrix. On API
+        level the user can set the control parameter LPX_K_BFTYPE to
+        choose between the folloiwng forms of LP basis factorization to
+        be used in the simplex method routines:
+        1) LU + Forrest-Tomlin update;
+        2) LU + Schur complement + Bartels-Golub update;
+        3) LU + Schur complement + Givens rotation update.
+        The GLPK implementation is similar to LUSOL/LUMOD developed by
+        Michael A. Saunders.
+
+        The user can choose the form of LP basis factorzation used by
+        the simplex method routines by specifying the folloiwng options
+        of glpsol: --luf, --cbg, --cgr.
+
+GLPK 4.16 (release date: May 05, 2007)
+
+        A number of basic GLPK API routines, which now are in the
+        stable stable, were renamed to be prefixed with 'glp_'. Note
+        that all these routines are available via their old names
+        prefixed with 'lpx_' that keeps the downward compatibility with
+        older versions of the package.
+
+        Three new GLPK API routines were added to the package:
+        glp_version, glp_term_hook, and glp_mem_usage; for more details
+        see a new edition of the GLPK reference manual included in the
+        distribution. The routine glp_version reports the actual version
+        of the GLPK library and also can be used (along with the header
+        glpk.h) in Autotools specification files to check if the GLPK
+        library has been installed.
+
+        The header glpk.h was changed to conform to C++ environment.
+
+GLPK 4.15 (release date: Feb 18, 2007)
+
+        Autotools specification files (configure.ac, Makefile.am) were
+        changed to use GNU Libtool. This allows building the static as
+        well as shared GLPK library.
+
+GLPK 4.14 (release date: Feb 05, 2007)
+
+        Now GLPK conforms to ILP32, LLP64, and LP64 programming models
+        (the latter seems to be the ultimate choice regarding 64-bit
+        architectures). Note that GLPK itself is a 32-bit application,
+        and the conformity only means that the package works correctly
+        on all these arenae. Nevertheless, on 64-bit platforms it is
+        possible to use more than 4GB of memory, if necessary.
+
+GLPK 4.13 (release date: Nov 13, 2006)
+
+        A tentative implementation of the "exact" simplex method based
+        on bignum (rational) arithmetic was included in the package.
+
+        On API level this new feature is available through the routine
+        lpx_exact, which is similar to the routine lpx_simplex.
+
+        In the solver glpsol this feature is available through two new
+        command-line options: --exact and --xcheck. If the '--exact'
+        option is specified, glpsol solves LP instance using the exact
+        simplex method; in case of MIP it is used to obtain optimal
+        solution of LP relaxation. If the --xcheck option is specified,
+        LP instance (or LP relaxation) is solved using the standard
+        (floating-point) simplex method, however, then glpsol calls the
+        exact simplex routine to make sure that the final LP basis is
+        exactly optimal, and if it is not, to perform some additional
+        simplex iterations in exact arithmetic.
+
+GLPK 4.12 (release date: Nov 08, 2006)
+
+        A tentative implementation of some simplex method routines
+        based on exact (bignum) arithmetic was included in the package.
+        Currently these routines provide computing LU-factorization of
+        the basis matrix and computing components of basic solution.
+
+        These routines were used to implement a routine, which checks
+        primal and dual feasibility of basic solution exactly, i.e. in
+        rational numbers, without round-off errors. In glpsol this
+        feature is available through the command-line option --xcheck.
+
+        GLPK has its own low-level routines implementing operations on
+        integer and rational numbers that makes it independent on other
+        software packages. However, to attain a much better performance
+        it is highly recommended to install (before configuring GLPK)
+        the GNU Multiple Precision Arithmetic Library (GMP). Using GMP
+        makes computations 100-200 times faster.
+
+GLPK 4.11 (release date: Jul 25, 2006)
+
+        Three new built-in functions in the modeling language were
+        implemented: card (cardinality of set), length (length of
+        character string), and substr (substring of character string).
+        Another improvement concerns the printf statement which now
+        allows redirecting its output to a specified file. These new
+        features are illustrated in example models crypto.mod and
+        graph.mod included in the distribution. For more details see
+        the document "Modeling Language GNU MathProg".
+
+        Four batch files (along with corresponding makefiles) were
+        included in the distribution to simplify building GLPK under
+        MS Windows; see them in subdirectory 'w32'.
+
+GLPK 4.10 (release date: May 11, 2006)
+
+        Cutting planes of two new classes were implemented: mixed cover
+        cuts and clique cuts. On API level this feature can be enabled
+        by setting control parameter LPX_K_USECUTS passed to the routine
+        lpx_intopt. In glpsol this feature is available through the
+        command-line options --cover and --clique. For more details see
+        the reference manual.
+
+        Now the routines lpx_read_mps and lpx_read_freemps support LI
+        bound type. It is similar to LO, however, indicates the column
+        as of integer kind.
+
+GLPK 4.9 (release date: Jan 17, 2006)
+
+        An advanced MIP solver was implemented. It includes:
+
+        - basic presolving technique (removing free, singleton and
+          redundant rows, improving bounds of columns, removing fixed
+          columns, reducing constraint coefficents);
+
+        - generating cutting planes to improve LP relaxation (currently
+          only Gomory's mixed integer cuts are implemented);
+
+        - using the branch-and-bound method to solve resultant MIP;
+
+        - recovering solution of the original MIP.
+
+        The solver is available on API level via the routine lpx_intopt
+        (see the reference manual). It is similar to the routine
+        lpx_integer, however, does not require initial solution of LP
+        relaxation.
+
+        The solver is also available in the command-line utility glpsol
+        via two options: --intopt (only presolving) and --cuts (assumes
+        --intopt plus generating cuts).
+
+        Note that efficiency of the MIP solver strongly depends on the
+        internal structure of the problem to be solved. For some hard
+        instances it is very efficient, but for other instances it may
+        be significantly worse than the standard branch-and-bound.
+
+        For some comparative benchmarks see doc/bench1.txt.
+
+        Well, what else...
+
+        Three built-in functions were added to MathProg: sin, cos, and
+        atan (the latter allows one or two arguments).
+
+        Some bugs were fixed.
+
+        Several new examples in MathProg were included: color.mod
+        (graph coloring problem), tsp.mod (traveling salesman problem),
+        and pbn.mod (paint-by-numbers puzzle).
+
+GLPK 4.8 (release date: Jan 12, 2005)
+
+        Core simplex method and interior-point method routines were
+        re-implemented and now they use a new, "storage-by-rows" sparse
+        matrix format (unlike previous versions where linked lists were
+        used to represent sparse matrices). For details see ChangeLog.
+
+        Also a minor bug was fixed in API routine lpx_read_cpxlp.
+
+GLPK 4.7 (release date: Aug 23, 2004)
+
+        Now GLPK supports free MPS format. Two new API routines
+        lpx_read_freemps (to read problem data in free MPS format) and
+        lpx_write_freemps (to write problem data in free MPS format)
+        were added. This feature is also available in the solver glpsol
+        via new command-line options --freemps and --wfreemps. For more
+        details see the GLPK reference manual.
+
+        API routines lpx_read_cpxlp and lpx_write_cpxlp for reading and
+        writing problem data in CPLEX LP format were re-implemented to
+        allow long symbolic names (up to 255 characters).
+
+        The following three modules were temporarily removed from the
+        GLPK distribution due to licensing problems: DELI (an interface
+        module to Delphi), GLPKMEX (an interface module to Matlab), and
+        JNI (an interface module to Java).
+
+GLPK 4.6 (release date: Aug 04, 2004)
+
+        Three new statements were implemented in the GNU MathProg
+        language: solve, printf, and for. Their detailed description can
+        be found in the GLPK documentation included in the distribution.
+        (See also a sample model, examples/queens.mod, which illustrates
+        using these new statements.)
+
+        Two new API routines were added to the package: lpx_read_prob
+        and lpx_write_prob. They allow reading/writing problem data in
+        GNU LP low-level text format.
+
+        Three new command-line options were implemented in the LP/MIP
+        solver glpsol: --glp (to read problem data in GNU LP format),
+        --wglp (to write problem data in GNU LP format), and --name (to
+        change problem name). Now glpsol also supports processing models
+        where the new statements (see above) are used.
+
+        A new version of GLPKMEX, a Matlab MEX interface to GLPK, was
+        included. For more details see contrib/glpkmex/ChangeLog.
+
+GLPK 4.5 (release date: Jul 19, 2004)
+
+        The branch-and-bound solver was completely re-implemented.
+
+        Some modifications were made in memory allocation routines that
+        allows using the package on 64-bit platforms.
+
+        For more details see ChangeLog.
+
+GLPK 4.4 (release date: Jan 17, 2004)
+
+        All API routines were re-implemented using new data structures.
+        The new implementation provides the same specifications and
+        functionality of API routines as the old one, however, it has
+        some important advantages, in particular:
+        * linked lists are used everywhere that allows creating and
+          modifying the problem object as efficiently as possible
+        * all data stored in the problem object are non-scaled (even if
+          the internal scaling is used) that prevents distortion of the
+          original problem data
+        * solution components obtained by the solver remain available
+          even if the problem object has been modified
+        * no solver-specific data are used in the new data structures
+          that allows attaching any external lp/mip solver using GLPK
+          API as an uniform interface
+        Note that some API routines became obsolete being replaced by
+        new, more convenient routines. These obsolete routines are kept
+        for backward compatibility, however, they will be removed in
+        the future. For more details please see ChangeLog and the GLPK
+        Reference Manual.
+
+        New edition of the GLPK Reference Manual was included in the
+        distribution.
+
+        GLPKMEX, a Matlab MEX interface to GLPK package, contributed by
+        Nicolo Giorgetti <giorgetti@dii.unisi.it> was included in the
+        distribution.
+
+        GLPK FAQ contributed by Harley Mackenzie <hjm@bigpond.com> was
+        included in the distribution.
+
+GLPK 4.3 (release date: Dec 12, 2003)
+
+        The bug, due to which the standard math library is not linked
+        on building the package on some platforms, was fixed.
+
+        The following new built-in functions were added to the MathProg
+        language: round, trunc, Irand224, Uniform01, Uniform, Normal01,
+        Normal. For details see the language description.
+
+        The MathProg syntax was changed to allow writing 'subj to' that
+        means 'subject to'.
+
+        The new api routine lpx_get_ray_info was added. It is intended
+        to determine which (non-basic) variable causes unboundness. For
+        details see the reference manual.
+
+        The module glpmps.c was changed to avoid compilation errors on
+        building the package on Mac OS X.
+
+        Several typos was fixed and some new material was added to the
+        GLPK documentation.
+
+GLPK 4.2 (release date: Nov 14, 2003)
+
+        A preliminary implementation of the Integer Optimization Suite
+        (IOS) was included in the package. The Branch-and-Cut Framework
+        being completely superseded by IOS was removed from the package.
+
+        New API routine lpx_print_sens_bnds intended for bounds
+        sensitivity analysis was contributed to GLPK by Brady Hunsaker
+        <hunsaker@engr.pitt.edu>. This function is also available in
+        the solver glpsol (via command-line option --bounds).
+
+        An improved version of GLPK JNI (Java Native Interface) was
+        contributed by Chris Rosebrugh <cpr@pobox.com>.
+
+        GLPK DELI (Delphi Interface) was contributed by Ivo van Baren
+        <i.van.baren@freeler.nl>.
+
+        Several makefiles were added to allow compiling GLPK on some
+        non-GNU 32-bit platforms:
+        * Windows single-threaded static library, Visual C++ 6.0
+        * Windows multi-threaded dynamic library, Visual C++ 6.0
+        * Windows single-threaded static library, Borland C++ 5.2
+        * DOS single-threaded static library, Digital Mars C++ 7.50
+
+        And, of course, some bugs were fixed.
+
+        For more details see ChangeLog.
+
+GLPK 4.1 (release date: Aug 23, 2003)
+
+        Some improvements were made in the lp/mip solver routines and
+        several bugs were fixed in the model translator.
+
+        For more details see ChangeLog.
+
+GLPK 4.0 (release date: May 06, 2003)
+
+        Now GLPK supports the GNU MathProg modeling language, which is
+        a subset of the AMPL modeling language.
+
+        The document "GLPK: Modeling Language GNU MathProg" included in
+        the distribution is a complete description of GNU MathProg. (See
+        the files lang.latex, lang.dvi, and lang.ps in the subdirectory
+        'doc'. See also some examples in the subdirectory 'sample'.)
+
+        New version of the solver glpsol, which supports models written
+        in GNU MathProg, was implemented. (Brief instructions how to use
+        glpsol can be found in the GNU MathProg documentation.)
+
+        The GLPK/L modeling language is no more supported. The reason is
+        that GNU MathProg being much more powerful completely supersedes
+        all features of GLPK/L.
+
+GLPK 3.3 (release date: Mar 25, 2003)
+
+        LP PRESOLVER
+        ------------
+
+        Now the routine lpx_simplex (which is a driver to the simplex
+        method for solving LP) is provided with the built-in LP
+        presolver, which is a program that transforms the original LP
+        problem to an equivalent LP problem, which may be easier for
+        solving with the simplex method than the original one. Once the
+        transformed LP has been solver, the presolver transforms its
+        basic solution back to a corresponding basic solution of the
+        original problem. For details about this feature please see the
+        GLPK reference manual.
+
+        Currently the LP presolver implements the following features:
+        * removing empty rows;
+        * removing empty columns;
+        * removing free rows;
+        * removing fixed columns;
+        * removing row singletons, which have the form of equations;
+        * removing row singletons, which have the form of inequalities;
+        * removing column singletons, which are implied slack variables;
+        * fixing and removing column singletons, which are implied free
+          variables;
+        * removing forcing rows that involves fixing and removing the
+          corresponding columns;
+        * checking for primal and dual infeasibilities.
+
+        The LP presolver is also used by default in the stand-alone
+        program glpsol. In order *not* to use it, the option --nopresol
+        should be specified in the command-line.
+
+        CHANGES IN GLPK/L
+        -----------------
+
+        The syntax and semantics of the GLPK/L modeling language was
+        changed to allow declaration of "interval" sets. This means that
+        now the user can declare a set, for example, as:
+
+           set task = [8:11];
+
+        that is exactly equivalent to the following declaration:
+
+           set task = (task_8, task_9, task_10, task_11);
+
+        For details see the language description.
+
+        JAVA INTERFACE
+        --------------
+
+        Now GLPK includes the package GLPK JNI (Java Native Interface)
+        that implements Java binding for GLPK. It allows Java programs
+        to utilize GLPK in solving LP and MIP problems. For details see
+        a brief user's guide in the subdirectory contrib/java-binding.
+        This package was developed and programmed by Yuri Victorovich
+        <yuri@gjt.org>, who contributed it to GLPK.
+
+GLPK 3.2.4 (release date: Feb 18, 2003)
+
+        This is a bug-fix release. For details see ChangeLog.
+
+GLPK 3.2.3 (release date: Nov 11, 2002)
+
+        A new implementation of the api routine lpx_integer which now
+        is based on the b&b driver (which is based on the implicit
+        enumeration suite) was included in the package. This new
+        implementation has exactly the same functionality as the old
+        version, so all changes are transparent to the api user.
+
+        Four new api routines were included in the package:
+        lpx_check_kkt checks Karush-Kuhn-Tucker optmality conditions;
+        lpx_read_bas reads predifined basis in MPS format;
+        lpx_write_bas writes current basis in MPS format;
+        lpx_write_lpt writes problem data in CPLEX LP format.
+
+        Also other minor improvements were made (for details see the
+        file 'ChangeLog').
+
+GLPK 3.2.2 (release date: Oct 14, 2002)
+
+        The api routine lpx_read_lpt was included in the package. It
+        is similar to the routine lpx_read_mps and intended to read
+        LP/MIP data prepared in CPLEX LP format. Description of this
+        format is given in the GLPK reference manual, a new edition of
+        which was also included in the distribution (see the files
+        'refman.latex', 'refman.dvi', 'refman.ps' in the subdirectory
+        'doc'). In order to use data files in CPLEX LP format with the
+        solver glpsol the option '--lpt' should be specified in the
+        command line.
+
+        Several bugs were fixed and some minor improvements were made
+        (for details see the file 'ChangeLog').
+
+GLPK 3.2.1 (release date: Aug 12, 2002)
+
+        Now GLPK includes a preliminary implementation of the
+        branch-and-cut framework, which is a set of data structures and
+        routines intended for developing branch-and-cut methods for
+        solving mixed-integer and combinatorial optimization problems.
+
+        Detailed decsription of the branch-and-cut framework is given in
+        the document "GLPK: A Preliminary Implementation of the
+        Branch-And-Cut Framework" included in the distribution (see the
+        file 'brcut.txt' in the subdirectory 'doc').
+
+        In order to illustrate how the GLPK branch-and-cut framework
+        can be used for solving a particular optimization problem there
+        is an example included in the package. This is a stand-alone
+        program, TSPSOL, which is intended for solving to optimality the
+        symmetric Traveling Salesman Problem (TSP), a classical problem
+        of the combinatorial optimization (see the file 'tspsol.c' in
+        the subdirectory 'sample').
+
+GLPK 3.2 (release date: Jul 15, 2002)
+
+        New edition of the document "GLPK: Reference Manual" was
+        included (see the files 'refman.latex', 'refman.dvi', and
+        'refman.ps' in the subdirectory 'doc').
+
+        New edition of the document "GLPK: Modeling Language GLPK/L" was
+        included (see the files 'lang.latex', 'lang.dvi', and 'lang.ps'
+        in the subdirectory 'doc').
+
+        The following new API routines were added to the package:
+
+        lpx_transform_row (transform explicitly specified row);
+        lpx_transform_col (transform explicitly specified column);
+        lpx_prim_ratio_test (perform primal ratio test);
+        lpx_dual_ratio_test (perform dual ratio test);
+        lpx_interior (solve LP problem using interior point method);
+        lpx_get_ips_stat (query status of interior point solution);
+        lpx_get_ips_row (obtain row interior point solution);
+        lpx_get_ips_col (obtain column interior point solution);
+        lpx_get_ips_obj (obtain interior point value of obj.func.);
+        lpx_read_lpm (read LP/MIP model written in GLPK/L);
+        lpx_write_mps (write problem data using MPS format);
+        lpx_print_ips (print interior point solution).
+
+        Detailed description of all these new API routines are given in
+        the new edition of the reference manual.
+
+        New version of the stand-alone solver glpsol (which is based on
+        the new API) was implemented.
+
+        So long as the new API (introduced in glpk 3.0) now provides
+        all the functions, which were provided by the old API, the old
+        API routines were removed from the package at all.
+
+GLPK 3.1 (release date: May 27, 2002)
+
+        A preliminary implementation of new API routines was completed
+        and included in the package.
+
+        These new API routines provide much more flexible interaction
+        between the application program, LP/MIP problem instances, and
+        solver routines. Based on completely changed data structures
+        they are, however, similar to the API routines and provide the
+        same functionality. Please note that three routines, namely,
+        solving LPs using interior point method, reading model written
+        in the GLPK/L modeling language, and writing problem data in
+        the MPS format, are not implemented in the new API, however,
+        these routines are planned to be implemented in the next version
+        of the package.
+
+        A description of the new API routines is given in the document
+        "GLPK Reference Manual", a draft edition of which is included
+        in the package (see the files 'refman.latex', 'refman.dvi', and
+        'refman.ps' in the subdirectory 'doc').
+
+        Although the old API routines are kept in the package, they are
+        no longer supported and will be removed in the future.
+
+GLPK 3.0.8 (release date: May 13, 2002)
+
+        A preliminary implementation of new API routines was included
+        in the package. These new API routines are intended to provide
+        much more flexible interaction between the application program,
+        LP/MIP problem and solver routines. See the document "New GLPK
+        API Routines" (the file 'newapi.txt' in the subdirectory 'doc')
+        also included in the package.
+
+        The api routines glp_simplex2, glp_call_ipm1, glp_call_bbm1 were
+        renamed, respectively, to glp_simplex, glp_interior, glp_integer
+        in order to reflect changes in implementation. The api routines
+        glp_call_rsm1, glp_simplex1, glp_pivot_in, glp_pivout_out were
+        removed from the package since they are completely supreseded by
+        the new API routines (however, these routines still can be found
+        in the subdirectory 'oldsrc'). Please consult a new edition of
+        the document "GLPK User's Guide" about all these changes in the
+        existing api routines.
+
+        The document "GLPK Library Reference" was removed from the
+        package (into the subdirectory 'oldsrc') since it describes the
+        obsolete library routines, most of which are no longer used.
+
+GLPK 3.0.7 (release date: Apr 22, 2002)
+
+        A new, more efficient implementation of the primal/dual simplex
+        method was included in the package. Due to some improvements the
+        simplex-based solver allows solving many LP problems faster and
+        provides more reliable results. Note that the new implementation
+        is currently incomplete and available only via the api routine
+        glp_simplex2.
+
+        All the changes are transparent on API level.
+
+GLPK 3.0.6 (release date: Mar 28, 2002)
+
+        New version of LU-factorization and basis maintenance routines
+        (based on Forrest-Tomlin updating technique) was implemented.
+        Since these new routines functionally supersede some routines
+        (which implement other forms of the basis matrix) and make them
+        obsolete, the latter were removed from the package (they still
+        can be found in the subdirectory 'oldsrc').
+
+        All the changes are transparent on API level.
+
+GLPK 3.0.5 (release date: Jan 29, 2002)
+
+        New edition of the document "GLPK User's Guide" was included in
+        the distribution. Now it describes all additional API routines,
+        which were recently added to the package.
+
+        Structure of the package was re-organized in order to make its
+        maintenance easier (all small files in the subdurectory 'source'
+        were merged in bigger units). These changes are transparent for
+        the user.
+
+GLPK 3.0.4 (release date: Dec 10, 2001)
+
+        A new, more efficient implementation of the two-phase primal
+        simplex method was included in the package. Due to some new
+        features (an advanced initial basis, projected steepest edge,
+        recursive updating values and reduced costs) the new LP solver
+        is faster and numerically more stable than the old one.
+
+        The new LP solver is available as API routine glp_simplex2 and
+        has the same purpose as API routine glp_call_rsm1. For detailed
+        specification see the file 'newapi.txt' in the directory 'doc'.
+
+        Now the new LP solver is also used by default to solve an
+        initial LP problem in the branch-and-bound routine glp_call_bbm1
+        instead the routine rsm1_driver. Note that the branch-and-bound
+        procedure itself is still based on rsm1_driver.
+
+        The new LP solver is also used as default solver in GLPSOL for
+        solving LP and MIP problems. In order to choose the old solver
+        the option '--old-sim' can be specified in the command line.
+
+GLPK 3.0.3 (release date: Oct 03, 2001)
+
+        Some minor changes were made in the simplex method routines in
+        order to improve numerical stability of the method.
+
+GLPK 3.0.2 (release date: Sep 24, 2001)
+
+        A new implementation of the basis maintaining routines was
+        included in the package. These routines, which are based on so
+        called FHV-factorization (a variety of LU-factorization) of the
+        basis matrix and Gustavson's data structures, allows performing
+        the main operations faster at the expense of some worsening
+        numerical accuracy.
+
+        AFI (Advanced Form of the Inverse), which is the form of the
+        basis matrix based on FHV-factorization, is available via the
+        parameter form = 3 (on API level) or via the option --afi (in
+        GLPSOL solver).
+
+GLPK 3.0.1 (release date: Aug 01, 2001)
+
+        Old GLPK API routines have been removed from the package.
+
+        New GLPK API routines were added:
+
+        - scaling routines;
+
+        - a routine for writing problem data in MPS format;
+
+        - a comprehensive driver to the simplex method;
+
+        - basis maintaining routines.
+
+        A description of the new API routines is given in the document
+        "Additional GLPK API Routines". This document is included into
+        the distribution in plain text format (see the file 'newapi.txt'
+        in the subdirectory 'doc').
+
+        Now the distribution includes a non-trivial example of using
+        GLPK as a base LP solver for Concorde, a well known program that
+        solves Traveling Salesman Problem (TSP). For further details see
+        comments in the file 'sample/lpglpk30.c'.
+
+GLPK 3.0 (release date: Jul 19, 2001)
+
+        Now GLPK is provided with new API, which being more flexible
+        can be used in more complex algorithmic schemes.
+
+        New edition of the document "GLPK User's Guide" is included in
+        the distribution. Now it completely corresponds to the new GLPK
+        API routines.
+
+        Old API routines are not removed yet from the package, however
+        they became obsolete and therefore should not be used. Since now
+        the header glpk.h corresponds to new API, in order to compile
+        existing programs that use old GLPK API routines the statement
+
+        #define GLP_OLD_API
+
+        should be inserted before the statement
+
+        #include "glpk.h"
+
+GLPK 2.4.1 (release date: Jun 14, 2001)
+
+        The document "Modeling language GLPK/L" is included into the
+        distribution in texinfo format.
+
+        New edition of the document "GLPK User's Guide" is included in
+        the distribution. Now it describes all additional API routines
+        which were recently added to the package.
+
+GLPK 2.4 (release date: May 10, 2001)
+
+        Now GLPK includes an implementation of a preliminary version
+        of the GLPK/L modeling language. This language is intended for
+        writing mathematcal programming models. The name GLPK/L is
+        derived from GNU Linear Programming Kit Language.
+
+        A brief description of the GLPK/L language is given in the
+        document "GLPK/L Modeling Language: A Brief Description". This
+        document is included into the distribution in plain text format
+        (see the file 'language.txt' in the subdirectory 'doc').
+
+        The language processor (which is a program that analyzes model
+        description written in GLPK/L and translates it to internal data
+        structures) is available as the GLPK API routine.
+
+        The stand-alone solver GLPSOL now is able: a) to process model
+        descriptions written in the GLPK/L language; b) to solve pure LP
+        problems using the interior point method (therefore the program
+        GLPIPM was removed from the package).
+
+GLPK 2.3 (release date: Apr 09, 2001)
+
+        New edition of the document "GLPK User's Guide" is included in
+        the distribution. Now it describes all additional API routines
+        which were recently added to the package.
+
+        The MIP solver was fully re-programmed in order to improve its
+        robustness and performance. In particular, a basis recovering
+        procedure was implemented (this procedure allows switching to
+        the primal simplex method in case when the dual simplex method
+        fails).
+
+GLPK 2.2 (release date: Mar 15, 2001)
+
+        Now GLPK includes a tentative implementation of the
+        branch-and-bound procedure based on the dual simplex method for
+        mixed integer linear programming (MIP).
+
+        Complete description of this new feature of the package is given
+        in the preliminary document "Mixed Integer Linear Programming
+        Using GLPK Version 2.2 (Supplement to GLPK User's Guide)". This
+        document is included into the distribution in plain text format
+        (see the file 'mip.txt' in the subdirectory 'doc').
+
+        The MIP solver (glp_integer) can be used as GLPK API routine in
+        the same way as the pure LP solver (glp_simplex).
+
+        The stand-alone program 'glpsol' is now able to solve LP as well
+        as MIP problems.
+
+        Note that the current version of GLPK MIP solver is based on
+        easiest heuristics for branching and backtrackng. Therefore the
+        solver is fit mainly for MIP problems which are not very hard
+        and have few integer variables.
+
+GLPK 2.1 (release date: Feb 19, 2001)
+
+        The document "GLPK Implementation of the Revised Simplex Method"
+        is included into the distribution. This document describes most
+        of routines related to the revised simplex method.
+
+GLPK 2.0 (release date: Jan 25, 2001)
+
+        Now GLPK includes a tentative implementation of the primal-dual
+        interior point method for large-scale linear programming.
+
+        The interior point solver can be used as GLPK API routine in the
+        same manner as the simplex method solver (glp_simplex):
+
+        ret = glp_interior();
+
+        Note that currently the interior point solver implemented in
+        GLPK doesn't include many important features, in particular:
+
+        * it can't process dense columns; therefore if the problem has
+          dense columns, the solving will be extremely inefficient;
+
+        * it has no special features against numerical unstability;
+          some problems may cause premature termination of the solving
+          when the matrix A*D*A' becomes ill-conditioned;
+
+        * it computes only values of primal (auxiliary and structural)
+          variables and doesn't compute values of dual variables (i.e.
+          reduced costs) which are just set to zero;
+
+        * it doesn't identify optimal basis corresponding to the found
+          interior point solution; all variables in the found solution
+          are just marked as basic variables.
+
+        GLPK also includes a stand-alone program 'glpipm' which is a
+        demo based on the interior point method. It may be used in the
+        same way as the program 'glpsol' that is based on the simplex
+        method.

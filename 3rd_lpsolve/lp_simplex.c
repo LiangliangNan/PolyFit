@@ -2129,9 +2129,9 @@ Leave:
     }
     report(lp, NORMAL, "      The constraint matrix inf-norm is %g, with a dynamic range of %g.\n",
                         lp->matA->infnorm, lp->matA->dynrange);
-    report(lp, NORMAL, "      Time to load data was %.3f sec, presolve used %.3f sec,\n",
+    report(lp, NORMAL, "      Time to load data was %.3f seconds, presolve used %.3f seconds,\n",
                         lp->timestart-lp->timecreate, lp->timepresolved-lp->timestart);
-    report(lp, NORMAL, "       ... %.3f sec in simplex solver, in total %.3f sec.\n",
+    report(lp, NORMAL, "       ... %.3f seconds in simplex solver, in total %.3f seconds.\n",
                         lp->timeend-lp->timepresolved, lp->timeend-lp->timecreate);
   }
   return( lp->spx_status );
