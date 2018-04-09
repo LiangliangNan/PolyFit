@@ -142,10 +142,10 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 	program_.set_objective(obj);
 
 	std::size_t total_variables = num_faces + num_edges + num_sharp_edges;
-	Logger::out("-") << "   #variables for \'face is selected\': " << num_faces << std::endl;
-	Logger::out("-") << "   #variables for \'edge is used\': " << num_edges << std::endl;
-	Logger::out("-") << "   #variables for \'edge is sharp\': " << num_sharp_edges << std::endl;
-	Logger::out("-") << "   #total binary variables: " << total_variables << std::endl;
+	Logger::out("-") << "#total variables: " << total_variables << std::endl;
+	Logger::out(" ") << "    - face selected: " << num_faces << std::endl;
+	Logger::out(" ") << "    - edge used: " << num_edges << std::endl;
+	Logger::out(" ") << "    - edge sharp: " << num_sharp_edges << std::endl;
 
 	typedef LinearProgram::Variable Variable;
 	for (std::size_t i = 0; i < total_variables; ++i) {
@@ -223,7 +223,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 		}
 	}
 
-	Logger::out("-") << "   #total constraints: " << program_.constraints().size() << std::endl;
+	Logger::out("-") << "#total constraints: " << program_.constraints().size() << std::endl;
 	Logger::out("-") << "formulating binary program done. " << w.elapsed() << " sec" << std::endl;
 
 	//////////////////////////////////////////////////////////////////////////
@@ -235,6 +235,9 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 	LinearProgramSolver solver;
 	if (solver.solve(&program_, Method::LP_solver)) {
 		const std::vector<double>& X = solver.get_result();
+
+		if (Method::LP_solver == LinearProgramSolver::SCIP)
+			Logger::warn("-") << "SCIP solver is in preparation and will be available soon..." << std::endl;
 		Logger::out("-") << "solving the binary program done. " << w.elapsed() << " sec" << std::endl;
 
 		// mark results

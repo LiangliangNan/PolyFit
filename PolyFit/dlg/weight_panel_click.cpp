@@ -50,7 +50,7 @@ WeightPanelClick::WeightPanelClick(QWidget *parent)
 
 	mainWindow_ = dynamic_cast<MainWindow*>(parent);
 
-	int x_offset = -40;
+	int x_offset = -20;
 	pos_fitting_ = QPointF(160 + x_offset, 24);
 	pos_coverage_ = QPointF(80 + x_offset, 180);
 	pos_complexity_ = QPointF(250 + x_offset, 180);

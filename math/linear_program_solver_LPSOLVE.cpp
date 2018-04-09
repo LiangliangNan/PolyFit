@@ -34,14 +34,36 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 			else if (var.variable_type() == Variable::BINARY)
 				set_binary(lp, i+1, TRUE);	// lp_solve uses 1-based arrays
 			else {
-				//std::cout << "continuous variable" << std::endl;
+				// continuous variable
 			}
 
-			double lb = -DBL_MAX;
-			double ub = DBL_MAX;
-			if (var.bound_type() == Variable::DOUBLE)
+			switch (var.bound_type())
+			{
+			case Variable::FIXED: // value known, actually not a variable 
+				set_bounds(lp, i + 1, var.get_bound(), var.get_bound());
+				break;
+
+			case Variable::LOWER:
+				set_lowbo(lp, i + 1, var.get_bound());
+				break;
+
+			case Variable::UPPER:
+				set_upbo(lp, i + 1, var.get_bound());
+				break;
+
+			case Variable::DOUBLE: {
+				double lb = -DBL_MAX;
+				double ub = DBL_MAX;
 				var.get_bound(lb, ub);
-			set_bounds(lp, i + 1, lb, ub);
+				set_bounds(lp, i + 1, lb, ub);
+				break;
+			}
+
+			case Variable::FREE:
+			default:
+				set_unbounded(lp, i + 1);
+				break;
+			}
 		}
 
 		// set objective 
@@ -95,7 +117,8 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), LE, cstr.get_bound());
 				break;
 			case Constraint::DOUBLE: {
-				double lb, ub;
+				double lb = -DBL_MAX;
+				double ub = DBL_MAX;
 				cstr.get_bound(lb, ub);
 				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), GE, lb);
 				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), LE, ub);
@@ -107,14 +130,15 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 		}
 
 		set_add_rowmode(lp, FALSE);
-		int ret = ::solve(lp);
-		switch (ret) {
-		case 0:
-// 			double objval = get_objective(lp);
-// 			Logger::out("-") << "done. objective: " << objval << std::endl;
+		int status = ::solve(lp);
+		switch (status) {
+		case 0: {
+			//double objval = get_objective(lp);
+			//std::cout << "objective: " << objval << std::endl;
 			result_.resize(variables.size());
 			get_variables(lp, result_.data());
 			break;
+		}
 		case -2:
 			std::cerr << "Out of memory" << std::endl;
 			break;
@@ -146,12 +170,13 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 			std::cerr << "Accuracy error encountered" << std::endl;
 			break;
 		default:
+			std::cerr << "optimization was stopped with status = " << status << std::endl;
 			break;
 		}
 
 		delete_lp(lp);
 
-		return (ret == 0);
+		return (status == 0);
 	}
 	catch (std::exception e) {
 		std::cerr << "Error code = " << e.what() << std::endl;

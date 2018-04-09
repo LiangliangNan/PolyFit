@@ -113,9 +113,6 @@ void PaintCanvas::clear() {
 
 void PaintCanvas::init()
 {
-	Logger::out("-") << "initializing..." << std::endl;
-
-	//////////////////////////////////////////////////////////////////////////
 	GLenum err = glewInit();
 	if (GLEW_OK != err) {
 		// Problem: glewInit failed, something is seriously wrong. 

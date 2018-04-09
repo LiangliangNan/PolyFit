@@ -57,8 +57,8 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 			else if (var.variable_type() == Variable::BINARY)
 				vtype = GRB_BINARY;
 
-			double lb = -DBL_MAX;
-			double ub = DBL_MAX;
+			double lb = -GRB_INFINITY;
+			double ub = GRB_INFINITY;
 			if (var.bound_type() == Variable::DOUBLE)
 				var.get_bound(lb, ub);
 			X[i] = model.addVar(lb, ub, 0.0, vtype);
@@ -119,26 +119,36 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		// Optimize model
 		model.optimize();
 
-		int optimstatus = model.get(GRB_IntAttr_Status);
-		if (optimstatus == GRB_OPTIMAL) {
-			double objval = model.get(GRB_DoubleAttr_ObjVal);
-			//Logger::out("-") << "done. objective: " << truncate_digits(objval, 3) << std::endl;
-
+		int status = model.get(GRB_IntAttr_Status);
+		switch (status) {
+		case GRB_OPTIMAL: {
+			//double objval = model.get(GRB_DoubleAttr_ObjVal);
+			//std::cout << "objective: " << objval << std::endl;
 			result_.resize(variables.size());
-			for (std::size_t i=0; i<variables.size(); ++i) {
+			for (std::size_t i = 0; i < variables.size(); ++i) {
 				result_[i] = X[i].get(GRB_DoubleAttr_X);
 			}
+			break;
 		}
-		else if (optimstatus == GRB_INF_OR_UNBD) 
+		
+		case GRB_INF_OR_UNBD:
 			std::cerr << "model is infeasible or unbounded" << std::endl;
-		else if (optimstatus == GRB_INFEASIBLE) 
-			std::cerr << "model is infeasible" << std::endl;
-		else if (optimstatus == GRB_UNBOUNDED) 
-			std::cerr << "model is unbounded" << std::endl;
-		else 
-			std::cerr << "optimization was stopped with status = " << optimstatus << std::endl;
+			break;
 
-		return (optimstatus == GRB_OPTIMAL);
+		case GRB_INFEASIBLE:
+			std::cerr << "model is infeasible" << std::endl;
+			break;
+
+		case GRB_UNBOUNDED:
+			std::cerr << "model is unbounded" << std::endl;
+			break;
+
+		default:
+			std::cerr << "optimization was stopped with status = " << status << std::endl;
+			break;
+		}
+
+		return (status == GRB_OPTIMAL);
 	}
 	catch (GRBException e) {
 		std::cerr << "Error code = " << e.getErrorCode() << std::endl;
