@@ -92,17 +92,20 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 		set_add_rowmode(lp, TRUE);
 
 		for (std::size_t i = 0; i < constraints.size(); ++i) {
-			std::vector<int> colno;
-			std::vector<double> sparserow;
-
 			const Constraint& cstr = constraints[i];
 			const std::unordered_map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
 			std::unordered_map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
+
+			std::vector<int>	colno(cstr_coeffs.size() + 1, 0);		// lp_solve uses 1-based arrays
+			std::vector<double> sparserow(cstr_coeffs.size() + 1, 0.0); // lp_solve uses 1-based arrays
+			std::size_t idx = 1; // lp_solve uses 1-based arrays
 			for (; cur != cstr_coeffs.end(); ++cur) {
 				std::size_t var_idx = cur->first;
 				double coeff = cur->second;
-				colno.push_back(var_idx + 1);	 // lp_solve uses 1-based arrays
-				sparserow.push_back(coeff);
+
+				colno[idx] = var_idx + 1;	 // lp_solve uses 1-based arrays
+				sparserow[idx] = coeff;
+				++idx;
 			}
 
 			switch (cstr.bound_type())

@@ -96,14 +96,14 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 			const std::unordered_map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
 			std::unordered_map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
 
-			std::vector<int>	colno(cstr_coeffs.size() + 1, 0);	// glpk uses 1-based arrays
+			std::vector<int>	colno(cstr_coeffs.size() + 1, 0);		// glpk uses 1-based arrays
 			std::vector<double> sparserow(cstr_coeffs.size() + 1, 0.0); // glpk uses 1-based arrays
 			std::size_t idx = 1; // glpk uses 1-based arrays
 			for (; cur != cstr_coeffs.end(); ++cur) {
 				std::size_t var_idx = cur->first;
 				double coeff = cur->second;
 
-				colno[idx] = var_idx + 1;
+				colno[idx] = var_idx + 1;	 // glpk uses 1-based arrays
 				sparserow[idx] = coeff;
 				++idx;
 			}
