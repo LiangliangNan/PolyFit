@@ -43,7 +43,7 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 			return false;
 		}
 		glp_set_prob_name(lp, "unknown");
-		glp_set_obj_dir(lp, GLP_MIN);
+		glp_set_obj_dir(lp, program->objective_sense() == LinearProgram::MINIMIZE ? GLP_MIN : GLP_MAX);
 
 		std::size_t num_integer_variables = 0;
 

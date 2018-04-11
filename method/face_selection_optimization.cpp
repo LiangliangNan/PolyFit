@@ -139,13 +139,13 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 		double uncovered_area = (facet_attrib_facet_area_[f] - facet_attrib_covered_area_[f]);
 		obj.add_coefficient(var_idx, coeff_coverage * uncovered_area);
 	}
-	program_.set_objective(obj);
+	program_.set_objective(obj, LinearProgram::MINIMIZE);
 
 	std::size_t total_variables = num_faces + num_edges + num_sharp_edges;
 	Logger::out("-") << "#total variables: " << total_variables << std::endl;
-	Logger::out(" ") << "    - face selected: " << num_faces << std::endl;
-	Logger::out(" ") << "    - edge used: " << num_edges << std::endl;
-	Logger::out(" ") << "    - edge sharp: " << num_sharp_edges << std::endl;
+	Logger::out(" ") << "    - face is selected: " << num_faces << std::endl;
+	Logger::out(" ") << "    - edge is used: " << num_edges << std::endl;
+	Logger::out(" ") << "    - edge is sharp: " << num_sharp_edges << std::endl;
 
 	typedef LinearProgram::Variable Variable;
 	for (std::size_t i = 0; i < total_variables; ++i) {
@@ -244,7 +244,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 			std::size_t idx = facet_indices[f];
 			//if (static_cast<int>(X[idx]) == 0) { // Liangliang: be careful, floating point!!!
 			//if (static_cast<int>(X[idx]) != 1) { // Liangliang: be careful, floating point!!!
-			if (std::round(X[idx]) == 0) {
+			if (static_cast<int>(std::round(X[idx])) == 0) {
 				to_delete.push_back(f);
 			}
 		}

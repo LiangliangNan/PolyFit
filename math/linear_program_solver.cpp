@@ -22,20 +22,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver /* = GUROBI */) {
+	if (program->objective_sense() == LinearProgram::UNDEFINED) {
+		std::cerr << "incomplete objective: undefined objective sense." << std::endl;
+		return false;
+	}
+
 	result_.clear();
 
 	switch (solver) {
 	case GUROBI:
 		return _solve_GUROBI(program);
-	case SCIP:
-		return _solve_SCIP(program);
-	case LPSOLVE:
-		return _solve_LPSOLVE(program);
 	case GLPK:
 		return _solve_GLPK(program);
-	default:
-		std::cerr << "no such solver" << std::endl;
-		return false;
+	case LPSOLVE:
+		return _solve_LPSOLVE(program);
+	case SCIP:
+	default: // use SCIP
+		return _solve_SCIP(program);
 	}
 }
 

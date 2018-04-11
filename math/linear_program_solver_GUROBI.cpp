@@ -97,7 +97,7 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 			double coeff = it->second;
 			obj += coeff * X[var_idx];
 		}
-		model.setObjective(obj, GRB_MINIMIZE);
+		model.setObjective(obj, program->objective_sense() == LinearProgram::MINIMIZE ? GRB_MINIMIZE : GRB_MAXIMIZE);
 
 		// Add constraints
 		const std::vector<Constraint>& constraints = program->constraints();

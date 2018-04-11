@@ -33,7 +33,7 @@ template <class FT>
 class Bound
 {
 public:
-	// bound type for variables and expression
+	// bound type for variables and expressions
 enum BoundType { FIXED, LOWER, UPPER, DOUBLE, FREE };
 
 public:
@@ -48,6 +48,7 @@ public:
 
 	void set_bounds(BoundType type, FT lb, FT ub) {
 		if (bound_type_ != FREE) {
+			// In general, bound(s) once set should not be changed.
 			// Easier life: print a message if you want to change bound(s)
 			std::cerr << "Warning: are you sure you want to changed the bound(s)" << std::endl;
 		}
@@ -152,47 +153,47 @@ template <class FT>
 class LinearProgram
 {
 public:
+	enum Solver { GUROBI, SCIP, LPSOLVE, GLPK };
+
+	enum Sense  { MINIMIZE, MAXIMIZE, UNDEFINED };
+
 	typedef Variable<FT>			Variable;
 	typedef LinearExpression<FT>	Objective;
 	typedef LinearConstraint<FT>	Constraint;
 
-	enum Solver { GUROBI, SCIP, LPSOLVE, GLPK };
-
 public:
-	LinearProgram() {}
+	LinearProgram() : objective_sense_(UNDEFINED) {}
 	~LinearProgram() {}
 
 	// num of binary variables
-	void add_variable(const Variable& var) { 
-		variables_.push_back(var);
-	}
-	void add_variables(const std::vector<Variable>& vars) {
-		variables_.insert(variables_.end(), vars.begin(), vars.end());
-	}
-	const std::vector<Variable>& variables() const {
-		return variables_;
+	void add_variable(const Variable& var) { variables_.push_back(var);	}
+	void add_variables(const std::vector<Variable>& vars) {	variables_.insert(variables_.end(), vars.begin(), vars.end()); }
+	const std::vector<Variable>& variables() const { return variables_;	}
+
+	void set_objective(const Objective& obj, Sense sense) {
+		objective_ = obj; 
+		objective_sense_ = sense;
 	}
 
-	void set_objective(const Objective& obj) { 
-		objective_ = obj; 
-	}
-	const Objective& objective() const {
-		return objective_;
-	}
+	const Objective& objective() const { return objective_; }
+	Sense objective_sense() const { return objective_sense_; }
 
 	void add_constraint(const Constraint& cstr) { 
 		if (cstr.bound_type() == Constraint::FREE) {
-			std::cerr << "incomplete constraint: no bound(s) specified" << std::endl;
+			std::cerr << "incomplete constraint: no bound(s) specified. Constraint ignored." << std::endl;
 			return;
 		}
 		constraints_.push_back(cstr); 
 	}
 	void add_constraints(const std::vector<Constraint>& cstrs) {
-		constraints_.insert(constraints_.end(), cstrs.begin(), cstrs.end());
+		for (std::size_t i = 0; i < cstrs.size(); ++i)
+			add_constraint(cstrs[i]);
 	}
 	const std::vector<Constraint>& constraints() const {
 		return constraints_; 
 	}
+
+	std::size_t num_constraints() const { return constraints_.size(); }
 
 	std::size_t num_continuous_variables() const {
 		std::size_t num_continuous_var = 0;
@@ -244,7 +245,7 @@ private:
 	std::vector<Constraint>	constraints_;
 
 	Objective	objective_;
-	double		objective_value_;
+	Sense		objective_sense_;
 };
 
 

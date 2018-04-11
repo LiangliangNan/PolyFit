@@ -40,7 +40,7 @@
 #include "scip/scipdefplugins.h"
 
 /** number of points to enclose by a circle */
-static const int npoints = 10;
+static const int npoints = 100;
 
 /** seed for random number generator */
 static const unsigned int randseed = 42;
@@ -61,9 +61,6 @@ SCIP_RETCODE setupProblem(
 
    /* create empty problem */
    SCIP_CALL( SCIPcreateProbBasic(scip, "circle") );
-
-   // disable scip output to stdout
-   SCIPmessagehdlrSetQuiet(SCIPgetMessagehdlr(scip), TRUE);
 
    /* create variables and add to problem */
    SCIP_CALL( SCIPcreateVarBasic(scip, &a, "a", -SCIPinfinity(scip), SCIPinfinity(scip), 0.0, SCIP_VARTYPE_CONTINUOUS) );
@@ -120,21 +117,6 @@ SCIP_RETCODE runCircle(void)
    SCIP_CALL( SCIPcreateRandom(scip, &randnumgen, randseed) );
 
    SCIP_CALL( setupProblem(scip, randnumgen) );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
    SCIPinfoMessage(scip, NULL, "Original problem:\n");
    SCIP_CALL( SCIPprintOrigProblem(scip, NULL, "cip", FALSE) );

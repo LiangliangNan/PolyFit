@@ -54,7 +54,7 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 
 		// set the objective sense to maximize, default is minimize
 		SCIP_CALL(SCIPfreeTransform(scip));
-		SCIP_CALL(SCIPsetObjsense(scip, SCIP_OBJSENSE_MINIMIZE));
+		SCIP_CALL(SCIPsetObjsense(scip, program->objective_sense() == LinearProgram::MINIMIZE ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
 
 		// create variables
 		std::vector<SCIP_VAR*> scip_variables;

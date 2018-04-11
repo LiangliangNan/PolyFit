@@ -37,13 +37,16 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 			return false;
 		}
 
-		/* Create a new LP model */
+		// Create a new LP model
 		lprec* lp = make_lp(0, variables.size());
 		if (!lp) {
 			std::cerr << "error in creating a LP model" << std::endl;
 			return false;
 		}
 		set_verbose(lp, SEVERE);
+
+		// set object sense
+		set_sense(lp, program->objective_sense() == LinearProgram::MAXIMIZE); // true for maximize
 
 		// create variables
 		for (std::size_t i = 0; i < variables.size(); ++i) {

@@ -19,7 +19,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "method", "method\method.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3rd_lpsolve", "3rd_lpsolve\3rd_lpsolve.vcxproj", "{1597A9CE-C201-4394-AF0D-212E93F3B89C}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{45EEA339-E627-4DA0-A19F-1527A4AE58F4}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Info", "Info", "{45EEA339-E627-4DA0-A19F-1527A4AE58F4}"
 	ProjectSection(SolutionItems) = preProject
 		LICENSE = LICENSE
 		ReadMe-data.md = ReadMe-data.md
@@ -29,15 +29,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3rd_glpk", "3rd_glpk\3rd_glpk.vcxproj", "{2048E60D-2AE8-3654-9E9C-AA3CA59E181F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestLinearProgramSolver", "TestLinearProgramSolver\TestLinearProgramSolver.vcxproj", "{60DA54F6-602C-48AB-9006-E2B93065F604}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_lp_solver", "TestLinearProgramSolver\TestLinearProgramSolver.vcxproj", "{60DA54F6-602C-48AB-9006-E2B93065F604}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{E68C9BBE-3D6E-4B56-B603-1153E8A11C22}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "circle", "3rd_scip\examples\circle.vcxproj", "{0001EB20-8587-314B-9040-4D09E4CC2819}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "min_circle", "3rd_scip\examples\circle.vcxproj", "{0001EB20-8587-314B-9040-4D09E4CC2819}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libscip", "3rd_scip\scip\libscip.vcxproj", "{9F304218-26A3-3673-A275-BEE611E8C72D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3rd_scip", "3rd_scip\scip\libscip.vcxproj", "{9F304218-26A3-3673-A275-BEE611E8C72D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libsoplex", "3rd_scip\soplex\libsoplex.vcxproj", "{C1D10CBF-2689-30C2-917F-F1DAC0AE9D92}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "3rd_soplex", "3rd_scip\soplex\libsoplex.vcxproj", "{C1D10CBF-2689-30C2-917F-F1DAC0AE9D92}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -104,12 +104,10 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{60DA54F6-602C-48AB-9006-E2B93065F604} = {E68C9BBE-3D6E-4B56-B603-1153E8A11C22}
 		{0001EB20-8587-314B-9040-4D09E4CC2819} = {E68C9BBE-3D6E-4B56-B603-1153E8A11C22}
-		{9F304218-26A3-3673-A275-BEE611E8C72D} = {E68C9BBE-3D6E-4B56-B603-1153E8A11C22}
-		{C1D10CBF-2689-30C2-917F-F1DAC0AE9D92} = {E68C9BBE-3D6E-4B56-B603-1153E8A11C22}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {7856704D-9E73-45AE-988F-95F8DE6A1429}
 		QtVersion = 4.8.0
+		SolutionGuid = {7856704D-9E73-45AE-988F-95F8DE6A1429}
 	EndGlobalSection
 	GlobalSection(SubversionScc) = preSolution
 		Svn-Managed = True

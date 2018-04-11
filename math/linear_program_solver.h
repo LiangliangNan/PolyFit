@@ -36,10 +36,10 @@ public:
 	LinearProgramSolver() {}
 	~LinearProgramSolver() {}
 
-	// Solve the problem; returns false if fails
-	// NOTE: Gurobi solver recommended;
-	//		 The SCIP solver is about x10 slower than Gurobi;
-	//       LPSOLVE and GLPK may be too slow or even fail.
+	// Solves the problem and returns false if fails.
+	// NOTE: Gurobi solver recommended.
+	//		 The SCIP solver is slower than Gurobi but acceptable. 
+	//       GLPK and LPSOLVE may be too slow or even fail for large problems.
 	bool solve(const LinearProgram* program, SolverName solver = GUROBI);
 
 	// returns the objective value
@@ -47,17 +47,16 @@ public:
 	double get_objective_value() const { return objective_value_; }
 
 	// returns the result
-	// NOTE: (1) result is valid only if the solver succeeded
+	// NOTE: (1) result is valid only if the solver succeeds
 	//       (2) the result includes all auxiliary variables
-	const std::vector<double>& get_result() const { 
-		return result_; 
-	}
+	//       (3) for integer variables, you need to round the values
+	const std::vector<double>& get_result() const { return result_; }
 
 private:
 	bool _solve_GUROBI(const LinearProgram* program);
 	bool _solve_SCIP(const LinearProgram* program);
-	bool _solve_LPSOLVE(const LinearProgram* program);
 	bool _solve_GLPK(const LinearProgram* program);
+	bool _solve_LPSOLVE(const LinearProgram* program);
 
 private:
 	std::vector<double> result_;
