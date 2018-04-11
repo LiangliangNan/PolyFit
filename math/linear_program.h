@@ -19,42 +19,65 @@ enum BoundType { FIXED, LOWER, UPPER, DOUBLE, FREE };
 public:
 	Bound()
 		: bound_type_(FREE)
-		, bound_(-DBL_MAX)
-		, bound2_(DBL_MAX)
+		, lower_bound_(-DBL_MAX)
+		, upper_bound_(DBL_MAX)
 	{
-	}
-
-	void set_bound(BoundType type, FT bd) {
-		bound_type_ = type;
-		bound_ = bd;
-	}
-	void set_bound(FT lb, FT ub) {
-		bound_type_ = DOUBLE;
-		bound_ = lb;
-		bound2_ = ub;
 	}
 
 	BoundType bound_type() const { return bound_type_; }
 
-	// you can only call the one corresponding to the correct bound type
-	FT get_bound() const {
-		if (bound_type_ == FREE)
-			std::cerr << "invalid bound(s): not specified" << std::endl;
-		else if (bound_type_ == DOUBLE)
-			std::cerr << "wrong function call for double bounded expression" << std::endl;
-		return bound_;
+	void set_bounds(BoundType type, FT lb, FT ub) {
+		if (bound_type_ != FREE) {
+			// Easier life: print a message if you want to change bound(s)
+			std::cerr << "Warning: are you sure you want to changed the bound(s)" << std::endl;
+		}
+
+		switch (type)
+		{
+		case FIXED:
+			if (std::abs(lb - ub) > 1e-10)
+				std::cerr << "lower/upper bounds must be equal for FIXED bounds" << std::endl;
+			lower_bound_ = upper_bound_ = lb;	
+			break;
+		case LOWER:		lower_bound_ = lb;	break;
+		case UPPER:		upper_bound_ = ub;	break;
+		case DOUBLE:	
+			lower_bound_ = lb; 
+			upper_bound_ = ub; 
+			break;
+		case FREE:
+		default:
+			std::cerr << "no FREE bound(s)" << std::endl;
+			break;
+		}
+		bound_type_ = type;
 	}
-	void get_bound(FT& lb, FT& ub) const {
-		if (bound_type_ != DOUBLE)
-			std::cerr << "wrong function call for single bounded expression" << std::endl;
-		lb = bound_;
-		ub = bound2_;
+
+	// query the single bound according to its bound type
+	FT   get_single_bound() const { 
+		switch (bound_type_)
+		{
+		case FIXED:
+		case LOWER:
+			return lower_bound_;
+		case UPPER:
+			return upper_bound_;
+		case DOUBLE:
+			std::cerr << "please use get_double_bounds() to get double bound(s)" << std::endl;
+			return lower_bound_;
+		case FREE:
+		default:
+			std::cerr << "no bound specified" << std::endl;
+			return lower_bound_;
+		}
 	}
+
+	void get_double_bounds(FT& lb, FT& ub) const { lb = lower_bound_; ub = upper_bound_; }
 
 private:
 	BoundType	bound_type_;
-	FT			bound_;
-	FT			bound2_;	// used only for double bounds
+	FT			lower_bound_;
+	FT			upper_bound_;	
 };
 
 
@@ -66,10 +89,9 @@ enum VariableType { CONTINUOUS, INTEGER, BINARY };
 public:
 	Variable(VariableType type) : variable_type_(type) {
 		if (type == BINARY)
-			Bound<FT>::set_bound(0.0, 1.0);
+			Bound<FT>::set_bounds(Bound<FT>::DOUBLE, 0.0, 1.0);
 	}
 
-	void set_variable_type(VariableType type) { variable_type_ = type; }
 	VariableType variable_type() const { return variable_type_; }
 
 private:
@@ -152,10 +174,56 @@ public:
 		return constraints_; 
 	}
 
+	std::size_t num_continuous_variables() const {
+		std::size_t num_continuous_var = 0;
+		for (std::size_t i = 0; i < variables_.size(); ++i) {
+			if (variables_[i].variable_type() == Variable::CONTINUOUS)
+				++num_continuous_var;
+		}
+		return num_continuous_var;
+	}	
+	
+	std::size_t num_integer_variables() const {
+		std::size_t num_iteger_var = 0;
+		for (std::size_t i = 0; i < variables_.size(); ++i) {
+			if (variables_[i].variable_type() == Variable::INTEGER)
+				++num_iteger_var;
+		}
+		return num_iteger_var;
+	}
+
+	std::size_t num_binary_variables() const {
+		std::size_t num_binary_var = 0;
+		for (std::size_t i = 0; i < variables_.size(); ++i) {
+			if (variables_[i].variable_type() == Variable::BINARY)
+				++num_binary_var;
+		}
+		return num_binary_var;
+	}
+
+	// returns true if mixed inter program
+	bool is_mix_integer_program() const {
+		std::size_t num = num_continuous_variables();
+		return (num > 0) && (num < variables_.size());
+	}
+
+	// returns true if inter program
+	bool is_integer_program() const {
+		std::size_t num = num_integer_variables();
+		return (num > 0) && (num == variables_.size());
+	}
+
+	// returns true if binary program
+	bool is_binary_proram() const {
+		std::size_t num = num_binary_variables();
+		return (num > 0) && (num == variables_.size());
+	}
+
 private:
 	std::vector<Variable>	variables_;
 	std::vector<Constraint>	constraints_;
 
 	Objective	objective_;
+	double		objective_value_;
 };
 

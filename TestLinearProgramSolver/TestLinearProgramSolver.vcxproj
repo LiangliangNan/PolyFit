@@ -145,8 +145,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="test_lp.cpp" />
-    <ClCompile Include="test_mip.cpp" />
+    <ClCompile Include="problem_lp.cpp" />
+    <ClCompile Include="problem_mip.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -31,8 +31,8 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 		glp_add_cols(lp, variables.size());
 		for (std::size_t i = 0; i < variables.size(); ++i) {
 			const Variable& var = variables[i];
-			//const std::string& name = "x" + std::to_string(i + 1);
-			//glp_set_col_name(lp, i + 1, name.data());
+			const std::string& name = "x" + std::to_string(i + 1);
+			glp_set_col_name(lp, i + 1, name.data());
 
 			if (var.variable_type() == Variable::INTEGER) {
 				glp_set_col_kind(lp, i + 1, GLP_IV);	// glpk uses 1-based arrays
@@ -46,33 +46,21 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 				glp_set_col_kind(lp, i + 1, GLP_CV);	// continuous variable
 			}
 
+			int bound_type = GLP_FR;
 			switch (var.bound_type())
 			{
-			case Variable::FIXED: // value known, actually not a variable 
-				glp_set_col_bnds(lp, i + 1, GLP_FX, var.get_bound(), var.get_bound());
-				break;
-
-			case Variable::LOWER:
-				glp_set_col_bnds(lp, i + 1, GLP_LO, var.get_bound(), 0.0);
-				break;
-
-			case Variable::UPPER:
-				glp_set_col_bnds(lp, i + 1, GLP_UP, 0.0, var.get_bound());
-				break;
-
-			case Variable::DOUBLE: {
-				double lb = -DBL_MAX;
-				double ub = DBL_MAX;
-				var.get_bound(lb, ub);
-				glp_set_col_bnds(lp, i + 1, GLP_DB, lb, ub);
-				break;
-			}
-
+			case Variable::FIXED:  bound_type = GLP_FX; break;
+			case Variable::LOWER:  bound_type = GLP_LO; break;
+			case Variable::UPPER:  bound_type = GLP_UP; break;
+			case Variable::DOUBLE: bound_type = GLP_DB; break;
 			case Variable::FREE:
 			default:
-				glp_set_col_bnds(lp, i + 1, GLP_FR, 0.0, 0.0);
 				break;
 			}
+
+			double lb, ub;
+			var.get_double_bounds(lb, ub);
+			glp_set_col_bnds(lp, i + 1, bound_type, lb, ub);
 		}
 
 		// set objective 
@@ -110,27 +98,21 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 
 			glp_set_mat_row(lp, i + 1, static_cast<int>(cstr_coeffs.size()), colno.data(), sparserow.data());
 
+			int bound_type = GLP_FR;
 			switch (cstr.bound_type())
 			{
-			case Constraint::FIXED:
-				glp_set_row_bnds(lp, i + 1, GLP_FX, cstr.get_bound(), cstr.get_bound());
-				break;
-			case Constraint::LOWER:
-				glp_set_row_bnds(lp, i + 1, GLP_LO, cstr.get_bound(), 0.0);
-				break;
-			case Constraint::UPPER:
-				glp_set_row_bnds(lp, i + 1, GLP_UP, 0.0, cstr.get_bound());
-				break;
-			case Constraint::DOUBLE: {
-				double lb = -DBL_MAX;
-				double ub = DBL_MAX;
-				cstr.get_bound(lb, ub);
-				glp_set_row_bnds(lp, i + 1, GLP_DB, lb, ub);
-				break;
-			}
+			case Constraint::FIXED:  bound_type = GLP_FX; break;
+			case Constraint::LOWER:  bound_type = GLP_LO; break;
+			case Constraint::UPPER:  bound_type = GLP_UP; break;
+			case Constraint::DOUBLE: bound_type = GLP_DB; break;
+			case Constraint::FREE:
 			default:
 				break;
 			}
+
+			double lb, ub;
+			cstr.get_double_bounds(lb, ub);
+			glp_set_row_bnds(lp, i + 1, bound_type, lb, ub);
 		}
 
 		int msg_level = GLP_MSG_ERR;
@@ -154,17 +136,15 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 		switch (status) {
 		case 0: {
 			if (num_integer_variables == 0) { // continuous problem
-				//double objval = glp_get_obj_val(lp);
-				//std::cout << "objective: " << objval << std::endl;
+				objective_value_ = glp_get_obj_val(lp);
 				assert(variables.size() == glp_get_num_cols(lp));
 				result_.resize(variables.size());
 				for (std::size_t i = 0; i < variables.size(); ++i) {
 					result_[i] = glp_get_col_prim(lp, i + 1);
 				}
 			}
-			else { // solve as MIP problem
-				//double objval = glp_mip_obj_val(lp);
-				//std::cout << "objective: " << objval << std::endl;
+			else { // MIP problem
+				objective_value_ = glp_mip_obj_val(lp);
 				assert(variables.size() == glp_get_num_cols(lp));
 				result_.resize(variables.size());
 				for (std::size_t i = 0; i < variables.size(); ++i) {

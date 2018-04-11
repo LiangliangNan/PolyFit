@@ -177,7 +177,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 			   // will be set to 0 (i.e., we don't allow open surface)
 		}
 
-		constraint.set_bound(Constraint::FIXED, 0.0);
+		constraint.set_bounds(Constraint::FIXED, 0.0, 0.0);
 		program_.add_constraint(constraint);
 	}
 
@@ -193,7 +193,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 		edge_used_constraint.add_coefficient(var_edge_usage_idx, 1.0);
 		std::size_t var_edge_sharp_idx = edge_sharp_status[&fan];
 		edge_used_constraint.add_coefficient(var_edge_sharp_idx, -1.0);
-		edge_used_constraint.set_bound(Constraint::LOWER, 0.0);
+		edge_used_constraint.set_bounds(Constraint::LOWER, 0.0, 0.0);
 		program_.add_constraint(edge_used_constraint);
 
 		for (std::size_t j = 0; j < fan.size(); ++j) {
@@ -207,16 +207,16 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 
 				if (plane1 != plane2) {
 					// the constraint is:
-					//model.addConstr(X[var_edge_sharp_idx] + M * (3 - (X[fid1] + X[fid2] + X[var_edge_usage_idx])) >= 1);
+					//X[var_edge_sharp_idx] + M * (3 - (X[fid1] + X[fid2] + X[var_edge_usage_idx])) >= 1
 					// which equals to  
-					//model.addConstr(X[var_edge_sharp_idx] - M * X[fid1] - M * X[fid2] - M * X[var_edge_usage_idx] >= 1 - 3M);
+					//X[var_edge_sharp_idx] - M * X[fid1] - M * X[fid2] - M * X[var_edge_usage_idx] >= 1 - 3M
 
 					Constraint edge_sharp_constraint;
 					edge_sharp_constraint.add_coefficient(var_edge_sharp_idx, 1.0);
 					edge_sharp_constraint.add_coefficient(fid1, -M);
 					edge_sharp_constraint.add_coefficient(fid2, -M);
 					edge_sharp_constraint.add_coefficient(var_edge_usage_idx, -M);
-					edge_sharp_constraint.set_bound(Constraint::LOWER, 1.0 - 3.0 * M);
+					edge_sharp_constraint.set_bounds(Constraint::LOWER, 1.0 - 3.0 * M, 0.0);
 					program_.add_constraint(edge_sharp_constraint);
 				}
 			}
@@ -233,20 +233,20 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 	w.start();
 
 	LinearProgramSolver solver;
-	if (solver.solve(&program_, Method::LP_solver)) {
-		const std::vector<double>& X = solver.get_result();
-
-		if (Method::LP_solver == LinearProgramSolver::SCIP)
-			Logger::warn("-") << "SCIP solver is in preparation and will be available soon..." << std::endl;
+	if (solver.solve(&program_, Method::solver_name)) {
 		Logger::out("-") << "solving the binary program done. " << w.elapsed() << " sec" << std::endl;
 
 		// mark results
+		const std::vector<double>& X = solver.get_result();
 		std::vector<Map::Facet*> to_delete;
 		FOR_EACH_FACET(Map, model_, it) {
 			Map::Facet* f = it;
 			std::size_t idx = facet_indices[f];
-			if (static_cast<int>(X[idx]) == 0)
+			//if (static_cast<int>(X[idx]) == 0) { // Liangliang: be careful, floating point!!!
+			//if (static_cast<int>(X[idx]) != 1) { // Liangliang: be careful, floating point!!!
+			if (std::round(X[idx]) == 0) {
 				to_delete.push_back(f);
+			}
 		}
 
 		MapEditor editor(model_);

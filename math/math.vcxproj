@@ -46,7 +46,7 @@
     </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(GUROBI_DIR)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(GUROBI_DIR)\include;..\3rd_scip\scip;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;WIN64;_WINDOWS;_DEBUG;_USRDLL;MATH_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
@@ -65,7 +65,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(GUROBI_DIR)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(GUROBI_DIR)\include;..\3rd_scip\scip;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;WIN64;_WINDOWS;NDEBUG;_USRDLL;MATH_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>None</DebugInformationFormat>
@@ -111,6 +111,12 @@
     </ProjectReference>
     <ProjectReference Include="..\3rd_lpsolve\3rd_lpsolve.vcxproj">
       <Project>{1597a9ce-c201-4394-af0d-212e93f3b89c}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\3rd_scip\scip\libscip.vcxproj">
+      <Project>{9f304218-26a3-3673-a275-bee611e8c72d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\3rd_scip\soplex\libsoplex.vcxproj">
+      <Project>{c1d10cbf-2689-30c2-917f-f1dac0ae9d92}</Project>
     </ProjectReference>
     <ProjectReference Include="..\basic\basic.vcxproj">
       <Project>{b83a04f9-4270-4440-9d1a-80dcaab009c4}</Project>

@@ -925,7 +925,8 @@ int ios_driver(glp_tree *T)
 #if 0 /* 20/I-2018 */
          xprintf("WARNING: LONG-STEP DUAL SIMPLEX WILL BE USED\n");
 #else
-         xprintf("Long-step dual simplex will be used\n");
+		  // Liangliang: disable this message
+         //xprintf("Long-step dual simplex will be used\n");
 #endif
 #endif
       /* on entry to the B&B driver it is assumed that the active list

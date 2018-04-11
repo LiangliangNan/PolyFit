@@ -39,26 +39,24 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 
 			switch (var.bound_type())
 			{
-			case Variable::FIXED: // value known, actually not a variable 
-				set_bounds(lp, i + 1, var.get_bound(), var.get_bound());
+			case Variable::FIXED: { // value known, actually not a variable 
+				double bd = var.get_single_bound();
+				set_bounds(lp, i + 1, bd, bd);
 				break;
-
+			}
 			case Variable::LOWER:
-				set_lowbo(lp, i + 1, var.get_bound());
+				set_lowbo(lp, i + 1, var.get_single_bound());
 				break;
-
 			case Variable::UPPER:
-				set_upbo(lp, i + 1, var.get_bound());
+				set_upbo(lp, i + 1, var.get_single_bound());
 				break;
-
 			case Variable::DOUBLE: {
 				double lb = -DBL_MAX;
 				double ub = DBL_MAX;
-				var.get_bound(lb, ub);
+				var.get_double_bounds(lb, ub);
 				set_bounds(lp, i + 1, lb, ub);
 				break;
 			}
-
 			case Variable::FREE:
 			default:
 				set_unbounded(lp, i + 1);
@@ -111,18 +109,18 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 			switch (cstr.bound_type())
 			{
 			case Constraint::FIXED:
-				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), EQ, cstr.get_bound());
+				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), EQ, cstr.get_single_bound());
 				break;
 			case Constraint::LOWER:
-				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), GE, cstr.get_bound());
+				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), GE, cstr.get_single_bound());
 				break;
 			case Constraint::UPPER:
-				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), LE, cstr.get_bound());
+				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), LE, cstr.get_single_bound());
 				break;
 			case Constraint::DOUBLE: {
 				double lb = -DBL_MAX;
 				double ub = DBL_MAX;
-				cstr.get_bound(lb, ub);
+				cstr.get_double_bounds(lb, ub);
 				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), GE, lb);
 				add_constraintex(lp, static_cast<int>(colno.size()), sparserow.data(), colno.data(), LE, ub);
 				break;
@@ -136,8 +134,7 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 		int status = ::solve(lp);
 		switch (status) {
 		case 0: {
-			//double objval = get_objective(lp);
-			//std::cout << "objective: " << objval << std::endl;
+			objective_value_ = get_objective(lp);
 			result_.resize(variables.size());
 			get_variables(lp, result_.data());
 			break;

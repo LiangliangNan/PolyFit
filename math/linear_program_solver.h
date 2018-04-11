@@ -8,7 +8,7 @@
 class MATH_API LinearProgramSolver
 {
 public:
-	enum LP_Solver { GUROBI, SCIP, LPSOLVE, GLPK };
+	enum SolverName { GUROBI, SCIP, GLPK, LPSOLVE };
 
 	typedef LinearProgram<double>	LinearProgram;
 
@@ -20,7 +20,11 @@ public:
 	// NOTE: Gurobi solver recommended;
 	//		 The SCIP solver is about x10 slower than Gurobi;
 	//       LPSOLVE and GLPK may be too slow or even fail.
-	bool solve(const LinearProgram* program, LP_Solver solver = GUROBI);
+	bool solve(const LinearProgram* program, SolverName solver = GUROBI);
+
+	// returns the objective value
+	// NOTE: result is valid only if the solver succeeded
+	double get_objective_value() const { return objective_value_; }
 
 	// returns the result
 	// NOTE: (1) result is valid only if the solver succeeded
@@ -37,5 +41,6 @@ private:
 
 private:
 	std::vector<double> result_;
+	double				objective_value_;
 };
 

@@ -51,16 +51,15 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		for (std::size_t i = 0; i < variables.size(); ++i) {
 			const Variable& var = variables[i];
 
+			double lb, ub;
+			var.get_double_bounds(lb, ub);
+
 			char vtype = GRB_CONTINUOUS;
 			if (var.variable_type() == Variable::INTEGER)
 				vtype = GRB_INTEGER;
 			else if (var.variable_type() == Variable::BINARY)
 				vtype = GRB_BINARY;
 
-			double lb = -GRB_INFINITY;
-			double ub = GRB_INFINITY;
-			if (var.bound_type() == Variable::DOUBLE)
-				var.get_bound(lb, ub);
 			X[i] = model.addVar(lb, ub, 0.0, vtype);
 		}
 
@@ -96,17 +95,17 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 			switch (cstr.bound_type())
 			{
 			case Constraint::FIXED:
-				model.addConstr(expr == cstr.get_bound());
+				model.addConstr(expr == cstr.get_single_bound());
 				break;
 			case Constraint::LOWER:
-				model.addConstr(expr >= cstr.get_bound());
+				model.addConstr(expr >= cstr.get_single_bound());
 				break;
 			case Constraint::UPPER:
-				model.addConstr(expr <= cstr.get_bound());
+				model.addConstr(expr <= cstr.get_single_bound());
 				break;
 			case Constraint::DOUBLE: {
 				double lb, ub;
-				cstr.get_bound(lb, ub);
+				cstr.get_double_bounds(lb, ub);
 				model.addConstr(expr >= lb);
 				model.addConstr(expr <= ub);
 				break;
@@ -122,8 +121,7 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		int status = model.get(GRB_IntAttr_Status);
 		switch (status) {
 		case GRB_OPTIMAL: {
-			//double objval = model.get(GRB_DoubleAttr_ObjVal);
-			//std::cout << "objective: " << objval << std::endl;
+			objective_value_ = model.get(GRB_DoubleAttr_ObjVal);
 			result_.resize(variables.size());
 			for (std::size_t i = 0; i < variables.size(); ++i) {
 				result_[i] = X[i].get(GRB_DoubleAttr_X);

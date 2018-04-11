@@ -18,7 +18,7 @@ namespace Method {
 	// - a point considered to be on a plane, etc.
 	extern METHOD_API double coincident_threshold;
 
-	extern METHOD_API LinearProgramSolver::LP_Solver  LP_solver;
+	extern METHOD_API LinearProgramSolver::SolverName  solver_name;
 
 	//________________ names for various quality measures ____________________
 

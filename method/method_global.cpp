@@ -9,7 +9,7 @@ namespace Method {
 
 	double coincident_threshold = 1e-5;
 
-	LinearProgramSolver::LP_Solver LP_solver = LinearProgramSolver::GUROBI;
+	LinearProgramSolver::SolverName solver_name = LinearProgramSolver::GUROBI;
 
 	//________________ names for various quality measures ____________________
 

@@ -1,7 +1,9 @@
 #include "linear_program_solver.h"
 
 
-bool LinearProgramSolver::solve(const LinearProgram* program, LP_Solver solver /* = GUROBI */) {
+bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver /* = GUROBI */) {
+	result_.clear();
+
 	switch (solver) {
 	case GUROBI:
 		return _solve_GUROBI(program);
