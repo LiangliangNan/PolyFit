@@ -8,25 +8,6 @@ Please consider citing the above paper if you use the code/program (or part of i
 
 ---
 
-### Run PolyFit
-- Download executable/binary files (tested on 64-bit Windows 10 only): 
-  https://github.com/LiangliangNan/PolyFit/releases
-
-  Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
-
-- Follow the hints on the screen to produce your results.
-  
-  Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps.
-
-### About the solvers
-Four solvers, namely Gurobi, SCIP, GLPK, and lp_solve, are provided (with source code) in PolyFit. The Gurobi solver is more efficient and reliable and should always be your first choice. In case you want a fast but open source solver, please try SCIP, which is slower than Gurobi but acceptable. The GLPK and lp_solve solvers only manage to solve small problems. They are too slow (and may not guarantee to succeed). For example the data "Fig1", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license (free for academic use) from 
-https://user.gurobi.com/download/licenses/free-academic. 
-      
-### About the timing
-This demo implementation incorporates a progress logger in the user interface. Thus, running times should be (slightly) longer than those reported in our paper.     
-
----
-
 ### Build PolyFit from source code
 * Download the source code of PolyFit from GitHub: https://github.com/LiangliangNan/PolyFit
 * Install the dependencies (though versions specified have been tested, other versions should also work):
@@ -47,6 +28,16 @@ You should be able to build PolyFit on most platforms with little effort in edit
 
 ---
 
+### Run PolyFit
+- In addition to compiling PolyFit from the source code, prebuilt executable/binary files (tested on 64-bit Windows 10 only) are also available here: https://github.com/LiangliangNan/PolyFit/releases
+  Note: The release available might not be the latest stable one. I recommend building PolyFit from the source code (see below).
+
+- Follow the hints on the screen to produce your results.
+  
+  Our algorithm consists of few major steps. This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps.   
+
+---
+
 ### Data
 Test data can be downloaded from the project page of PolyFit:
 https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
@@ -60,6 +51,15 @@ PolyFit assumes that the planar segments are provided as input.
 Extracting planes has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be fine if some regions of the planes are missing), so I isolated this part from this demo version. 
 
 You can use my Mapple to extract planes from point clouds. Here is the link to Mapple: https://3d.bk.tudelft.nl/liangliang/software.html    After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extract Primitives'. To visualize the planes, change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes as bvg (**B**inary **V**ertex **G**roup) format. The ASCII format vg also works but slow.
+
+---
+
+### About the solvers
+Four solvers, namely Gurobi, SCIP, GLPK, and lp_solve, are provided (with source code) in PolyFit. The Gurobi solver is more efficient and reliable and should always be your first choice. In case you want a fast but open source solver, please try SCIP, which is slower than Gurobi but acceptable. The GLPK and lp_solve solvers only manage to solve small problems. They are too slow (and may not guarantee to succeed). For example the data "Fig1", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license (free for academic use) from 
+https://user.gurobi.com/download/licenses/free-academic. 
+      
+### About the timing
+This demo implementation incorporates a progress logger in the user interface. Thus, running times should be (slightly) longer than those reported in our paper.  
 
 ---
 
