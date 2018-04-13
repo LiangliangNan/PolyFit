@@ -160,7 +160,7 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 				assert(variables.size() == glp_get_num_cols(lp));
 				result_.resize(variables.size());
 				for (std::size_t i = 0; i < variables.size(); ++i) {
-					result_[i] = glp_get_col_prim(lp, i + 1);
+					result_[i] = glp_get_col_prim(lp, i + 1);	 // glpk uses 1-based arrays
 				}
 			}
 			else { // MIP problem
@@ -168,7 +168,7 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 				assert(variables.size() == glp_get_num_cols(lp));
 				result_.resize(variables.size());
 				for (std::size_t i = 0; i < variables.size(); ++i) {
-					result_[i] = glp_mip_col_val(lp, i + 1);
+					result_[i] = glp_mip_col_val(lp, i + 1);	 // glpk uses 1-based arrays
 				}
 			}
 			break;

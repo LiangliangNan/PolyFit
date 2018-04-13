@@ -343,6 +343,9 @@ void MainWindow::createToolBar()
 	solverBox->setFixedHeight(23);
 	solverBox->setEditable(false);
 	solverBox->addItem("GUROBI");
+#ifdef HAS_CBC_SOLVER 
+	solverBox->addItem("CBC");
+#endif
 	solverBox->addItem("SCIP");
 	solverBox->addItem("GLPK");
 	solverBox->addItem("LPSOLVE");

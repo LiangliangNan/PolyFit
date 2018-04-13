@@ -25,10 +25,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <vector>
 
+
+
+//#define HAS_CBC_SOLVER
+
 class MATH_API LinearProgramSolver
 {
 public:
-	enum SolverName { GUROBI, SCIP, GLPK, LPSOLVE };
+	enum SolverName { 
+		GUROBI, 
+
+#ifdef HAS_CBC_SOLVER
+		CBC,
+#endif
+		SCIP, 
+		GLPK, 
+		LPSOLVE
+	};
 
 	typedef LinearProgram<double>	LinearProgram;
 
@@ -54,6 +67,9 @@ public:
 
 private:
 	bool _solve_GUROBI(const LinearProgram* program);
+#ifdef HAS_CBC_SOLVER
+	bool _solve_CBC(const LinearProgram* program);
+#endif
 	bool _solve_SCIP(const LinearProgram* program);
 	bool _solve_GLPK(const LinearProgram* program);
 	bool _solve_LPSOLVE(const LinearProgram* program);

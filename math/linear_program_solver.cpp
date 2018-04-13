@@ -32,6 +32,10 @@ bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver 
 	switch (solver) {
 	case GUROBI:
 		return _solve_GUROBI(program);
+#ifdef HAS_CBC_SOLVER
+	case CBC:
+		return _solve_CBC(program);
+#endif
 	case GLPK:
 		return _solve_GLPK(program);
 	case LPSOLVE:
