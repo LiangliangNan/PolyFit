@@ -165,7 +165,6 @@ public:
 	LinearProgram() : objective_sense_(UNDEFINED) {}
 	~LinearProgram() {}
 
-	// num of binary variables
 	void add_variable(const Variable& var) { variables_.push_back(var);	}
 	void add_variables(const std::vector<Variable>& vars) {	variables_.insert(variables_.end(), vars.begin(), vars.end()); }
 	const std::vector<Variable>& variables() const { return variables_;	}
@@ -178,6 +177,7 @@ public:
 	const Objective& objective() const { return objective_; }
 	Sense objective_sense() const { return objective_sense_; }
 
+	// add an existing constraint to the current problem
 	void add_constraint(const Constraint& cstr) { 
 		if (cstr.bound_type() == Constraint::FREE) {
 			std::cerr << "incomplete constraint: no bound(s) specified. Constraint ignored." << std::endl;
@@ -185,6 +185,8 @@ public:
 		}
 		constraints_.push_back(cstr); 
 	}
+
+	// add a set of existing constraints to the current problem
 	void add_constraints(const std::vector<Constraint>& cstrs) {
 		for (std::size_t i = 0; i < cstrs.size(); ++i)
 			add_constraint(cstrs[i]);
