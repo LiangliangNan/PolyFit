@@ -53,10 +53,10 @@ public:
 	Map* generate(PolyFitInfo* polyfit_info);
 
 private:
-	Map* compute_proxy_mesh(std::vector<Plane3d*>& supporting_planes);
-
 	// construct mesh for the bbox of the point set
 	Map* construct_bbox_mesh(std::vector<Plane3d*>& supporting_planes);
+
+	Map* compute_proxy_mesh(Map* bbox_mesh);
 
 	// pairwise cut
 	void pairwise_cut(Map* mesh);
@@ -94,6 +94,8 @@ private:
 
 	// collect all faces in 'mesh' that intersect 'face'
 	std::set<MapTypes::Facet*> collect_intersecting_faces(MapTypes::Facet* face, Map* mesh);
+
+	void triplet_intersection(const std::vector<Plane3d*>& supporting_planes);
 
 	// query the intersecting point for existing data base, i.e., triplet_intersection_
 	bool query_intersection(Plane3d* plane1, Plane3d* plane2, Plane3d* plane3, vec3& p);
