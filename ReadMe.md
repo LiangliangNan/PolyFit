@@ -17,7 +17,7 @@ Please consider citing the above paper if you use the code/program (or part of i
     http://www.cgal.org/index.html
   - boost (v1.64. Not a direct dependence, but CGAL relies on it):
     http://www.boost.org/
-  - Gurobi (v7.5.1, v7.52, 64 bit). You may download it and obtain an academic license from 
+  - Gurobi (v7.5.1, v7.52, v8.0, 64 bit). You may download it and obtain an academic license from 
     http://www.gurobi.com/
 * Build PolyFit
   Project files for the following IDEs (Integrated Development Environment) are provided:
