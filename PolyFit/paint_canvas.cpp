@@ -627,8 +627,8 @@ void PaintCanvas::generateFacetHypothesis() {
 	Logger::out("-") << "generating plane hypothesis..." << std::endl;
 
 	StopWatch w;
-	HypothesisGenerator gen(point_set_);
-	hypothesis_mesh_ = gen.apply(&polyfit_info_);
+	HypothesisGenerator hypo(point_set_);
+	hypothesis_mesh_ = hypo.generate(&polyfit_info_);
 	if (hypothesis_mesh_) {
 		Logger::out("-") << "done. " << w.elapsed() << " sec." << std::endl;
 

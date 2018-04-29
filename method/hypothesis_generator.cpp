@@ -209,7 +209,7 @@ void HypothesisGenerator::refine_planes() {
 }
 
 
-void HypothesisGenerator::extract_valid_vertex_groups(std::vector<Plane3d*>& supporting_planes) {
+void HypothesisGenerator::collect_valid_planes(std::vector<Plane3d*>& supporting_planes) {
 	supporting_planes.clear();
 	plane_segments_.clear();
 	vertex_group_plane_.clear();
@@ -223,6 +223,28 @@ void HypothesisGenerator::extract_valid_vertex_groups(std::vector<Plane3d*>& sup
 		Plane3d* plane = new Plane3d(g->plane());
 		supporting_planes.push_back(plane);
 		vertex_group_plane_[g] = plane;
+	}
+
+	//////////////////////////////////////////////////////////////////////////
+
+	std::sort(supporting_planes.begin(), supporting_planes.end());
+
+	triplet_intersection_.clear();
+	for (std::size_t i = 0; i < supporting_planes.size(); ++i) {
+		Plane3d* plane1 = supporting_planes[i];
+		for (std::size_t j = i + 1; j < supporting_planes.size(); ++j) {
+			Plane3d* plane2 = supporting_planes[j];
+			for (std::size_t k = j + 1; k < supporting_planes.size(); ++k) {
+				Plane3d* plane3 = supporting_planes[k];
+
+				assert(plane1 < plane2);
+				assert(plane2 < plane3);
+
+				vec3 p;
+				if (intersection_plane_triplet(plane1, plane2, plane3, p))
+					triplet_intersection_[plane1][plane2][plane3] = p; // store the intersection in our data base
+			}
+		}
 	}
 }
 
@@ -573,7 +595,7 @@ void HypothesisGenerator::compute_intersections(
 	new_vts.clear();
 
 	double on_plane_threshold = Method::coincident_threshold * Method::coincident_threshold;
-	Plane3d* plane = face_attrib_supporting_plane_[cutter];
+	Plane3d* plane = facet_attrib_supporting_plane_[cutter];
 
 	Map::Halfedge* h = f->halfedge();
 	do {
@@ -635,7 +657,7 @@ MapTypes::Vertex* HypothesisGenerator::split_edge(const EdgePos& ep, MapEditor* 
 	}
 
 	vertex_source_planes_[v] = sfs;
-	vertex_source_planes_[v].insert(face_attrib_supporting_plane_[cutter]);
+	vertex_source_planes_[v].insert(facet_attrib_supporting_plane_[cutter]);
 
 	return v;
 }
@@ -706,10 +728,10 @@ std::vector<Map::Facet*> HypothesisGenerator::cut(MapTypes::Facet* f, MapTypes::
 		if (editor.can_split_facet(h0, h1)) {
 			Map::Halfedge* h = editor.split_facet(h0, h1);
 			if (h) {
-				edge_source_planes_[h].insert(face_attrib_supporting_plane_[f]);
-				edge_source_planes_[h].insert(face_attrib_supporting_plane_[cutter]);
-				edge_source_planes_[h->opposite()].insert(face_attrib_supporting_plane_[f]);
-				edge_source_planes_[h->opposite()].insert(face_attrib_supporting_plane_[cutter]);
+				edge_source_planes_[h].insert(facet_attrib_supporting_plane_[f]);
+				edge_source_planes_[h].insert(facet_attrib_supporting_plane_[cutter]);
+				edge_source_planes_[h->opposite()].insert(facet_attrib_supporting_plane_[f]);
+				edge_source_planes_[h->opposite()].insert(facet_attrib_supporting_plane_[cutter]);
 
 				Map::Facet* f1 = h->facet();
 				facet_attrib_supporting_vertex_group_[f1] = g;
@@ -730,10 +752,8 @@ std::vector<Map::Facet*> HypothesisGenerator::cut(MapTypes::Facet* f, MapTypes::
 }
 
 
-void HypothesisGenerator::pairwise_cut(Map* mesh, const std::vector<Plane3d*>& supporting_planes)
+void HypothesisGenerator::pairwise_cut(Map* mesh)
 {
-	triplet_intersection(supporting_planes);
-
 	std::vector<MapTypes::Facet*> all_faces;
 	FOR_EACH_FACET(Map, mesh, it) {
 		MapTypes::Facet* f = it;
@@ -806,31 +826,6 @@ bool HypothesisGenerator::intersection_plane_triplet(const Plane3d* plane1, cons
 }
 
 
-void HypothesisGenerator::triplet_intersection(const std::vector<Plane3d*>& supporting_planes) {
-	triplet_intersection_.clear();
-
-	std::vector<Plane3d*> all_planes = supporting_planes;
-	std::sort(all_planes.begin(), all_planes.end());
-
-	for (std::size_t i = 0; i < all_planes.size(); ++i) {
-		Plane3d* plane1 = all_planes[i];
-		for (std::size_t j = i + 1; j < all_planes.size(); ++j) {
-			Plane3d* plane2 = all_planes[j];
-			for (std::size_t k = j + 1; k < all_planes.size(); ++k) {
-				Plane3d* plane3 = all_planes[k];
-
-				assert(plane1 < plane2);
-				assert(plane2 < plane3);
-
-				vec3 p;
-				if (intersection_plane_triplet(plane1, plane2, plane3, p))
-					triplet_intersection_[plane1][plane2][plane3] = p; // store the intersection in our data base
-			}
-		}
-	}
-}
-
-
 bool HypothesisGenerator::query_intersection(Plane3d* plane1, Plane3d* plane2, Plane3d* plane3, vec3& p) {
 	Plane3d* min_plane = ogf_min(plane1, plane2, plane3);
 	Plane3d* max_plane = ogf_max(plane1, plane2, plane3);
@@ -860,7 +855,7 @@ bool HypothesisGenerator::query_intersection(Plane3d* plane1, Plane3d* plane2, P
 
 
 
-Map* HypothesisGenerator::apply(PolyFitInfo* polyfit_info) {
+Map* HypothesisGenerator::generate(PolyFitInfo* polyfit_info) {
 	if (!pset_)
 		return nil;
 
@@ -869,7 +864,7 @@ Map* HypothesisGenerator::apply(PolyFitInfo* polyfit_info) {
 		return nil;
 	}
 
-	extract_valid_vertex_groups(polyfit_info->planes);
+	collect_valid_planes(polyfit_info->planes);
 
 	Map* mesh = compute_proxy_mesh(polyfit_info->planes);
 	if (!mesh)
@@ -878,11 +873,11 @@ Map* HypothesisGenerator::apply(PolyFitInfo* polyfit_info) {
 	check_source_planes(mesh);
 
 	facet_attrib_supporting_vertex_group_.bind(mesh, Method::facet_attrib_supporting_vertex_group);
-	face_attrib_supporting_plane_.bind(mesh, "FacetSupportingPlane");
+	facet_attrib_supporting_plane_.bind(mesh, "FacetSupportingPlane");
 	edge_source_planes_.bind(mesh, "EdgeSourcePlanes");
 	vertex_source_planes_.bind(mesh, "VertexSourcePlanes");
 
-	pairwise_cut(mesh, polyfit_info->planes);
+	pairwise_cut(mesh);
 	check_source_planes(mesh);
 
 #ifdef REMOVE_DEGENERATE_FACES
@@ -895,7 +890,7 @@ Map* HypothesisGenerator::apply(PolyFitInfo* polyfit_info) {
 #endif
 
 	facet_attrib_supporting_vertex_group_.unbind();
-	face_attrib_supporting_plane_.unbind();
+	facet_attrib_supporting_plane_.unbind();
 	edge_source_planes_.unbind();
 	vertex_source_planes_.unbind();
 

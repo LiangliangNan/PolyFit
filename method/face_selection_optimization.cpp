@@ -55,7 +55,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 
 	edge_source_planes_.bind_if_defined(model_, "EdgeSourcePlanes");
 	vertex_source_planes_.bind_if_defined(model_, "VertexSourcePlanes");
-	face_attrib_supporting_plane_.bind_if_defined(model_, "FacetSupportingPlane");
+	facet_attrib_supporting_plane_.bind_if_defined(model_, "FacetSupportingPlane");
 
 	//////////////////////////////////////////////////////////////////////////
 
@@ -198,11 +198,11 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 
 		for (std::size_t j = 0; j < fan.size(); ++j) {
 			MapTypes::Facet* f1 = fan[j]->facet();
-			Plane3d* plane1 = face_attrib_supporting_plane_[f1];
+			Plane3d* plane1 = facet_attrib_supporting_plane_[f1];
 			std::size_t fid1 = facet_indices[f1];
 			for (std::size_t k = j + 1; k < fan.size(); ++k) {
 				MapTypes::Facet* f2 = fan[k]->facet();
-				Plane3d* plane2 = face_attrib_supporting_plane_[f2];
+				Plane3d* plane2 = facet_attrib_supporting_plane_[f2];
 				std::size_t fid2 = facet_indices[f2];
 
 				if (plane1 != plane2) {
@@ -294,5 +294,5 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 
 	vertex_source_planes_.unbind();
 	edge_source_planes_.unbind();
-	face_attrib_supporting_plane_.unbind();
+	facet_attrib_supporting_plane_.unbind();
 }

@@ -102,6 +102,9 @@
     <ClCompile Include="circle.c" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\math\math.vcxproj">
+      <Project>{de0a5c55-3bd4-4cc3-aa21-a57c577f4584}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\scip\libscip.vcxproj">
       <Project>{9f304218-26a3-3673-a275-bee611e8c72d}</Project>
     </ProjectReference>

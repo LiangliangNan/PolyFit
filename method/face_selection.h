@@ -65,7 +65,7 @@ private:
 	MapFacetAttribute<double>		facet_attrib_facet_area_;
 	MapFacetAttribute<double>		facet_attrib_covered_area_;
 
-	MapFacetAttribute<Plane3d*>					face_attrib_supporting_plane_;
+	MapFacetAttribute<Plane3d*>					facet_attrib_supporting_plane_;
 	MapVertexAttribute< std::set<Plane3d*> >	vertex_source_planes_;
 	MapHalfedgeAttribute< std::set<Plane3d*> >	edge_source_planes_;
 

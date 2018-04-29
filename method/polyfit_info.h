@@ -47,7 +47,6 @@ public:
 	float				   max_dist;	// maximum distance to the supporting plane
 
 	MapFacetAttribute<VertexGroup*> facet_attrib_supporting_vertex_group;
-	MapFacetAttribute<Plane3d*>		face_attrib_supporting_plane;
 
 	MapFacetAttribute<double>		facet_attrib_supporting_point_num;
 	MapFacetAttribute<double>		facet_attrib_facet_area;
