@@ -19,7 +19,7 @@ You can also build PolyFit from the source code:
   - [CGAL](http://www.cgal.org/index.html) (v4.10, v4.11.1 have been tested)
    
 * Build PolyFit 
-  - PolyFit.sln: for Visual Studio (tested on 64bits Windows 10)
+  - PolyFit.sln: for Microsoft Visual Studio (tested on 64bits Windows 10)
   - PolyFit.pro: QtCreator (for macOS, Linux, Windows, etc.)
   
 ---
@@ -32,7 +32,7 @@ Super easy! This demo version provides a user interface with a few buttons (with
 ### Data
 Some test data can be downloaded from the [project page](https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html).
 
-More infomation about the data (e.g., data format) are described [here](https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.txt).
+More infomation about the data (e.g., data format) are described [here](https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.md).
 
 #### Plane extraction
 PolyFit assumes that the planar segments are provided as input. 
