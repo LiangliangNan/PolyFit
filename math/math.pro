@@ -5,6 +5,7 @@
 #-------------------------------------------------
 
 CONFIG -= qt
+CONFIG += c++11  # for unordered_map
 
 TARGET = math
 TEMPLATE = lib
@@ -14,8 +15,6 @@ win32 { DEFINES += WIN32 WIN64 }
 
 CONFIG(debug, debug|release) { DEFINES += _DEBUG }
 CONFIG(release, debug|release) { DEFINES += NDEBUG }
-
-QMAKE_CXXFLAGS += -std=c++11  # for unordered_map
 
 
 SOURCES += \
