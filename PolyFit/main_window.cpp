@@ -592,7 +592,7 @@ void MainWindow::optimization() {
     if (solverString == "GLPK")
 		canvas()->optimization(LinearProgramSolver::GLPK);
 #ifdef HAS_GUROBI_SOLVER
-    ellse if (solverString == "GUROBI")
+    else if (solverString == "GUROBI")
         canvas()->optimization(LinearProgramSolver::GUROBI);
 #endif
 	else if (solverString == "LPSOLVE")
