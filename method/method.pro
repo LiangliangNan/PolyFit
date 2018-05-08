@@ -20,8 +20,7 @@ CONFIG(release, debug|release) { DEFINES += NDEBUG }
 SOURCES += \
     alpha_shape_boundary.cpp \
     alpha_shape_mesh.cpp \
-    face_selection_gurobi.cpp \
-    face_selection_lpsolve.cpp \
+    face_selection_optimization.cpp \
     face_selection.cpp \
     hypothesis_generator.cpp \
     method_global.cpp \
@@ -40,10 +39,7 @@ HEADERS += \
     polyfit_info.h
 
 INCLUDEPATH += . \
-#    $$quote($(CGAL_DIR)/include) \
-#    $$quote($(CGAL_DIR)/include) \
-#     $$PWD/../3rd_party/numeric_stuff/SuiteSparse-4.4.5/SuiteSparse_config \
-#     $$PWD/../3rd_party/numeric_stuff/SuiteSparse-4.4.5/AMD/Include
+#    $$quote($(CGAL_DIR)/include)
 
 DEPENDPATH += .
 
@@ -67,13 +63,11 @@ unix:!symbian {
 win32: {
     INCLUDEPATH += $$quote($(CGAL_DIR)/include) \
                    $$quote($(BOOST_DIR)) \
-                   $$quote($(CGAL_DIR)/auxiliary/gmp/include) \
-                   $$quote($(GUROBI_DIR)/include)
+                   $$quote($(CGAL_DIR)/auxiliary/gmp/include)
 
     DEPENDPATH +=  $$quote($(CGAL_DIR)/include) \
                    $$quote($(BOOST_DIR)) \
-                   $$quote($(CGAL_DIR)/auxiliary/gmp/include) \
-                   $$quote($(GUROBI_DIR)/include)
+                   $$quote($(CGAL_DIR)/auxiliary/gmp/include)
 
 #    CONFIG(release, debug|release): LIBS += $(CGAL_DIR)/lib/libCGAL-vc140-mt-4.11.1.lib
 #    else:CONFIG(debug, debug|release): LIBS += $(CGAL_DIR)/lib/libCGAL-vc140-mt-gd-4.11.1.lib
@@ -91,20 +85,6 @@ else: {
 
     LIBS += -L$$PWD/../../../../../../opt/local/lib/ -lgmp.10
     LIBS += -L$$PWD/../../../../../../opt/local/lib/ -lCGAL.13.0.1
-
-
-    # Gurobi
-    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.11  # seems it does not work with higher version macOS?
-
-    INCLUDEPATH += $$PWD/../../../../../../Library/gurobi752/mac64/include
-    DEPENDPATH += $$PWD/../../../../../../Library/gurobi752/mac64/include
-
-#    QMAKE_CXXFLAGS += -std=c++11 -stdlib=libstdc++
-#    LIBS += -L$$PWD/../../../../../../Library/gurobi752/mac64/lib/ -lgurobi_stdc++
-#    PRE_TARGETDEPS += $$PWD/../../../../../../Library/gurobi752/mac64/lib/libgurobi_stdc++.a
-
-    LIBS += -L$$PWD/../../../../../../Library/gurobi752/mac64/lib/ -lgurobi_g++4.2
-    PRE_TARGETDEPS += $$PWD/../../../../../../Library/gurobi752/mac64/lib/libgurobi_g++4.2.a
 }
 
 
@@ -130,17 +110,3 @@ else:unix: LIBS += -L$$OUT_PWD/../model/ -lmodel
 
 INCLUDEPATH += $$PWD/../model
 DEPENDPATH += $$PWD/../model
-
-
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../3rd_lpsolve/release/ -l3rd_lpsolve
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../3rd_lpsolve/debug/ -l3rd_lpsolve
-else:unix: LIBS += -L$$OUT_PWD/../3rd_lpsolve/ -l3rd_lpsolve
-
-INCLUDEPATH += $$PWD/../3rd_lpsolve
-DEPENDPATH += $$PWD/../3rd_lpsolve
-
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../3rd_lpsolve/release/lib3rd_lpsolve.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../3rd_lpsolve/debug/lib3rd_lpsolve.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../3rd_lpsolve/release/3rd_lpsolve.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../3rd_lpsolve/debug/3rd_lpsolve.lib
-else:unix: PRE_TARGETDEPS += $$OUT_PWD/../3rd_lpsolve/lib3rd_lpsolve.a
