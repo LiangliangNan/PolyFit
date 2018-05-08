@@ -342,11 +342,15 @@ void MainWindow::createToolBar()
 	QComboBox* solverBox = new QComboBox(this);
 	solverBox->setFixedHeight(23);
 	solverBox->setEditable(false);
+#ifdef HAS_GUROBI_SOLVER
 	solverBox->addItem("GUROBI");
+#endif
 #ifdef HAS_CBC_SOLVER 
 	solverBox->addItem("CBC");
 #endif
+#ifdef HAS_SCIP_SOLVER
 	solverBox->addItem("SCIP");
+#endif
 	solverBox->addItem("GLPK");
 	solverBox->addItem("LPSOLVE");
 	connect(solverBox, SIGNAL(currentIndexChanged(const QString&)), mainCanvas_, SLOT(setActiveSolver(const QString&)));

@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "linear_program_solver.h"
 
 
-bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver /* = GUROBI */) {
+bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver) {
 	if (program->objective_sense() == LinearProgram::UNDEFINED) {
 		std::cerr << "incomplete objective: undefined objective sense." << std::endl;
 		return false;
@@ -30,8 +30,10 @@ bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver 
 	result_.clear();
 
 	switch (solver) {
+#ifdef HAS_GUROBI_SOLVER
 	case GUROBI:
 		return _solve_GUROBI(program);
+#endif
 #ifdef HAS_CBC_SOLVER
 	case CBC:
 		return _solve_CBC(program);
@@ -40,9 +42,14 @@ bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver 
 		return _solve_GLPK(program);
 	case LPSOLVE:
 		return _solve_LPSOLVE(program);
+#ifdef HAS_SCIP_SOLVER
 	case SCIP:
 	default: // use SCIP
 		return _solve_SCIP(program);
+#endif
 	}
+
+    std::cerr << "no such solver doesn't exist" << std::endl;
+    return false;
 }
 

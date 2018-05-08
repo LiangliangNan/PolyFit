@@ -454,18 +454,22 @@ PointSet* PaintCanvas::pointSet() const {
 
 
 void PaintCanvas::setActiveSolver(const QString& solver) {
-	if (solver == "GUROBI")
+    if (solver == "GLPK")
+            Method::solver_name = LinearProgramSolver::GLPK;
+        else if (solver == "LPSOLVE")
+            Method::solver_name = LinearProgramSolver::LPSOLVE;
+#ifdef HAS_GUROBI_SOLVER
+    else if (solver == "GUROBI")
 		Method::solver_name = LinearProgramSolver::GUROBI;
+#endif
 #ifdef HAS_CBC_SOLVER 
 	else if (solver == "CBC")
 		Method::solver_name = LinearProgramSolver::CBC;
 #endif
-	else if (solver == "SCIP")
+#ifdef HAS_SCIP_SOLVER
+    else if (solver == "SCIP")
 		Method::solver_name = LinearProgramSolver::SCIP;
-	else if (solver == "GLPK")
-		Method::solver_name = LinearProgramSolver::GLPK;
-	else if (solver == "LPSOLVE")
-		Method::solver_name = LinearProgramSolver::LPSOLVE;
+#endif
 	else 
 		Logger::err("-") << "no such solver: " << solver.toStdString() << std::endl;
 

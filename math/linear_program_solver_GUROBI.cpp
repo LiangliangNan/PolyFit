@@ -21,6 +21,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "linear_program_solver.h"
 #include "../basic/basic_types.h"
 
+#ifdef HAS_GUROBI_SOLVER
+
 #include <gurobi_c++.h>
 
 #ifdef WIN32
@@ -172,3 +174,4 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 	return false;
 }
 
+#endif

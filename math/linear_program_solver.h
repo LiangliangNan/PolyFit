@@ -25,20 +25,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <vector>
 
-
-
+//#define HAS_GUROBI_SOLVER
+//#define HAS_SCIP_SOLVER
 //#define HAS_CBC_SOLVER
 
 class MATH_API LinearProgramSolver
 {
 public:
 	enum SolverName { 
+#ifdef HAS_GUROBI_SOLVER
 		GUROBI, 
-
+#endif
 #ifdef HAS_CBC_SOLVER
 		CBC,
 #endif
+#ifdef HAS_SCIP_SOLVER
 		SCIP, 
+#endif
 		GLPK, 
 		LPSOLVE
 	};
@@ -53,7 +56,7 @@ public:
 	// NOTE: Gurobi solver recommended.
 	//		 The SCIP solver is slower than Gurobi but acceptable. 
 	//       GLPK and LPSOLVE may be too slow or even fail for large problems.
-	bool solve(const LinearProgram* program, SolverName solver = GUROBI);
+    bool solve(const LinearProgram* program, SolverName solver);
 
 	// returns the objective value
 	// NOTE: result is valid only if the solver succeeded
@@ -66,7 +69,9 @@ public:
 	const std::vector<double>& get_result() const { return result_; }
 
 private:
+#ifdef HAS_GUROBI_SOLVER
 	bool _solve_GUROBI(const LinearProgram* program);
+#endif
 #ifdef HAS_CBC_SOLVER
 	bool _solve_CBC(const LinearProgram* program);
 #endif

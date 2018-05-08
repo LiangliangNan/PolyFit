@@ -1,6 +1,8 @@
 /* GLPK configuration file (Microsoft Visual Studio Express) */
 
+#ifdef _WIN32
 #define __WOE__ 1
+
 
 #define TLS __declspec(thread)
 /* thread local storage-class specifier for reentrancy */
@@ -13,4 +15,5 @@
 /* MySQL shared library name if this feature is enabled */
 #endif
 
+#endif
 /* eof */
