@@ -291,7 +291,7 @@ SOURCES +=  \
     tpi/tpi_none.c \
     symmetry/compute_symmetry_none.cpp
 
-HEAD=  \
+HEADERS +=  \
     blockmemshell/memory.h \
     dijkstra/dijkstra.h \
     scip/bandit.h \

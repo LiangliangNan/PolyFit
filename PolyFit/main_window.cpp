@@ -588,10 +588,13 @@ void MainWindow::snapshotScreen() {
 
 void MainWindow::optimization() {
 	const QString& solverString = solverBox_->currentText();
-	if (solverString == "GUROBI")
-		canvas()->optimization(LinearProgramSolver::GUROBI);
-	else if (solverString == "GLPK")
+
+    if (solverString == "GLPK")
 		canvas()->optimization(LinearProgramSolver::GLPK);
+#ifdef HAS_GUROBI_SOLVER
+    ellse if (solverString == "GUROBI")
+        canvas()->optimization(LinearProgramSolver::GUROBI);
+#endif
 	else if (solverString == "LPSOLVE")
 		canvas()->optimization(LinearProgramSolver::LPSOLVE);
 	else // (solverString == "SCIP")
