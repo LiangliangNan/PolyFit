@@ -229,7 +229,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 	//////////////////////////////////////////////////////////////////////////
 
 	// Optimize model
-	Logger::out("-") << "solving the binary program...." << std::endl;
+	Logger::out("-") << "solving the binary program. Please wait..." << std::endl;
 	w.start();
 
 	LinearProgramSolver solver;

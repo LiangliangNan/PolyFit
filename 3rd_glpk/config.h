@@ -1,6 +1,6 @@
 /* GLPK configuration file (Microsoft Visual Studio Express) */
 
-#ifdef _WIN32
+#if defined (_WIN32) || defined (WIN32) || defined (_WIN64) || defined (WIN64)
 #define __WOE__ 1
 
 

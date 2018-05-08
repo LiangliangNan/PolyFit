@@ -39,7 +39,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\soplex\src;.\scip;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\3rd_soplex\src;.\scip;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4100;4244;4819</DisableSpecificWarnings>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <Optimization>Disabled</Optimization>
@@ -66,7 +66,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\soplex\src;.\scip;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\3rd_soplex\src;.\scip;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4100;4244;4819</DisableSpecificWarnings>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <Optimization>MaxSpeed</Optimization>
@@ -1138,11 +1138,6 @@
     <ClCompile Include="symmetry\compute_symmetry_none.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\soplex\libsoplex.vcxproj">
-      <Project>{c1d10cbf-2689-30c2-917f-f1dac0ae9d92}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="blockmemshell\memory.h" />
     <ClInclude Include="dijkstra\dijkstra.h" />
     <ClInclude Include="scip\bandit.h" />
@@ -1531,6 +1526,11 @@
     <ClInclude Include="scip\type_visual.h" />
     <ClInclude Include="scip\var.h" />
     <ClInclude Include="scip\visual.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\3rd_soplex\3rd_soplex.vcxproj">
+      <Project>{c1d10cbf-2689-30c2-917f-f1dac0ae9d92}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

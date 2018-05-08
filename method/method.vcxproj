@@ -87,9 +87,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\3rd_lpsolve\3rd_lpsolve.vcxproj">
-      <Project>{1597a9ce-c201-4394-af0d-212e93f3b89c}</Project>
-    </ProjectReference>
     <ProjectReference Include="..\basic\basic.vcxproj">
       <Project>{b83a04f9-4270-4440-9d1a-80dcaab009c4}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

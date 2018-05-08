@@ -25,8 +25,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <vector>
 
+#define HAS_SCIP_SOLVER
 //#define HAS_GUROBI_SOLVER
-//#define HAS_SCIP_SOLVER
 //#define HAS_CBC_SOLVER
 
 class MATH_API LinearProgramSolver

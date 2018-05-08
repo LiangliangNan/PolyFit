@@ -9,8 +9,8 @@ win32 { DEFINES += WIN32 WIN64 _WINDOWS }
 CONFIG(debug, debug|release) { DEFINES += _DEBUG   NO_SIGACTION NO_STRTOK_R _CRT_SECURE_NO_WARNINGS TPI_NONE NPARASCIP WITH_SCIPDEF ROUNDING_FE}
 CONFIG(release, debug|release) { DEFINES += NDEBUG NO_SIGACTION NO_STRTOK_R _CRT_SECURE_NO_WARNINGS TPI_NONE NPARASCIP WITH_SCIPDEF ROUNDING_FE}
 
-INCLUDEPATH += ../soplex/src
-
+INCLUDEPATH += \
+    ../3rd_soplex/src
 
 SOURCES +=  \
     blockmemshell/memory.c \
@@ -248,7 +248,7 @@ SOURCES +=  \
     scip/sepastore.c \
     scip/set.c \
     scip/sol.c \
-  scip/solve.c \
+    scip/solve.c \
     scip/stat.c \
     scip/syncstore.c \
     scip/table.c \
@@ -291,7 +291,7 @@ SOURCES +=  \
     tpi/tpi_none.c \
     symmetry/compute_symmetry_none.cpp
 
-HEADERS +=  \
+HEAD=  \
     blockmemshell/memory.h \
     dijkstra/dijkstra.h \
     scip/bandit.h \
@@ -680,4 +680,3 @@ HEADERS +=  \
     scip/type_visual.h \
     scip/var.h \
     scip/visual.h
-
