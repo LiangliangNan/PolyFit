@@ -9,7 +9,7 @@ Please consider citing the above paper if you use the code/program (or part of i
 ---
 
 ### Obtaining PolyFit
-Prebuilt executable files (for 64-bit Windows 10 only) are available [here](https://github.com/LiangliangNan/PolyFit/releases). 
+Prebuilt executable files (for both Windows and Mac) are available [here](https://github.com/LiangliangNan/PolyFit/releases). 
   
 You can also build PolyFit from the source code:
    

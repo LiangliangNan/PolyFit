@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "polyfit_info.h"
 #include "../math/math_types.h"
 #include "../math/linear_program.h"
+#include "../math/linear_program_solver.h"
 #include "../model/map_attributes.h"
 
 
@@ -51,8 +52,7 @@ public:
 	FaceSelection(PointSet* pset, Map* model);
 	~FaceSelection() {}
 
-	// optimization using Gurobi solver; This is the default solver
-	virtual void optimize(PolyFitInfo* polyfit_info);
+	virtual void optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::SolverName solver_name);
 
 private:
 	PointSet* pset_;

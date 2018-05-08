@@ -25,9 +25,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <vector>
 
-#define HAS_SCIP_SOLVER
-//#define HAS_GUROBI_SOLVER
-//#define HAS_CBC_SOLVER
+#ifdef _WIN32 // Liangliang: My MacBook is broken :-(
+#define HAS_GUROBI_SOLVER
+#endif
 
 class MATH_API LinearProgramSolver
 {
@@ -36,12 +36,7 @@ public:
 #ifdef HAS_GUROBI_SOLVER
 		GUROBI, 
 #endif
-#ifdef HAS_CBC_SOLVER
-		CBC,
-#endif
-#ifdef HAS_SCIP_SOLVER
 		SCIP, 
-#endif
 		GLPK, 
 		LPSOLVE
 	};
@@ -53,7 +48,7 @@ public:
 	~LinearProgramSolver() {}
 
 	// Solves the problem and returns false if fails.
-	// NOTE: Gurobi solver recommended.
+	// NOTE: Gurobi solver is recommended.
 	//		 The SCIP solver is slower than Gurobi but acceptable. 
 	//       GLPK and LPSOLVE may be too slow or even fail for large problems.
     bool solve(const LinearProgram* program, SolverName solver);
@@ -71,9 +66,6 @@ public:
 private:
 #ifdef HAS_GUROBI_SOLVER
 	bool _solve_GUROBI(const LinearProgram* program);
-#endif
-#ifdef HAS_CBC_SOLVER
-	bool _solve_CBC(const LinearProgram* program);
 #endif
 	bool _solve_SCIP(const LinearProgram* program);
 	bool _solve_GLPK(const LinearProgram* program);

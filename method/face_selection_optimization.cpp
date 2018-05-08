@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../math/linear_program_solver.h"
 
 
-void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
+void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::SolverName solver_name) {
 	if (pset_ == 0 || model_ == 0)
 		return;
 
@@ -233,7 +233,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info) {
 	w.start();
 
 	LinearProgramSolver solver;
-	if (solver.solve(&program_, Method::solver_name)) {
+	if (solver.solve(&program_, solver_name)) {
 		Logger::out("-") << "solving the binary program done. " << w.elapsed() << " sec" << std::endl;
 
 		// mark results

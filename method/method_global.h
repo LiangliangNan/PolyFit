@@ -3,7 +3,6 @@
 
 
 #include "method_common.h"
-#include "../math/linear_program_solver.h"
 
 #include <string>
 
@@ -17,8 +16,6 @@ namespace Method {
 	// - two points considered as coincident; 
 	// - a point considered to be on a plane, etc.
 	extern METHOD_API double coincident_threshold;
-
-	extern METHOD_API LinearProgramSolver::SolverName  solver_name;
 
 	//________________ names for various quality measures ____________________
 

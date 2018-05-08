@@ -52,6 +52,7 @@
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX64</TargetMachine>
@@ -72,6 +73,7 @@
       <StringPooling>true</StringPooling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <TargetMachine>MachineX64</TargetMachine>
@@ -96,7 +98,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="linear_program_solver.cpp" />
-    <ClCompile Include="linear_program_solver_CBC.cpp" />
     <ClCompile Include="linear_program_solver_GLPK.cpp" />
     <ClCompile Include="linear_program_solver_GUROBI.cpp" />
     <ClCompile Include="linear_program_solver_LPSOLVE.cpp" />

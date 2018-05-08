@@ -203,7 +203,7 @@ void MainWindow::createActions() {
 	connect(actionRefinePlanes, SIGNAL(triggered()), mainCanvas_, SLOT(refinePlanes()));
 	connect(actionGenerateFacetHypothesis, SIGNAL(triggered()), mainCanvas_, SLOT(generateFacetHypothesis()));
 	connect(actionGenerateQualityMeasures, SIGNAL(triggered()), mainCanvas_, SLOT(generateQualityMeasures()));
-	connect(actionOptimization, SIGNAL(triggered()), mainCanvas_, SLOT(optimization()));
+	connect(actionOptimization, SIGNAL(triggered()), this, SLOT(optimization()));
 
 	connect(checkBoxShowInput, SIGNAL(toggled(bool)), mainCanvas_, SLOT(setShowInput(bool)));
 	connect(checkBoxShowCandidates, SIGNAL(toggled(bool)), mainCanvas_, SLOT(setShowCandidates(bool)));
@@ -339,28 +339,22 @@ void MainWindow::createStatusBar()
 
 void MainWindow::createToolBar()
 {
-	QComboBox* solverBox = new QComboBox(this);
-	solverBox->setFixedHeight(23);
-	solverBox->setEditable(false);
+	solverBox_ = new QComboBox(this);
+	solverBox_->setFixedHeight(23);
+	solverBox_->setEditable(false);
+	solverBox_->addItem("SCIP");
 #ifdef HAS_GUROBI_SOLVER
-	solverBox->addItem("GUROBI");
+	solverBox_->addItem("GUROBI");
 #endif
-#ifdef HAS_CBC_SOLVER 
-	solverBox->addItem("CBC");
-#endif
-#ifdef HAS_SCIP_SOLVER
-	solverBox->addItem("SCIP");
-#endif
-	solverBox->addItem("GLPK");
-	solverBox->addItem("LPSOLVE");
-	connect(solverBox, SIGNAL(currentIndexChanged(const QString&)), mainCanvas_, SLOT(setActiveSolver(const QString&)));
+	solverBox_->addItem("GLPK");
+	solverBox_->addItem("LPSOLVE");
 
 	QLabel* label = new QLabel(this);
 	label->setText("    Solver");
 	label->setAlignment(Qt::AlignLeft);
 
 	QVBoxLayout* layout = new QVBoxLayout;
-	layout->addWidget(solverBox);
+	layout->addWidget(solverBox_);
 	layout->addWidget(label);
 
 	QWidget* widget = new QWidget(this);
@@ -589,4 +583,17 @@ void MainWindow::snapshotScreen() {
 	);
 
 	canvas()->snapshotScreen(snapshotFileName);
+}
+
+
+void MainWindow::optimization() {
+	const QString& solverString = solverBox_->currentText();
+	if (solverString == "GUROBI")
+		canvas()->optimization(LinearProgramSolver::GUROBI);
+	else if (solverString == "GLPK")
+		canvas()->optimization(LinearProgramSolver::GLPK);
+	else if (solverString == "LPSOLVE")
+		canvas()->optimization(LinearProgramSolver::LPSOLVE);
+	else // (solverString == "SCIP")
+		canvas()->optimization(LinearProgramSolver::SCIP);
 }

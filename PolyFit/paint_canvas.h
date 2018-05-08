@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../method/polyfit_info.h"
 #include "../model/point_set.h"
 #include "../model/map.h"
+#include "../math/linear_program_solver.h"
 
 
 class MainWindow;
@@ -91,12 +92,10 @@ public Q_SLOTS:
 
 	//////////////////////////////////////////////////////////////////////////
 
-	void setActiveSolver(const QString& solver);
-
 	void refinePlanes();
 	void generateFacetHypothesis();
 	void generateQualityMeasures();
-	void optimization();
+	void optimization(LinearProgramSolver::SolverName solver);
 
 	void setShowInput(bool);
 	void setShowCandidates(bool);

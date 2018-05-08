@@ -34,19 +34,13 @@ bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver)
 	case GUROBI:
 		return _solve_GUROBI(program);
 #endif
-#ifdef HAS_CBC_SOLVER
-	case CBC:
-		return _solve_CBC(program);
-#endif
 	case GLPK:
 		return _solve_GLPK(program);
 	case LPSOLVE:
 		return _solve_LPSOLVE(program);
-#ifdef HAS_SCIP_SOLVER
 	case SCIP:
 	default: // use SCIP
 		return _solve_SCIP(program);
-#endif
 	}
 
     std::cerr << "no such solver doesn't exist" << std::endl;

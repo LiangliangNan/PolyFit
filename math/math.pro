@@ -25,7 +25,6 @@ SOURCES += \
     quaternion.cpp \
     semi_definite_symmetric_eigen.cpp \
     linear_program_solver.cpp \
-    linear_program_solver_CBC.cpp \
     linear_program_solver_GLPK.cpp \
     linear_program_solver_LPSOLVE.cpp \
     linear_program_solver_SCIP.cpp \
@@ -80,18 +79,24 @@ DEPENDPATH += $$PWD/../basic
 
     # Gurobi
 
-
+win32 {
+CONFIG(release, debug|release): LIBS += -L$$PWD/../../../../../Install/gurobi800/win64/lib/ -lgurobi_c++md2017
+CONFIG(debug, debug|release): LIBS += -L$$PWD/../../../../../Install/gurobi800/win64/lib/ -lgurobi_c++mdd2017
+INCLUDEPATH += $$PWD/../../../../../Install/gurobi800/win64/include
+DEPENDPATH += $$PWD/../../../../../Install/gurobi800/win64/include
+}
+else {
 #QMAKE_CXXFLAGS += -stdlib=libc++
 #QMAKE_CXXFLAGS += -stdlib=libstdc++
 
 #QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.11  # seems it does not work with higher version macOS?
 
-macx: LIBS += -L$$PWD/../../../../../../Library/gurobi800/mac64/lib/ -lgurobi_stdc++
 
+LIBS += -L$$PWD/../../../../../../Library/gurobi800/mac64/lib/ -lgurobi_stdc++
 INCLUDEPATH += $$PWD/../../../../../../Library/gurobi800/mac64/include
 DEPENDPATH += $$PWD/../../../../../../Library/gurobi800/mac64/include
-
 macx: PRE_TARGETDEPS += $$PWD/../../../../../../Library/gurobi800/mac64/lib/libgurobi_stdc++.a
+}
 
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../3rd_lpsolve/release/ -l3rd_lpsolve
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../3rd_lpsolve/debug/ -l3rd_lpsolve
@@ -144,3 +149,5 @@ else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../3rd_
 else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../3rd_scip/release/3rd_scip.lib
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../3rd_scip/debug/3rd_scip.lib
 else:unix: PRE_TARGETDEPS += $$OUT_PWD/../3rd_scip/lib3rd_scip.a
+
+

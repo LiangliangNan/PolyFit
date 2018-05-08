@@ -453,30 +453,6 @@ PointSet* PaintCanvas::pointSet() const {
 }
 
 
-void PaintCanvas::setActiveSolver(const QString& solver) {
-    if (solver == "GLPK")
-            Method::solver_name = LinearProgramSolver::GLPK;
-        else if (solver == "LPSOLVE")
-            Method::solver_name = LinearProgramSolver::LPSOLVE;
-#ifdef HAS_GUROBI_SOLVER
-    else if (solver == "GUROBI")
-		Method::solver_name = LinearProgramSolver::GUROBI;
-#endif
-#ifdef HAS_CBC_SOLVER 
-	else if (solver == "CBC")
-		Method::solver_name = LinearProgramSolver::CBC;
-#endif
-#ifdef HAS_SCIP_SOLVER
-    else if (solver == "SCIP")
-		Method::solver_name = LinearProgramSolver::SCIP;
-#endif
-	else 
-		Logger::err("-") << "no such solver: " << solver.toStdString() << std::endl;
-
-	Logger::out("-") << "PolyFit will use " << solver.toStdString() << " solver" << std::endl;
-}
-
-
 void PaintCanvas::setShowInput(bool b) {
 	show_input_ = b;
 	update_all();
@@ -684,7 +660,7 @@ void PaintCanvas::generateQualityMeasures() {
 }
 
 
-void PaintCanvas::optimization() {
+void PaintCanvas::optimization(LinearProgramSolver::SolverName solver) {
 	if (!point_set_) {
 		Logger::warn("-") << "point set does not exist" << std::endl;
 		return;
@@ -712,7 +688,7 @@ void PaintCanvas::optimization() {
 
 	Map* mesh = Geom::duplicate(hypothesis_mesh_);
 	FaceSelection selector(point_set_, mesh);
-	selector.optimize(&polyfit_info_);
+	selector.optimize(&polyfit_info_, solver);
 
 	optimized_mesh_ = mesh;
 

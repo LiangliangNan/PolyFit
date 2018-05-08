@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 class QLabel;
+class QComboBox;
 class PaintCanvas;
 class QProgressBar;
 class WeightPanelClick;
@@ -74,6 +75,8 @@ public Q_SLOTS:
 	void resetWeights();
 	void setManualInputWeights(bool);
 
+	void optimization();
+
 	void about();
 
 private:
@@ -108,6 +111,7 @@ private:
 	QString			curCameraConfigFileDirectory_;
 
 	QProgressBar*	progress_bar_;
+	QComboBox*		solverBox_;
 
 	QLabel *statusLabel_,
 		*coordinateUnderMouseLabel_,

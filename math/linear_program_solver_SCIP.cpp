@@ -26,8 +26,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <iostream>
 
 
-#ifdef HAS_SCIP_SOLVER
-
 bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 	try {
 		typedef Variable<double>			Variable;
@@ -213,5 +211,3 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 	}
 	return false;
 }
-
-#endif

@@ -41,9 +41,6 @@
     <ClCompile Include="linear_program_solver_SCIP.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="linear_program_solver_CBC.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="box.h">
