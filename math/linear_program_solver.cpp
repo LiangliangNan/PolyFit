@@ -29,6 +29,9 @@ bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver)
 
 	result_.clear();
 
+	//save(*program, "C:\\Users\\lnan\\Dropbox\\tmp\\Fig4g.prb");
+	//save(*program, "C:\\Users\\lnan\\Dropbox\\tmp\\simulate_building.prb");
+	
 	switch (solver) {
 #ifdef HAS_GUROBI_SOLVER
 	case GUROBI:

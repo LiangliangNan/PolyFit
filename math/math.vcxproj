@@ -97,6 +97,7 @@
     <ClInclude Include="vecg.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="linear_program.cpp" />
     <ClCompile Include="linear_program_solver.cpp" />
     <ClCompile Include="linear_program_solver_GLPK.cpp" />
     <ClCompile Include="linear_program_solver_GUROBI.cpp" />

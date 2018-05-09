@@ -198,6 +198,8 @@ public:
 
 	std::size_t num_constraints() const { return constraints_.size(); }
 
+	std::size_t num_variables() const { return variables_.size(); }
+
 	std::size_t num_continuous_variables() const {
 		std::size_t num_continuous_var = 0;
 		for (std::size_t i = 0; i < variables_.size(); ++i) {
@@ -251,5 +253,7 @@ private:
 	Sense		objective_sense_;
 };
 
+
+bool MATH_API save(const LinearProgram<double>& program, const std::string& file);
 
 #endif

@@ -5,6 +5,7 @@
 #-------------------------------------------------
 
 CONFIG -= qt
+CONFIG += c++11  # for unordered_map
 
 TARGET = math
 TEMPLATE = lib
@@ -15,8 +16,6 @@ win32 { DEFINES += WIN32 WIN64 }
 CONFIG(debug, debug|release) { DEFINES += _DEBUG }
 CONFIG(release, debug|release) { DEFINES += NDEBUG }
 
-QMAKE_CXXFLAGS += -std=c++11  # for unordered_map
-
 
 SOURCES += \
     math_types.cpp \
@@ -24,6 +23,7 @@ SOURCES += \
     principal_axes.cpp \
     quaternion.cpp \
     semi_definite_symmetric_eigen.cpp \
+    linear_program.cpp \
     linear_program_solver.cpp \
     linear_program_solver_GLPK.cpp \
     linear_program_solver_LPSOLVE.cpp \
