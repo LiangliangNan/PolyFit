@@ -57,10 +57,9 @@ bool save(const LinearProgram<double>& program, const std::string& file) {
 
 		double lb, ub;
 		cstr.get_double_bounds(lb, ub);
-		output << "constraint: " << i << " " << cstr.bound_type() << " " << lb << " " << ub << " " << coeffs.size() << std::endl;
+		output << "constraint: " << i << " " << cstr.bound_type() << " " << lb << " " << ub << " " << coeffs.size() << " ";
 		for (; cur != coeffs.end(); ++cur)
 			output << cur->first << " " << cur->second << " ";
-
 		output << std::endl;
 	}
 
