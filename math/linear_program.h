@@ -163,8 +163,15 @@ public:
 	typedef LinearConstraint<FT>	Constraint;
 
 public:
-	LinearProgram() : objective_sense_(UNDEFINED) {}
+	LinearProgram() 
+		: objective_sense_(UNDEFINED)
+		, name_("unknown")
+	{}
+
 	~LinearProgram() {}
+
+	const std::string& name() const { return name_; }
+	void set_name(const std::string& name) { name_ = name; }
 
 	void add_variable(const Variable& var) { variables_.push_back(var);	}
 	void add_variables(const std::vector<Variable>& vars) {	variables_.insert(variables_.end(), vars.begin(), vars.end()); }
@@ -246,6 +253,8 @@ public:
 	}
 
 private:
+	std::string			name_;
+
 	std::vector<Variable>	variables_;
 	std::vector<Constraint>	constraints_;
 

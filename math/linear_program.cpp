@@ -18,6 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 #include "linear_program.h"
+#include "../basic/file_utils.h"
 
 #include <fstream>
 
@@ -32,6 +33,8 @@ bool save(const LinearProgram<double>& program, const std::string& file) {
 	typedef LinearExpression<double>	Objective;
 	typedef LinearConstraint<double>	Constraint;
 
+	const std::string& name = program.name();
+	output << "#problem: " << (name.empty() ? FileUtils::base_name(file) : name) << std::endl;
 	output << "num_variables: " << program.num_variables() << std::endl;
 	output << "num_constraints: " << program.num_constraints() << std::endl;
 	output << "optimization_direction: " << program.objective_sense() << std::endl;
