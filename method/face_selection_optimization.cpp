@@ -274,7 +274,8 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 					Map::Facet* f = e->facet();
 					if (f) { // some faces may be deleted
 						std::size_t fid = facet_indices[f];
-						if (static_cast<int>(X[fid]) == 1) {
+						// if (static_cast<int>(X[fid]) == 1) { // Liangliang: be careful, floating point!!!
+						if (static_cast<int>(std::round(X[fid])) == 1) {
 							edge_is_sharp[e] = true;
 							break;
 						}
