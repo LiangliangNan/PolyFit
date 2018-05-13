@@ -86,8 +86,8 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 		// set objective 
 
 		const Objective& objective = program->objective();
-		const std::unordered_map<std::size_t, double>& obj_coeffs = objective.coefficients();
-		std::unordered_map<std::size_t, double>::const_iterator it = obj_coeffs.begin();
+		const std::map<std::size_t, double>& obj_coeffs = objective.coefficients();
+		std::map<std::size_t, double>::const_iterator it = obj_coeffs.begin();
 		for (; it != obj_coeffs.end(); ++it) {
 			std::size_t var_idx = it->first;
 			double coeff = it->second;
@@ -101,8 +101,8 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 
 		for (std::size_t i = 0; i < constraints.size(); ++i) {
 			const Constraint& cstr = constraints[i];
-			const std::unordered_map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
-			std::unordered_map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
+			const std::map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
+			std::map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
 
 			std::vector<int>	colno(cstr_coeffs.size() + 1, 0);		// glpk uses 1-based arrays
 			std::vector<double> sparserow(cstr_coeffs.size() + 1, 0.0); // glpk uses 1-based arrays

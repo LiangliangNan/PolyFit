@@ -110,13 +110,18 @@ void PaintCanvas::clear() {
 	polyfit_info_.clear();
 }
 
-
+// in case you're running PolyFit on an ancient machine where 
+// OpenGL is not supported (though it is minimum). In such a
+// case, all rendering will be disabled.
+static bool fatal_opengl_error = false;
 void PaintCanvas::init()
 {
 	GLenum err = glewInit();
 	if (GLEW_OK != err) {
 		// Problem: glewInit failed, something is seriously wrong. 
 		Logger::err("-") << glewGetErrorString(err) << std::endl;
+		Logger::err("-") << "OpenGL error and rendering disabled. You are still able to run PolyFit and export the result." << std::endl;
+		fatal_opengl_error = true;
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -215,6 +220,10 @@ void PaintCanvas::init()
 
 
 void PaintCanvas::draw() {
+	if (fatal_opengl_error) {
+		return;
+	}
+
 	if (show_coord_sys_)
 		drawCornerAxis();
 

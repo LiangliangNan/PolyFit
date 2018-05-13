@@ -55,8 +55,8 @@ bool save(const LinearProgram<double>& program, const std::string& file) {
 	const std::vector<Constraint>& constraints = program.constraints();
 	for (std::size_t i = 0; i < constraints.size(); ++i) {
 		const Constraint& cstr = constraints[i];
-		const std::unordered_map<std::size_t, double>& coeffs = cstr.coefficients();
-		std::unordered_map<std::size_t, double>::const_iterator cur = coeffs.begin();
+		const std::map<std::size_t, double>& coeffs = cstr.coefficients();
+		std::map<std::size_t, double>::const_iterator cur = coeffs.begin();
 
 		double lb, ub;
 		cstr.get_double_bounds(lb, ub);
@@ -69,8 +69,8 @@ bool save(const LinearProgram<double>& program, const std::string& file) {
 	// objective
 	output << "#objective: num_coefficients, variable_index, coefficient, ..." << std::endl;
 	const Objective& obj = program.objective();
-	const std::unordered_map<std::size_t, double>& obj_coeffs = obj.coefficients();
-	std::unordered_map<std::size_t, double>::const_iterator cur = obj_coeffs.begin();
+	const std::map<std::size_t, double>& obj_coeffs = obj.coefficients();
+	std::map<std::size_t, double>::const_iterator cur = obj_coeffs.begin();
 	output << obj_coeffs.size() << std::endl;
 	for (; cur != obj_coeffs.end(); ++cur)
 		output << cur->first << " " << cur->second << std::endl;

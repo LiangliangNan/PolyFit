@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <vector>
 #include <cassert>
-#include <unordered_map>
+#include <map>
 #include <iostream>
 #include <cfloat>
 
@@ -133,12 +133,13 @@ public:
 			coefficients_[var_index] += coeff;
 	}
 
-	const std::unordered_map<std::size_t, FT>& coefficients() const {
+	const std::map<std::size_t, FT>& coefficients() const {
 		return coefficients_;
 	}
 
 private:
-	std::unordered_map<std::size_t, FT>	coefficients_;
+	// stored in an increasing order
+	std::map<std::size_t, FT>	coefficients_;
 };
 
 
@@ -154,8 +155,6 @@ template <class FT>
 class LinearProgram
 {
 public:
-	enum Solver { GUROBI, SCIP, LPSOLVE, GLPK };
-
 	enum Sense  { MINIMIZE, MAXIMIZE, UNDEFINED };
 
 	typedef Variable<FT>			Variable;

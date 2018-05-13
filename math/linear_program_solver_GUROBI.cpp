@@ -85,8 +85,8 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		GRBLinExpr obj;
 
 		const Objective& objective = program->objective();
-		const std::unordered_map<std::size_t, double>& obj_coeffs = objective.coefficients();
-		std::unordered_map<std::size_t, double>::const_iterator it = obj_coeffs.begin();
+		const std::map<std::size_t, double>& obj_coeffs = objective.coefficients();
+		std::map<std::size_t, double>::const_iterator it = obj_coeffs.begin();
 		for (; it != obj_coeffs.end(); ++it) {
 			std::size_t var_idx = it->first;
 			double coeff = it->second;
@@ -99,8 +99,8 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		for (std::size_t i = 0; i < constraints.size(); ++i) {
 			GRBLinExpr expr;
 			const Constraint& cstr = constraints[i];
-			const std::unordered_map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
-			std::unordered_map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
+			const std::map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
+			std::map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
 			for (; cur != cstr_coeffs.end(); ++cur) {
 				std::size_t var_idx = cur->first;
 				double coeff = cur->second;
