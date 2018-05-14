@@ -48,10 +48,8 @@ Bounded::Bounded(
 	double lb /* = -infinity() */, 
 	double ub /* = +infinity() */
 )
-	: bound_type_(bt)
-	, lower_bound_(lb) 
-	, upper_bound_(ub)
 {
+	set_bounds(bt, lb, ub);
 }
 
 double Bounded::infinity() {
@@ -59,42 +57,34 @@ double Bounded::infinity() {
 }
 
 void Bounded::set_bounds(BoundType type, double lb, double ub) {
-	if (lb <= -infinity_ && ub >= infinity_) { // free variable
-		if (type != FREE)
-			std::cerr << "variable with bounds (" << lb << ", " << ub << ") should be a FREE variable" << std::endl;
-		lb = -infinity_;	// adjust the bound value
-		ub = +infinity_;	// adjust the bound value
-		bound_type_ = FREE;
+	switch (type)
+	{
+	case FIXED:
+		if (std::abs(lb - ub) > 1e-10)
+			std::cerr << "lower/upper bounds must be equal for FIXED bounds" << std::endl;
+		lower_bound_ = upper_bound_ = lb;
+		break;
+	case LOWER:		
+		lower_bound_ = lb;	
+		upper_bound_ = +infinity_;	// adjust the bound value
+		break;
+	case UPPER:	
+		lower_bound_ = -infinity_;	// adjust the bound value
+		upper_bound_ = ub;	
+		break;
+	case DOUBLE:
+		lower_bound_ = lb;
+		upper_bound_ = ub;
+		break;
+	case FREE:
+		lower_bound_ = -infinity_;	// adjust the bound value
+		upper_bound_ = +infinity_;	// adjust the bound value
+		break;
+	default:
+		std::cerr << "no FREE bound(s)" << std::endl;
+		break;
 	}
-	else if (lb > -infinity_ && ub < infinity_) {
-		if (lb == ub) {
-			if (type != FIXED)
-				std::cerr << "variable with bounds (" << lb << ", " << ub << ") should be a FIXED variable" << std::endl;
-			bound_type_ = FIXED;
-		}
-		else {
-			if (type != DOUBLE)
-				std::cerr << "(" << lb << ", " << ub << ") should be a DOUBLE bound" << std::endl;
-			bound_type_ = DOUBLE;
-		}
-	}
-	else if (lb > -infinity_ && ub >= infinity_) {
-		if (type != LOWER)
-			std::cerr << "(" << lb << ", " << ub << ") should be a LOWER bound" << std::endl;
-		ub = +infinity_;	// adjust the bound value
-		bound_type_ = LOWER;
-	}
-	else if (lb <= -infinity_ && ub < infinity_) {
-		if (type != UPPER)
-			std::cerr << "(" << lb << ", " << ub << ") should be a UPPER bound" << std::endl;
-		lb = -infinity_;	// adjust the bound value
-		bound_type_ = UPPER;
-	}
-	else
-		std::cerr << "fatal error: should not reach here" << std::endl;
-
-	lower_bound_ = lb;
-	upper_bound_ = ub;
+	bound_type_ = type;
 }
 
 void Bounded::set_bound(BoundType type, double value)  // for FIXED, LOWER, UPPER
