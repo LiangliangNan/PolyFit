@@ -19,7 +19,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "linear_program_solver.h"
-#include "../basic/basic_types.h"
 #include "../3rd_glpk/glpk.h"
 
 #include <iostream>
@@ -27,38 +26,30 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 	try {
-		typedef Variable<double>			Variable;
-		typedef LinearExpression<double>	Objective;
-		typedef LinearConstraint<double>	Constraint;
-
-		const std::vector<Variable>& variables = program->variables();
-		if (variables.empty()) {
-			std::cerr << "variable set is empty" << std::endl;
+		if (!check_program(program))
 			return false;
-		}
 
 		glp_prob* lp = glp_create_prob();
 		if (!lp) {
 			std::cerr << "error in creating a LP model" << std::endl;
 			return false;
 		}
-		glp_set_prob_name(lp, "unknown");
-		glp_set_obj_dir(lp, program->objective_sense() == LinearProgram::MINIMIZE ? GLP_MIN : GLP_MAX);
+		glp_set_prob_name(lp, program->name().c_str());
 
 		std::size_t num_integer_variables = 0;
 
 		// create variables
+		const std::vector<Variable*>& variables = program->variables();
 		glp_add_cols(lp, variables.size());
 		for (std::size_t i = 0; i < variables.size(); ++i) {
-			const Variable& var = variables[i];
-			const std::string& name = "x" + std::to_string(i + 1);
-			glp_set_col_name(lp, i + 1, name.data());
+			const Variable* var = variables[i];
+			glp_set_col_name(lp, i + 1, var->name().c_str());
 
-			if (var.variable_type() == Variable::INTEGER) {
+			if (var->variable_type() == Variable::INTEGER) {
 				glp_set_col_kind(lp, i + 1, GLP_IV);	// glpk uses 1-based arrays
 				++num_integer_variables;
 			}
-			else if (var.variable_type() == Variable::BINARY) {
+			else if (var->variable_type() == Variable::BINARY) {
 				glp_set_col_kind(lp, i + 1, GLP_BV);	// glpk uses 1-based arrays
 				++num_integer_variables;
 			}
@@ -67,7 +58,7 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 			}
 
 			int bound_type = GLP_FR;
-			switch (var.bound_type())
+			switch (var->bound_type())
 			{
 			case Variable::FIXED:  bound_type = GLP_FX; break;
 			case Variable::LOWER:  bound_type = GLP_LO; break;
@@ -79,62 +70,68 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 			}
 
 			double lb, ub;
-			var.get_double_bounds(lb, ub);
+			var->get_bounds(lb, ub);
 			glp_set_col_bnds(lp, i + 1, bound_type, lb, ub);
-		}
-
-		// set objective 
-
-		const Objective& objective = program->objective();
-		const std::map<std::size_t, double>& obj_coeffs = objective.coefficients();
-		std::map<std::size_t, double>::const_iterator it = obj_coeffs.begin();
-		for (; it != obj_coeffs.end(); ++it) {
-			std::size_t var_idx = it->first;
-			double coeff = it->second;
-			glp_set_obj_coef(lp, var_idx + 1, coeff); // glpk uses 1-based arrays
 		}
 
 		// Add constraints
 
-		const std::vector<Constraint>& constraints = program->constraints();
+		const std::vector<LinearConstraint*>& constraints = program->constraints();
 		glp_add_rows(lp, constraints.size());
 
 		for (std::size_t i = 0; i < constraints.size(); ++i) {
-			const Constraint& cstr = constraints[i];
-			const std::map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
-			std::map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
+			const LinearConstraint* c = constraints[i];
+			const std::unordered_map<int, double>& coeffs = c->coefficients();
+			std::unordered_map<int, double>::const_iterator cur = coeffs.begin();
 
-			std::vector<int>	colno(cstr_coeffs.size() + 1, 0);		// glpk uses 1-based arrays
-			std::vector<double> sparserow(cstr_coeffs.size() + 1, 0.0); // glpk uses 1-based arrays
+			std::vector<int>	indices(coeffs.size() + 1, 0);		// glpk uses 1-based arrays
+			std::vector<double> coefficients(coeffs.size() + 1, 0.0);  // glpk uses 1-based arrays
 			std::size_t idx = 1; // glpk uses 1-based arrays
-			for (; cur != cstr_coeffs.end(); ++cur) {
+			for (; cur != coeffs.end(); ++cur) {
 				std::size_t var_idx = cur->first;
 				double coeff = cur->second;
 
-				colno[idx] = var_idx + 1;	 // glpk uses 1-based arrays
-				sparserow[idx] = coeff;
+				indices[idx] = var_idx + 1;	 // glpk uses 1-based arrays
+				coefficients[idx] = coeff;
 				++idx;
 			}
 
-			glp_set_mat_row(lp, i + 1, static_cast<int>(cstr_coeffs.size()), colno.data(), sparserow.data());
+			glp_set_mat_row(lp, i + 1, static_cast<int>(coeffs.size()), indices.data(), coefficients.data());
 
 			int bound_type = GLP_FR;
-			switch (cstr.bound_type())
+			switch (c->bound_type())
 			{
-			case Constraint::FIXED:  bound_type = GLP_FX; break;
-			case Constraint::LOWER:  bound_type = GLP_LO; break;
-			case Constraint::UPPER:  bound_type = GLP_UP; break;
-			case Constraint::DOUBLE: bound_type = GLP_DB; break;
-			case Constraint::FREE:
+			case LinearConstraint::FIXED:  bound_type = GLP_FX; break;
+			case LinearConstraint::LOWER:  bound_type = GLP_LO; break;
+			case LinearConstraint::UPPER:  bound_type = GLP_UP; break;
+			case LinearConstraint::DOUBLE: bound_type = GLP_DB; break;
+			case LinearConstraint::FREE:
 			default:
 				break;
 			}
 
 			double lb, ub;
-			cstr.get_double_bounds(lb, ub);
+			c->get_bounds(lb, ub);
 			glp_set_row_bnds(lp, i + 1, bound_type, lb, ub);
+
+			glp_set_row_name(lp, i + 1, c->name().c_str());
 		}
 
+		// set objective 
+
+		// determine the coefficient of each variable in the objective function
+		const LinearObjective* objective = program->objective();
+		const std::unordered_map<int, double>& obj_coeffs = objective->coefficients();
+		std::unordered_map<int, double>::const_iterator cur = obj_coeffs.begin();
+		for (; cur != obj_coeffs.end(); ++cur) {
+			std::size_t var_idx = cur->first;
+			double coeff = cur->second;
+			glp_set_obj_coef(lp, var_idx + 1, coeff); // glpk uses 1-based arrays
+		}
+
+		// Set objective function sense
+		bool minimize = (objective->sense() == LinearObjective::MINIMIZE);
+		glp_set_obj_dir(lp, minimize ? GLP_MIN : GLP_MAX);
 		int msg_level = GLP_MSG_ERR;
 		int status = -1;
 		if (num_integer_variables == 0) { // continuous problem
@@ -157,7 +154,6 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 		case 0: {
 			if (num_integer_variables == 0) { // continuous problem
 				objective_value_ = glp_get_obj_val(lp);
-				assert(variables.size() == glp_get_num_cols(lp));
 				result_.resize(variables.size());
 				for (std::size_t i = 0; i < variables.size(); ++i) {
 					result_[i] = glp_get_col_prim(lp, i + 1);	 // glpk uses 1-based arrays
@@ -165,12 +161,12 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 			}
 			else { // MIP problem
 				objective_value_ = glp_mip_obj_val(lp);
-				assert(variables.size() == glp_get_num_cols(lp));
 				result_.resize(variables.size());
 				for (std::size_t i = 0; i < variables.size(); ++i) {
 					result_[i] = glp_mip_col_val(lp, i + 1);	 // glpk uses 1-based arrays
 				}
 			}
+			upload_solution(program);
 			break;
 		}
 

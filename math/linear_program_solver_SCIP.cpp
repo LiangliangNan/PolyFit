@@ -19,7 +19,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "linear_program_solver.h"
-#include "../basic/basic_types.h"
 #include "scip/scip.h"
 #include "scip/scipdefplugins.h"
 
@@ -28,15 +27,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 	try {
-		typedef Variable<double>			Variable;
-		typedef LinearExpression<double>	Objective;
-		typedef LinearConstraint<double>	Constraint;
-
-		const std::vector<Variable>& variables = program->variables();
-		if (variables.empty()) {
-			std::cerr << "variable set is empty" << std::endl;
+		if (!check_program(program))
 			return false;
-		}
 
 		Scip* scip = 0;
 		SCIP_CALL(SCIPcreate(&scip));
@@ -50,35 +42,31 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 		SCIP_CALL(SCIPsetIntParam(scip, "timing/clocktype", SCIP_CLOCKTYPE_WALL));
 
 		// create empty problem 
-		SCIP_CALL(SCIPcreateProbBasic(scip, "PolyFit"));
-
-		// set the objective sense to maximize, default is minimize
-		SCIP_CALL(SCIPfreeTransform(scip));
-		SCIP_CALL(SCIPsetObjsense(scip, program->objective_sense() == LinearProgram::MINIMIZE ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
+		SCIP_CALL(SCIPcreateProbBasic(scip, program->name().c_str()));
 
 		// create variables
+		const std::vector<Variable*>& variables = program->variables();
 		std::vector<SCIP_VAR*> scip_variables;
 		for (std::size_t i = 0; i < variables.size(); ++i) {
-			const Variable& var = variables[i];
-			const std::string& name = "x" + std::to_string(i + 1);
+			const Variable* var = variables[i];
 			SCIP_VAR* v = 0;
 
 			double lb, ub;
-			var.get_double_bounds(lb, ub);
+			var->get_bounds(lb, ub);
 
-			SCIP_CALL(SCIPfreeTransform(scip));
+//			SCIP_CALL(SCIPfreeTransform(scip));
 			// The true objective coefficient will be set later in ExtractObjective.
 			double tmp_obj_coef = 0.0;
-			switch (var.variable_type())
+			switch (var->variable_type())
 			{
 			case Variable::CONTINUOUS:
-				SCIP_CALL(SCIPcreateVar(scip, &v, name.data(), lb, ub, tmp_obj_coef, SCIP_VARTYPE_CONTINUOUS, TRUE, FALSE, 0, 0, 0, 0, 0));
+				SCIP_CALL(SCIPcreateVar(scip, &v, var->name().c_str(), lb, ub, tmp_obj_coef, SCIP_VARTYPE_CONTINUOUS, TRUE, FALSE, 0, 0, 0, 0, 0));
 				break;
 			case Variable::INTEGER:
-				SCIP_CALL(SCIPcreateVar(scip, &v, name.data(), lb, ub, tmp_obj_coef, SCIP_VARTYPE_INTEGER, TRUE, FALSE, 0, 0, 0, 0, 0));
+				SCIP_CALL(SCIPcreateVar(scip, &v, var->name().c_str(), lb, ub, tmp_obj_coef, SCIP_VARTYPE_INTEGER, TRUE, FALSE, 0, 0, 0, 0, 0));
 				break;
 			case Variable::BINARY:
-				SCIP_CALL(SCIPcreateVar(scip, &v, name.data(), 0, 1, tmp_obj_coef, SCIP_VARTYPE_BINARY, TRUE, FALSE, 0, 0, 0, 0, 0));
+				SCIP_CALL(SCIPcreateVar(scip, &v, var->name().c_str(), 0, 1, tmp_obj_coef, SCIP_VARTYPE_BINARY, TRUE, FALSE, 0, 0, 0, 0, 0));
 				break;
 			}
 			// add the SCIP_VAR object to the scip problem
@@ -91,16 +79,16 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 		// Add constraints
 
 		std::vector<SCIP_CONS*> scip_constraints;
-		const std::vector<Constraint>& constraints = program->constraints();
+		const std::vector<LinearConstraint*>& constraints = program->constraints();
 		for (std::size_t i = 0; i < constraints.size(); ++i) {
-			const Constraint& cstr = constraints[i];
-			const std::map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
-			std::map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
+			const LinearConstraint* c = constraints[i];
+			const std::unordered_map<int, double>& coeffs = c->coefficients();
+			std::unordered_map<int, double>::const_iterator cur = coeffs.begin();
 
-			std::vector<SCIP_VAR*>	cstr_variables(cstr_coeffs.size());
-			std::vector<double>		cstr_values(cstr_coeffs.size());
+			std::vector<SCIP_VAR*>	cstr_variables(coeffs.size());
+			std::vector<double>		cstr_values(coeffs.size());
 			std::size_t idx = 0;
-			for (; cur != cstr_coeffs.end(); ++cur) {
+			for (; cur != coeffs.end(); ++cur) {
 				std::size_t var_idx = cur->first;
 				double coeff = cur->second;
 				cstr_variables[idx] = scip_variables[var_idx];
@@ -110,13 +98,13 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 
 			// create SCIP_CONS object
 			SCIP_CONS* cons = 0;
-			const std::string& name = "cstr" + std::to_string(i + 1);
+			const std::string& name = c->name();
 
 			double lb, ub;
-			cstr.get_double_bounds(lb, ub);
+			c->get_bounds(lb, ub);
 
-			SCIP_CALL(SCIPfreeTransform(scip));
-			SCIP_CALL(SCIPcreateConsLinear(scip, &cons, name.data(), cstr_coeffs.size(), cstr_variables.data(), cstr_values.data(), lb, ub, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE));
+//			SCIP_CALL(SCIPfreeTransform(scip));
+			SCIP_CALL(SCIPcreateConsLinear(scip, &cons, name.c_str(), coeffs.size(), cstr_variables.data(), cstr_values.data(), lb, ub, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE));
 			SCIP_CALL(SCIPaddCons(scip, cons));			// add the constraint to scip
 
 			// store the constraint for later on
@@ -126,23 +114,34 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 		// set objective
 
 		// determine the coefficient of each variable in the objective function
-		const Objective& objective = program->objective();
-		const std::map<std::size_t, double>& obj_coeffs = objective.coefficients();
-		std::map<std::size_t, double>::const_iterator it = obj_coeffs.begin();
+		const LinearObjective* objective = program->objective();
+		const std::unordered_map<int, double>& obj_coeffs = objective->coefficients();
+		std::unordered_map<int, double>::const_iterator it = obj_coeffs.begin();
 		for (; it != obj_coeffs.end(); ++it) {
 			std::size_t var_idx = it->first;
 			double coeff = it->second;
-			SCIP_CALL(SCIPfreeTransform(scip));
+//			SCIP_CALL(SCIPfreeTransform(scip));
 			SCIP_CALL(SCIPchgVarObj(scip, scip_variables[var_idx], coeff));
 		}
+
+		// set the objective sense
+//		SCIP_CALL(SCIPfreeTransform(scip));
+		bool minimize = (objective->sense() == LinearObjective::MINIMIZE);
+		SCIP_CALL(SCIPsetObjsense(scip, minimize ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE));
 
 		// set SCIP parameters
 		double tolerance = 1e-7;
 		SCIP_CALL(SCIPsetRealParam(scip, "numerics/feastol", tolerance));
 		SCIP_CALL(SCIPsetRealParam(scip, "numerics/dualfeastol", tolerance));
-		SCIP_CALL(SCIPsetIntParam(scip, "presolving/maxrounds", -1));  // enable presolve
 		double MIP_gap = 1e-4;
 		SCIP_CALL(SCIPsetRealParam(scip, "limits/gap", MIP_gap));
+
+		// Always turn presolve on (it's the SCIP default).
+		bool presolve = true;
+		if (presolve)
+			SCIP_CALL(SCIPsetIntParam(scip, "presolving/maxrounds", -1)); // maximal number of presolving rounds (-1: unlimited, 0: off)
+		else 
+			SCIP_CALL(SCIPsetIntParam(scip, "presolving/maxrounds", 0));  // disable presolve
 
 		bool status = false;
 		// this tells scip to start the solution process
@@ -157,6 +156,7 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 					result_[i] = SCIPgetSolVal(scip, sol, scip_variables[i]);
 				}
 				status = true;
+				upload_solution(program);
 			}
 		}
 
@@ -179,9 +179,11 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 		case SCIP_STATUS_INFORUNBD:
 			std::cerr << "model was either infeasible or unbounded" << std::endl;
 			break;
+		case SCIP_STATUS_TIMELIMIT:
+			std::cerr << "aborted due to time limit" << std::endl;
+			break;
 		default:
-			if (scip_status == SCIP_STATUS_TIMELIMIT) 
-				std::cerr << "time limit reached" << std::endl;
+			std::cerr << "aborted with status: " << scip_status << std::endl;
 			break;
 		}
 

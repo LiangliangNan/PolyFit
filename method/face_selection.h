@@ -58,7 +58,7 @@ private:
 	PointSet* pset_;
 	Map*      model_;
 
-	LinearProgram<double> program_;
+	LinearProgram	program_;
 
 	MapFacetAttribute<VertexGroup*> facet_attrib_supporting_vertex_group_;
 	MapFacetAttribute<double>		facet_attrib_supporting_point_num_;

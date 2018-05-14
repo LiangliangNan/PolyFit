@@ -20,30 +20,53 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "linear_program_solver.h"
 
+#include <iostream>
 
-bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver) {
-	if (program->objective_sense() == LinearProgram::UNDEFINED) {
+
+bool LinearProgramSolver::check_program(const LinearProgram* program) const {
+	if (program->objective()->sense() == LinearObjective::UNDEFINED) {
 		std::cerr << "incomplete objective: undefined objective sense." << std::endl;
 		return false;
 	}
 
-	result_.clear();
-	
-	switch (solver) {
-#ifdef HAS_GUROBI_SOLVER
-	case GUROBI:
-		return _solve_GUROBI(program);
-#endif
-	case GLPK:
-		return _solve_GLPK(program);
-	case LPSOLVE:
-		return _solve_LPSOLVE(program);
-	case SCIP:
-	default: // use SCIP
-		return _solve_SCIP(program);
+	const std::vector<Variable*>& variables = program->variables();
+	if (variables.empty()) {
+		std::cerr << "variable set is empty" << std::endl;
+		return false;
 	}
 
-    std::cerr << "no such solver doesn't exist" << std::endl;
-    return false;
+	// TODO: check if multiple variables have the same name or index
+
+	// TODO: check if multiple constraints have the same name or index
+
+	return true;
+}
+
+
+void LinearProgramSolver::upload_solution(const LinearProgram* program) {
+	std::vector<Variable*>& variables = const_cast<LinearProgram*>(program)->variables();
+	for (std::size_t i = 0; i < variables.size(); ++i) {
+		Variable* v = variables[i];
+		v->set_solution_value(result_[i]);
+		if (v->variable_type() != Variable::CONTINUOUS)
+			result_[i] = static_cast<int>(std::round(result_[i]));
+	}
+}
+
+
+bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver) {
+	switch (solver) {
+#ifdef HAS_GUROBI
+	case GUROBI:
+		return _solve_GUROBI(program);	break;
+#endif
+	case GLPK:
+		return _solve_GLPK(program);	break;
+	case LPSOLVE:
+		return _solve_LPSOLVE(program);	break;
+	case SCIP:
+	default: // SCIP is the default solver
+		return _solve_SCIP(program);	break;
+	}
 }
 

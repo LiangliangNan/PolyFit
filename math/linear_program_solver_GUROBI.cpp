@@ -19,9 +19,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "linear_program_solver.h"
-#include "../basic/basic_types.h"
 
-#ifdef HAS_GUROBI_SOLVER
+#ifdef HAS_GUROBI
 
 #include <gurobi_c++.h>
 
@@ -46,15 +45,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 	try {
-		typedef Variable<double>			Variable;
-		typedef LinearExpression<double>	Objective;
-		typedef LinearConstraint<double>	Constraint;
-
-		const std::vector<Variable>& variables = program->variables();
-		if (variables.empty()) {
-			std::cerr << "variable set is empty" << std::endl;
+		if (!check_program(program))
 			return false;
-		}
 
 		GRBEnv env = GRBEnv();
 		env.set(GRB_IntParam_LogToConsole, 0);
@@ -62,17 +54,18 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		GRBModel model = GRBModel(env);
 
 		// create variables
+		const std::vector<Variable*>& variables = program->variables();
 		std::vector<GRBVar> X(variables.size());
 		for (std::size_t i = 0; i < variables.size(); ++i) {
-			const Variable& var = variables[i];
+			const Variable* var = variables[i];
 
 			double lb, ub;
-			var.get_double_bounds(lb, ub);
+			var->get_bounds(lb, ub);
 
 			char vtype = GRB_CONTINUOUS;
-			if (var.variable_type() == Variable::INTEGER)
+			if (var->variable_type() == Variable::INTEGER)
 				vtype = GRB_INTEGER;
-			else if (var.variable_type() == Variable::BINARY)
+			else if (var->variable_type() == Variable::BINARY)
 				vtype = GRB_BINARY;
 
 			X[i] = model.addVar(lb, ub, 0.0, vtype);
@@ -81,46 +74,33 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		// Integrate new variables
 		model.update();
 
-		// Set objective
-		GRBLinExpr obj;
-
-		const Objective& objective = program->objective();
-		const std::map<std::size_t, double>& obj_coeffs = objective.coefficients();
-		std::map<std::size_t, double>::const_iterator it = obj_coeffs.begin();
-		for (; it != obj_coeffs.end(); ++it) {
-			std::size_t var_idx = it->first;
-			double coeff = it->second;
-			obj += coeff * X[var_idx];
-		}
-		model.setObjective(obj, program->objective_sense() == LinearProgram::MINIMIZE ? GRB_MINIMIZE : GRB_MAXIMIZE);
-
 		// Add constraints
-		const std::vector<Constraint>& constraints = program->constraints();
+		const std::vector<LinearConstraint*>& constraints = program->constraints();
 		for (std::size_t i = 0; i < constraints.size(); ++i) {
 			GRBLinExpr expr;
-			const Constraint& cstr = constraints[i];
-			const std::map<std::size_t, double>& cstr_coeffs = cstr.coefficients();
-			std::map<std::size_t, double>::const_iterator cur = cstr_coeffs.begin();
-			for (; cur != cstr_coeffs.end(); ++cur) {
+			const LinearConstraint* c = constraints[i];
+			const std::unordered_map<int, double>& coeffs = c->coefficients();
+			std::unordered_map<int, double>::const_iterator cur = coeffs.begin();
+			for (; cur != coeffs.end(); ++cur) {
 				std::size_t var_idx = cur->first;
 				double coeff = cur->second;
 				expr += coeff * X[var_idx];
 			}
 
-			switch (cstr.bound_type())
+			switch (c->bound_type())
 			{
-			case Constraint::FIXED:
-				model.addConstr(expr == cstr.get_single_bound());
+			case LinearConstraint::FIXED:
+				model.addConstr(expr == c->get_bound());
 				break;
-			case Constraint::LOWER:
-				model.addConstr(expr >= cstr.get_single_bound());
+			case LinearConstraint::LOWER:
+				model.addConstr(expr >= c->get_bound());
 				break;
-			case Constraint::UPPER:
-				model.addConstr(expr <= cstr.get_single_bound());
+			case LinearConstraint::UPPER:
+				model.addConstr(expr <= c->get_bound());
 				break;
-			case Constraint::DOUBLE: {
+			case LinearConstraint::DOUBLE: {
 				double lb, ub;
-				cstr.get_double_bounds(lb, ub);
+				c->get_bounds(lb, ub);
 				model.addConstr(expr >= lb);
 				model.addConstr(expr <= ub);
 				break;
@@ -129,6 +109,21 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 				break;
 			}
 		}
+
+		// Set objective
+		GRBLinExpr obj;
+
+		const LinearObjective* objective = program->objective();
+		const std::unordered_map<int, double>& obj_coeffs = objective->coefficients();
+		std::unordered_map<int, double>::const_iterator it = obj_coeffs.begin();
+		for (; it != obj_coeffs.end(); ++it) {
+			std::size_t var_idx = it->first;
+			double coeff = it->second;
+			obj += coeff * X[var_idx];
+		}
+		// Set objective function sense
+		bool minimize = (objective->sense() == LinearObjective::MINIMIZE);
+		model.setObjective(obj, minimize ? GRB_MINIMIZE : GRB_MAXIMIZE);
 
 		// Optimize model
 		model.optimize();
@@ -141,6 +136,7 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 			for (std::size_t i = 0; i < variables.size(); ++i) {
 				result_[i] = X[i].get(GRB_DoubleAttr_X);
 			}
+			upload_solution(program);
 			break;
 		}
 		

@@ -343,7 +343,7 @@ void MainWindow::createToolBar()
 	solverBox_->setFixedHeight(23);
 	solverBox_->setEditable(false);
 	solverBox_->addItem("SCIP");
-#ifdef HAS_GUROBI_SOLVER
+#ifdef HAS_GUROBI
 	solverBox_->addItem("GUROBI");
 #endif
 	solverBox_->addItem("GLPK");
@@ -591,7 +591,7 @@ void MainWindow::optimization() {
 
     if (solverString == "GLPK")
 		canvas()->optimization(LinearProgramSolver::GLPK);
-#ifdef HAS_GUROBI_SOLVER
+#ifdef HAS_GUROBI
     else if (solverString == "GUROBI")
         canvas()->optimization(LinearProgramSolver::GUROBI);
 #endif

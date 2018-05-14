@@ -105,12 +105,8 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 	double coeff_coverage = total_points * Method::lambda_model_coverage / model_->bbox().area();
 	double coeff_complexity = total_points * Method::lambda_model_complexity / double(fans.size());
 
-	typedef Variable<double>			Variable;
-	typedef LinearExpression<double>	Objective;
-	typedef LinearConstraint<double>	Constraint;
-	typedef LinearProgram<double>		LinearProgram;
-
-	Objective obj;
+	program_.clear();
+	LinearObjective* objective = program_.create_objective(LinearObjective::MINIMIZE);
 
 	std::map<const FaceStar*, std::size_t> edge_sharp_status;	// the edge is sharp or not
 	std::size_t num_sharp_edges = 0;
@@ -121,7 +117,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 			edge_sharp_status[&fan] = var_idx;
 
 			// accumulate model complexity term
-			obj.add_coefficient(var_idx, coeff_complexity);
+			objective->add_coefficient(var_idx, coeff_complexity);
 			++num_sharp_edges;
 		}
 	}
@@ -133,13 +129,12 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 
 		// accumulate data fitting term
 		double num = facet_attrib_supporting_point_num_[f];
-		obj.add_coefficient(var_idx, -coeff_data_fitting * num);
+		objective->add_coefficient(var_idx, -coeff_data_fitting * num);
 
 		// accumulate model coverage term
 		double uncovered_area = (facet_attrib_facet_area_[f] - facet_attrib_covered_area_[f]);
-		obj.add_coefficient(var_idx, coeff_coverage * uncovered_area);
+		objective->add_coefficient(var_idx, coeff_coverage * uncovered_area);
 	}
-	program_.set_objective(obj, LinearProgram::MINIMIZE);
 
 	std::size_t total_variables = num_faces + num_edges + num_sharp_edges;
 	Logger::out("-") << "#total variables: " << total_variables << std::endl;
@@ -147,38 +142,33 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 	Logger::out(" ") << "    - edge is used: " << num_edges << std::endl;
 	Logger::out(" ") << "    - edge is sharp: " << num_sharp_edges << std::endl;
 
-	typedef LinearProgram::Variable Variable;
+	const std::vector<Variable*>& variables = program_.create_n_variables(total_variables);
 	for (std::size_t i = 0; i < total_variables; ++i) {
-		program_.add_variable(Variable(Variable::BINARY));
+		Variable* v = variables[i];
+		v->set_variable_type(Variable::BINARY);
 	}
 
 	//////////////////////////////////////////////////////////////////////////
 
-	typedef LinearProgram::Constraint Constraint;
-
 	// Add constraints: the number of faces associated with an edge must be either 2 or 0
 	std::size_t var_edge_used_idx = 0;
 	for (std::size_t i = 0; i < fans.size(); ++i) {
-		Constraint constraint;
-
+		LinearConstraint* c = program_.create_constraint(LinearConstraint::FIXED, 0.0, 0.0);
 		const FaceStar& fan = fans[i];
 		for (std::size_t j = 0; j < fan.size(); ++j) {
 			MapTypes::Facet* f = fan[j]->facet();
 			std::size_t var_idx = facet_indices[f];
-			constraint.add_coefficient(var_idx, 1.0);
+			c->add_coefficient(var_idx, 1.0);
 		}
 
 		if (fan.size() == 4) {
 			std::size_t var_idx = num_faces + var_edge_used_idx;
-			constraint.add_coefficient(var_idx, -2.0);  // 
+			c->add_coefficient(var_idx, -2.0);  // 
 			++var_edge_used_idx;
 		}
 		else { // boundary edge
 			   // will be set to 0 (i.e., we don't allow open surface)
 		}
-
-		constraint.set_bounds(Constraint::FIXED, 0.0, 0.0);
-		program_.add_constraint(constraint);
 	}
 
 	// Add constraints: for the sharp edges
@@ -188,13 +178,11 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 		if (fan.size() != 4)
 			continue;
 
-		Constraint edge_used_constraint;
+		LinearConstraint* c = program_.create_constraint(LinearConstraint::LOWER, 0.0, 0.0);
 		std::size_t var_edge_usage_idx = edge_usage_status[&fan];
-		edge_used_constraint.add_coefficient(var_edge_usage_idx, 1.0);
+		c->add_coefficient(var_edge_usage_idx, 1.0);
 		std::size_t var_edge_sharp_idx = edge_sharp_status[&fan];
-		edge_used_constraint.add_coefficient(var_edge_sharp_idx, -1.0);
-		edge_used_constraint.set_bounds(Constraint::LOWER, 0.0, 0.0);
-		program_.add_constraint(edge_used_constraint);
+		c->add_coefficient(var_edge_sharp_idx, -1.0);
 
 		for (std::size_t j = 0; j < fan.size(); ++j) {
 			MapTypes::Facet* f1 = fan[j]->facet();
@@ -211,13 +199,11 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 					// which equals to  
 					//X[var_edge_sharp_idx] - M * X[fid1] - M * X[fid2] - M * X[var_edge_usage_idx] >= 1 - 3M
 
-					Constraint edge_sharp_constraint;
-					edge_sharp_constraint.add_coefficient(var_edge_sharp_idx, 1.0);
-					edge_sharp_constraint.add_coefficient(fid1, -M);
-					edge_sharp_constraint.add_coefficient(fid2, -M);
-					edge_sharp_constraint.add_coefficient(var_edge_usage_idx, -M);
-					edge_sharp_constraint.set_bounds(Constraint::LOWER, 1.0 - 3.0 * M, 0.0);
-					program_.add_constraint(edge_sharp_constraint);
+					c = program_.create_constraint(LinearConstraint::LOWER, 1.0 - 3.0 * M, 0.0);
+					c->add_coefficient(var_edge_sharp_idx, 1.0);
+					c->add_coefficient(fid1, -M);
+					c->add_coefficient(fid2, -M);
+					c->add_coefficient(var_edge_usage_idx, -M);
 				}
 			}
 		}
@@ -237,7 +223,7 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 		Logger::out("-") << "solving the binary program done. " << w.elapsed() << " sec" << std::endl;
 
 		// mark results
-		const std::vector<double>& X = solver.get_result();
+		const std::vector<double>& X = solver.solution();
 		std::vector<Map::Facet*> to_delete;
 		FOR_EACH_FACET(Map, model_, it) {
 			Map::Facet* f = it;

@@ -24,47 +24,52 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "linear_program.h"
 
 #include <vector>
+     
 
 #ifdef _WIN32 // Liangliang: My MacBook is broken :-(
-#define HAS_GUROBI_SOLVER
+#define HAS_GUROBI
 #endif
 
 class MATH_API LinearProgramSolver
 {
 public:
 	enum SolverName { 
-#ifdef HAS_GUROBI_SOLVER
-		GUROBI, 
+#ifdef HAS_GUROBI	// Gurobi is commercial and requires license :-(
+		GUROBI,	
 #endif
-		SCIP, 
-		GLPK, 
-		LPSOLVE
+		SCIP,		// Recommended default value.
+		GLPK,
+		LPSOLVE,
 	};
-
-	typedef LinearProgram<double>	LinearProgram;
 
 public:
 	LinearProgramSolver() {}
 	~LinearProgramSolver() {}
 
 	// Solves the problem and returns false if fails.
-	// NOTE: Gurobi solver is recommended.
-	//		 The SCIP solver is slower than Gurobi but acceptable. 
+	// NOTE: The SCIP and CBC solvers are slower than Gurobi but acceptable. 
 	//       GLPK and LPSOLVE may be too slow or even fail for large problems.
+	//       If you have a really LARGE problem, you may consider using Gurobi.
     bool solve(const LinearProgram* program, SolverName solver);
 
-	// returns the objective value
-	// NOTE: result is valid only if the solver succeeded
-	double get_objective_value() const { return objective_value_; }
+	// Returns the result. 
+	// The result can also be retrieved using Variable::solution_value().
+	// NOTE: (1) result is valid only if the solver succeeded.
+	//       (2) each entry in the result corresponds to the variable with the
+	//			 same index in the linear program.
+	const std::vector<double>& solution() const { return result_; }
 
-	// returns the result
-	// NOTE: (1) result is valid only if the solver succeeds
-	//       (2) the result includes all auxiliary variables
-	//       (3) for integer variables, you need to round the values
-	const std::vector<double>& get_result() const { return result_; }
+	// Returns the objective value.
+	// NOTE: (1) result is valid only if the solver succeeded.
+	//       (2) the constant term is not included.
+	double objective_value() const { return objective_value_; }
 
 private:
-#ifdef HAS_GUROBI_SOLVER
+	bool check_program(const LinearProgram* program) const;
+	void upload_solution(const LinearProgram* program);
+
+private:
+#ifdef HAS_GUROBI
 	bool _solve_GUROBI(const LinearProgram* program);
 #endif
 	bool _solve_SCIP(const LinearProgram* program);
