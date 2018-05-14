@@ -178,11 +178,12 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 		if (fan.size() != 4)
 			continue;
 
-		LinearConstraint* c = program_.create_constraint(LinearConstraint::LOWER, 0.0, 0.0);
+		LinearConstraint* c = program_.create_constraint();
 		std::size_t var_edge_usage_idx = edge_usage_status[&fan];
 		c->add_coefficient(var_edge_usage_idx, 1.0);
 		std::size_t var_edge_sharp_idx = edge_sharp_status[&fan];
 		c->add_coefficient(var_edge_sharp_idx, -1.0);
+		c->set_bound(LinearConstraint::LOWER, 0.0);
 
 		for (std::size_t j = 0; j < fan.size(); ++j) {
 			MapTypes::Facet* f1 = fan[j]->facet();
@@ -199,11 +200,12 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 					// which equals to  
 					//X[var_edge_sharp_idx] - M * X[fid1] - M * X[fid2] - M * X[var_edge_usage_idx] >= 1 - 3M
 
-					c = program_.create_constraint(LinearConstraint::LOWER, 1.0 - 3.0 * M, 0.0);
+					c = program_.create_constraint();
 					c->add_coefficient(var_edge_sharp_idx, 1.0);
 					c->add_coefficient(fid1, -M);
 					c->add_coefficient(fid2, -M);
 					c->add_coefficient(var_edge_usage_idx, -M);
+					c->set_bound(LinearConstraint::LOWER, 1.0 - 3.0 * M);
 				}
 			}
 		}

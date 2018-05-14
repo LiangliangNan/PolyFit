@@ -60,7 +60,7 @@ public:
 enum BoundType { FIXED, LOWER, UPPER, DOUBLE, FREE };
 
 public:
-	Bounded(BoundType bt = FREE, double lb = -infinity(), double ub = +infinity());
+	Bounded(BoundType type = FREE, double lb = -infinity(), double ub = +infinity());
 
 	BoundType bound_type() const { return bound_type_; }
 

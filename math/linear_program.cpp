@@ -44,12 +44,12 @@ double Bounded::infinity_ = 1e20;		// in SCIP, values larger than 1e20 are consi
 
 
 Bounded::Bounded(
-	BoundType bt /* = FREE */, 
+	BoundType type /* = FREE */,
 	double lb /* = -infinity() */, 
 	double ub /* = +infinity() */
 )
 {
-	set_bounds(bt, lb, ub);
+	set_bounds(type, lb, ub);
 }
 
 double Bounded::infinity() {
