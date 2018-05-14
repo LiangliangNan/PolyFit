@@ -61,7 +61,7 @@ void Bounded::set_bounds(BoundType type, double lb, double ub) {
 	{
 	case FIXED:
 		if (std::abs(lb - ub) > 1e-10)
-			std::cerr << "lower/upper bounds must be equal for FIXED bounds" << std::endl;
+			std::cerr << "lower/upper bounds must be equal for FIXED bound" << std::endl;
 		lower_bound_ = upper_bound_ = lb;
 		break;
 	case LOWER:		
@@ -81,13 +81,13 @@ void Bounded::set_bounds(BoundType type, double lb, double ub) {
 		upper_bound_ = +infinity_;	// adjust the bound value
 		break;
 	default:
-		std::cerr << "no FREE bound(s)" << std::endl;
+		std::cerr << "fatal error: unrecognized bound type" << std::endl;
 		break;
 	}
 	bound_type_ = type;
 }
 
-void Bounded::set_bound(BoundType type, double value)  // for FIXED, LOWER, UPPER
+void Bounded::set_bound(BoundType type, double value) 
 {
 	switch (type)
 	{
@@ -110,8 +110,12 @@ void Bounded::set_bound(BoundType type, double value)  // for FIXED, LOWER, UPPE
 		break;
 
 	case FREE:
+		lower_bound_ = -infinity_;	// adjust the bound value
+		upper_bound_ = +infinity_;	// adjust the bound value
+		bound_type_ = FREE;
+		break;
 	default:
-		std::cerr << "Warning: you don't need to set bound(s) for a free variable" << std::endl;
+		std::cerr << "fatal error: unrecognized bound type" << std::endl;
 		break;
 	}
 }
