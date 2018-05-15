@@ -171,13 +171,16 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 		}
 	}
 
-	// Add constraints: for the sharp edges
+	// Add constraints: for the sharp edges. The explanation of posing this constraint can be found here:
+	// https://user-images.githubusercontent.com/15526536/30185644-12085a9c-942b-11e7-831d-290dd2a4d50c.png
 	double M = 1.0;
 	for (std::size_t i = 0; i < fans.size(); ++i) {
 		const FaceStar& fan = fans[i];
 		if (fan.size() != 4)
 			continue;
 
+		// if an edge is sharp, the edge must be selected first:
+		// X[var_edge_usage_idx] >= X[var_edge_sharp_idx]	
 		LinearConstraint* c = program_.create_constraint();
 		std::size_t var_edge_usage_idx = edge_usage_status[&fan];
 		c->add_coefficient(var_edge_usage_idx, 1.0);
@@ -199,7 +202,6 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 					//X[var_edge_sharp_idx] + M * (3 - (X[fid1] + X[fid2] + X[var_edge_usage_idx])) >= 1
 					// which equals to  
 					//X[var_edge_sharp_idx] - M * X[fid1] - M * X[fid2] - M * X[var_edge_usage_idx] >= 1 - 3M
-
 					c = program_.create_constraint();
 					c->add_coefficient(var_edge_sharp_idx, 1.0);
 					c->add_coefficient(fid1, -M);
