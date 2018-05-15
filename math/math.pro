@@ -80,10 +80,10 @@ DEPENDPATH += $$PWD/../basic
     # Gurobi
 
 win32 {
-CONFIG(release, debug|release): LIBS += -L$$PWD/../../../../../Install/gurobi800/win64/lib/ -lgurobi_c++md2017
-CONFIG(debug, debug|release): LIBS += -L$$PWD/../../../../../Install/gurobi800/win64/lib/ -lgurobi_c++mdd2017
-INCLUDEPATH += $$PWD/../../../../../Install/gurobi800/win64/include
-DEPENDPATH += $$PWD/../../../../../Install/gurobi800/win64/include
+CONFIG(release, debug|release): LIBS += -L$$(GUROBI_DIR)/lib/ -lgurobi_c++md2017
+CONFIG(debug, debug|release): LIBS += -L$$(GUROBI_DIR)/lib/ -lgurobi_c++mdd2017
+INCLUDEPATH += $$(GUROBI_DIR)/include
+DEPENDPATH += $$(GUROBI_DIR)/include
 }
 else {
 #QMAKE_CXXFLAGS += -stdlib=libc++
