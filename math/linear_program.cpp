@@ -66,10 +66,8 @@ void Bounded::set_bounds(BoundType type, double lb, double ub) {
 		break;
 	case LOWER:		
 		lower_bound_ = lb;	
-		upper_bound_ = +infinity_;	// adjust the bound value
 		break;
 	case UPPER:	
-		lower_bound_ = -infinity_;	// adjust the bound value
 		upper_bound_ = ub;	
 		break;
 	case DOUBLE:
