@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "linear_program_solver.h"
+#include "../basic/logger.h"
 
 #ifdef HAS_GUROBI
 
@@ -126,6 +127,7 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		model.setObjective(obj, minimize ? GRB_MINIMIZE : GRB_MAXIMIZE);
 
 		// Optimize model
+		Logger::out("-") << "using the GUROBI solver" << std::endl;
 		model.optimize();
 
 		int status = model.get(GRB_IntAttr_Status);

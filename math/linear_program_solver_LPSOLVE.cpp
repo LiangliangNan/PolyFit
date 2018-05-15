@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "linear_program_solver.h"
 #include "../3rd_lpsolve/lp_lib.h"
+#include "../basic/logger.h"
 
 #include <iostream>
 
@@ -168,6 +169,7 @@ bool LinearProgramSolver::_solve_LPSOLVE(const LinearProgram* program) {
 		// turn row entry mode off
 		set_add_rowmode(lp, FALSE);
 
+		Logger::out("-") << "using the LPSOLVE solver" << std::endl;
 		int status = ::solve(lp);
 		switch (status) {
 		case 0: {

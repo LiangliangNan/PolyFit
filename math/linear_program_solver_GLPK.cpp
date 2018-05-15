@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "linear_program_solver.h"
+#include "../basic/logger.h"
 #include "../3rd_glpk/glpk.h"
 
 #include <iostream>
@@ -128,6 +129,8 @@ bool LinearProgramSolver::_solve_GLPK(const LinearProgram* program) {
 			double coeff = cur->second;
 			glp_set_obj_coef(lp, var_idx + 1, coeff); // glpk uses 1-based arrays
 		}
+
+		Logger::out("-") << "using the GLPK solver" << std::endl;
 
 		// Set objective function sense
 		bool minimize = (objective->sense() == LinearObjective::MINIMIZE);

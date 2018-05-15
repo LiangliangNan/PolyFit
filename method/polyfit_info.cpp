@@ -96,11 +96,6 @@ float PolyFitInfo::compute_point_confidences(PointSet* pset, int s1 /* = 6 */, i
 				eigen_values[j][k] = pca.eigen_value(3 - k - 1); // eigen values are sorted in descending order
 
 			assert(eigen_values[j][0] <= eigen_values[j][1] && eigen_values[j][1] <= eigen_values[j][2]);
-
-			if (j == 0) {
-				for (unsigned int i = 1; i < sqr_distances.size(); ++i) { // starts from 1 to exclude itself
-				}
-			}
 		}
 
 		double conf = 0.0;
@@ -146,7 +141,7 @@ void PolyFitInfo::generate(PointSet* pset, Map* mesh, bool use_conficence /* = f
 	MapFacetAttribute<double>	facet_attrib_facet_area(mesh, Method::facet_attrib_facet_area);
 	MapFacetAttribute<double>	facet_attrib_covered_area(mesh, Method::facet_attrib_covered_area);
 
-	Logger::out("-") << "generate quality measures..." << std::endl;
+	Logger::out("-") << "computing face confidences..." << std::endl;
 	w.start();
 	ProgressLogger progress(mesh->size_of_facets());
 	FOR_EACH_FACET(Map, mesh, it) {
@@ -177,12 +172,8 @@ void PolyFitInfo::generate(PointSet* pset, Map* mesh, bool use_conficence /* = f
 		Map::Ptr alpha_mesh = AlphaShapeMesh::apply(pset, points, g->plane(), radius);
 		double covered_area = 0;
 		if (alpha_mesh) {
-			FOR_EACH_FACET(Map, alpha_mesh, it) {
-				if (it->degree() == 3)
-					covered_area += Geom::triangle_area(it);
-				else
-					std::cerr << "fatal error: not a triangular mesh" << std::endl;
-			}
+			FOR_EACH_FACET(Map, alpha_mesh, it) 
+				covered_area += Geom::triangle_area(it);
 		}
 		facet_attrib_covered_area[f] = covered_area;
 

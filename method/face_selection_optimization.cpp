@@ -142,11 +142,21 @@ void FaceSelection::optimize(PolyFitInfo* polyfit_info, LinearProgramSolver::Sol
 	Logger::out(" ") << "    - edge is used: " << num_edges << std::endl;
 	Logger::out(" ") << "    - edge is sharp: " << num_sharp_edges << std::endl;
 
+#if 1
 	const std::vector<Variable*>& variables = program_.create_n_variables(total_variables);
 	for (std::size_t i = 0; i < total_variables; ++i) {
 		Variable* v = variables[i];
 		v->set_variable_type(Variable::BINARY);
 	}
+#else // Liangliang: I was just curious about how the results look like if all variables 
+	  //             are relaxed to be continuous.
+	const std::vector<Variable*>& variables = program_.create_n_variables(total_variables);
+	for (std::size_t i = 0; i < total_variables; ++i) {
+		Variable* v = variables[i];
+		v->set_variable_type(Variable::CONTINUOUS);
+		v->set_bounds(Variable::DOUBLE, 0, 1);
+	}
+#endif
 
 	//////////////////////////////////////////////////////////////////////////
 

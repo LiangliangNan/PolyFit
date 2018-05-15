@@ -654,6 +654,13 @@ void PaintCanvas::generateQualityMeasures() {
 		return;
 	}
 
+	const EdgeStyle s = mesh_render_->sharp_edge_style();
+	if (s.visible) { // temporally disable rendering a large number of sharp edges
+		EdgeStyle ss = s;
+		ss.visible = false;
+		mesh_render_->set_sharp_edge_style(ss);
+	}
+
 	main_window_->disableActions(true);
 
 	polyfit_info_.generate(point_set_, hypothesis_mesh_, false);
@@ -664,6 +671,9 @@ void PaintCanvas::generateQualityMeasures() {
 
 	hint_text_ = "Next: click \'Optimization\' for face selection.";
 	hint_text2nd_ = "";
+
+	if (s.visible)  // restore
+		mesh_render_->set_sharp_edge_style(s);
 
 	update_all();
 }

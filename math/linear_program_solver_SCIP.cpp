@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "linear_program_solver.h"
 #include "scip/scip.h"
 #include "scip/scipdefplugins.h"
+#include "../basic/logger.h"
 
 #include <iostream>
 
@@ -142,6 +143,8 @@ bool LinearProgramSolver::_solve_SCIP(const LinearProgram* program) {
 			SCIP_CALL(SCIPsetIntParam(scip, "presolving/maxrounds", -1)); // maximal number of presolving rounds (-1: unlimited, 0: off)
 		else 
 			SCIP_CALL(SCIPsetIntParam(scip, "presolving/maxrounds", 0));  // disable presolve
+
+		Logger::out("-") << "using the SCIP solver" << std::endl;
 
 		bool status = false;
 		// this tells scip to start the solution process
