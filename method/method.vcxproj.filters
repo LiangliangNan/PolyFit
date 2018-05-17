@@ -26,9 +26,6 @@
     <ClInclude Include="method_global.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="alpha_shape_boundary.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="alpha_shape_mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -50,9 +47,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="method_global.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="alpha_shape_boundary.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="alpha_shape_mesh.cpp">

@@ -101,7 +101,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="alpha_shape.h" />
-    <ClInclude Include="alpha_shape_boundary.h" />
     <ClInclude Include="alpha_shape_CGAL4.10_and_earlier.h" />
     <ClInclude Include="alpha_shape_CGAL4.11_and_later.h" />
     <ClInclude Include="alpha_shape_mesh.h" />
@@ -113,7 +112,6 @@
     <ClInclude Include="face_selection.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="alpha_shape_boundary.cpp" />
     <ClCompile Include="alpha_shape_mesh.cpp" />
     <ClCompile Include="face_selection_optimization.cpp" />
     <ClCompile Include="method_global.cpp" />

@@ -1,7 +1,7 @@
 
 /*
 Copyright (C) 2017  Liangliang Nan
-http://web.siat.ac.cn/~liangliang/ - liangliang.nan@gmail.com
+https://3d.bk.tudelft.nl/liangliang/ - liangliang.nan@gmail.com
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
