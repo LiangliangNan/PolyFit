@@ -145,8 +145,8 @@ void SurfaceRender::draw_mesh(Map* mesh) {
 	glLineWidth(mesh_style_.width);
 	glBegin(GL_LINES);
 	FOR_EACH_EDGE_CONST(Map, mesh, it) {
-		if (it->is_border_edge())
-			continue;
+//		if (it->is_border_edge())
+//			continue;
 		const vec3& p = it->vertex()->point();
 		const vec3& q = it->opposite()->vertex()->point();
 		glVertex3fv(p.data());
