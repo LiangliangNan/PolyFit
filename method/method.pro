@@ -18,7 +18,6 @@ CONFIG(release, debug|release) { DEFINES += NDEBUG }
 
 
 SOURCES += \
-    alpha_shape_boundary.cpp \
     alpha_shape_mesh.cpp \
     face_selection_optimization.cpp \
     face_selection.cpp \
@@ -26,7 +25,6 @@ SOURCES += \
     method_global.cpp \
     polyfit_info.cpp
 HEADERS += \
-    alpha_shape_boundary.h \
     alpha_shape_CGAL4.10_and_earlier.h \
     alpha_shape_CGAL4.11_and_later.h \
     alpha_shape_mesh.h \
