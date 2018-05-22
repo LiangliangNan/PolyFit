@@ -120,7 +120,7 @@ void PaintCanvas::init()
 	if (GLEW_OK != err) {
 		// Problem: glewInit failed, something is seriously wrong. 
 		Logger::err("-") << glewGetErrorString(err) << std::endl;
-		Logger::err("-") << "OpenGL error and rendering disabled. You are still able to run PolyFit and export the result." << std::endl;
+		Logger::err("-") << "OpenGL error detected and rendering disabled. You are still able to run PolyFit and export the result." << std::endl;
 		fatal_opengl_error = true;
 	}
 
