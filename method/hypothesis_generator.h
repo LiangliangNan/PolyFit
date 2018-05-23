@@ -104,6 +104,11 @@ private:
 	// returns true if the intersection exists (p returns the point)
 	bool intersection_plane_triplet(const Plane3d* plane1, const Plane3d* plane2, const Plane3d* plane3, vec3& p);
 
+	// the pairwise intersection may result in tiny faces and we may have numerical problems when computing the 
+	// face confidences where face area is the denominator. To handle this, we simply remove these degenerate 
+	// faces by collapsing the edges.
+	void remove_degenerated_facets(Map* mesh);
+
 private:
 	PointSet* pset_;
 

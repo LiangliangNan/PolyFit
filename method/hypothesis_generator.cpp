@@ -41,49 +41,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <algorithm>
 
 
-
-#define	REMOVE_DEGENERATE_FACES
-
-
-#ifdef REMOVE_DEGENERATE_FACES
-
-static void remove_degenerated_facets(Map* mesh) {
-	// You can't collect all the edges and then collapse them one by one, 
-	// because collapsing one edge affects other neighboring edges.
-	// std::vector<Map::Halfedge*> to_collapse;
-
-	MapEditor editor(mesh);
-	bool degenerated_facet_found = false;
-	int count = 0;
-	do {
-		degenerated_facet_found = false;
-		FOR_EACH_EDGE(Map, mesh, it) {
-			double len = Geom::edge_length(it);
-			if (len <= Method::coincident_threshold) {
-				degenerated_facet_found = true;
-				if (editor.collapse_edge(it)) {
-					++count;
-					break;  // Liangliang: only one edge can be collapsed (one may affect others)
-				}
-			}
-		}
-	} while (degenerated_facet_found);
-
-	if (count > 0) {
-		Logger::out("-") << count << " degenerate edges collapsed" << std::endl;
-	}
-
-	FOR_EACH_EDGE(Map, mesh, it) {
-		double len = Geom::edge_length(it);
-		if (len <= Method::coincident_threshold) {
-			Logger::out("-") << count << "very short edge detected. length: " << len << std::endl;
-		}
-	}
-}
-
-#endif
-
-
 HypothesisGenerator::HypothesisGenerator(PointSet* pset)
 	: pset_(pset)
 {
@@ -571,18 +528,26 @@ void HypothesisGenerator::compute_intersections(
 	existing_vts.clear();
 	new_vts.clear();
 
-	double on_plane_threshold = Method::coincident_threshold * Method::coincident_threshold;
+	// the value really doesn't matter as long as it is small.
+	double threshold = std::numeric_limits<double>::min();
 	Plane3d* plane = facet_attrib_supporting_plane_[cutter];
+
+	Plane3d* supporting_plane = facet_attrib_supporting_plane_[f];
+	if (supporting_plane == plane)
+		return;
 
 	Map::Halfedge* h = f->halfedge();
 	do {
+		const std::set<Plane3d*>& source_planes = edge_source_planes_[h];
+		if (source_planes.find(plane) != source_planes.end()) // plane cut the face at an edge
+			return;
+
 		const vec3& s = h->opposite()->vertex()->point();
 		const vec3& t = h->vertex()->point();
-		if (plane->squared_ditance(t) <= on_plane_threshold) {		// plane cuts at vertex 't'
+		if (plane->squared_ditance(t) <= threshold) {		// plane cuts at vertex 't'
 			existing_vts.push_back(h->vertex());
 		}
-		else if (plane->squared_ditance(s) > on_plane_threshold) {	// cut at the edge
-			const std::set<Plane3d*>& source_planes = edge_source_planes_[h];
+		else if (plane->squared_ditance(s) > threshold) {	// cut at the edge
 			if (source_planes.size() == 2) {  // if the edge was computed from two faces, I use the source faces for computing the intersecting point
 				if (plane->intersection(s, t)) {
 					Plane3d* plane1 = *(source_planes.begin());
@@ -605,10 +570,7 @@ void HypothesisGenerator::compute_intersections(
 				}
 			}
 			else {
-				vec3 p;
-				if (plane->intersection(s, t, p)) {
-					new_vts.push_back(EdgePos(h, p));
-				}
+				// if reached here, the plane cut the face at an edge, so nothing to do
 			}
 		}
 		h = h->next();
@@ -828,6 +790,34 @@ void HypothesisGenerator::triplet_intersection(const std::vector<Plane3d*>& supp
 }
 
 
+void HypothesisGenerator::remove_degenerated_facets(Map* mesh) {
+	// You can't collect all the edges and then collapse them one by one, 
+	// because collapsing one edge affects other neighboring edges.
+	// std::vector<Map::Halfedge*> to_collapse;
+
+	double min_allowed_edge_length = 1e-5;
+
+	MapEditor editor(mesh);
+	bool degenerated_facet_found = false;
+	int count = 0;
+	do {
+		degenerated_facet_found = false;
+		FOR_EACH_EDGE(Map, mesh, it) {
+			if (Geom::edge_length(it) <= min_allowed_edge_length) {
+				degenerated_facet_found = true;
+				if (editor.collapse_edge(it)) {
+					++count;
+					break;  // Liangliang: only one edge can be collapsed (one may affect others)
+				}
+			}
+		}
+	} while (degenerated_facet_found);
+
+	if (count > 0)
+		Logger::out("-") << count << " degenerate edges collapsed" << std::endl;
+}
+
+
 bool HypothesisGenerator::query_intersection(Plane3d* plane1, Plane3d* plane2, Plane3d* plane3, vec3& p) {
 	Plane3d* min_plane = ogf_min(plane1, plane2, plane3);
 	Plane3d* max_plane = ogf_max(plane1, plane2, plane3);
@@ -884,14 +874,8 @@ Map* HypothesisGenerator::generate(PolyFitInfo* polyfit_info) {
 	pairwise_cut(mesh);
 	check_source_planes(mesh);
 
-#ifdef REMOVE_DEGENERATE_FACES
 	remove_degenerated_facets(mesh);
 	check_source_planes(mesh);
-	FOR_EACH_FACET(Map, mesh, it) {
-		if (Geom::facet_area(it) < 1e-10) 
-			std::cerr << "degenerate face detected" << std::endl;
-	}
-#endif
 
 	facet_attrib_supporting_vertex_group_.unbind();
 	facet_attrib_supporting_plane_.unbind();

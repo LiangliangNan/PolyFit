@@ -36,15 +36,6 @@ FaceSelection::FaceSelection(PointSet* pset, Map* model)
 	: pset_(pset)
 	, model_(model)
 {
-	Logger::out("-") << "tolerance for coincident vertices: " << Method::coincident_threshold << std::endl;
-
-	FOR_EACH_EDGE(Map, model, it) {
-		double len = Geom::edge_length(it);
-		if (len <= Method::coincident_threshold) {
-			std::cout << "---[Purification] very short edge detected. length: " << len << std::endl;
-		}
-	}
-
 }
 
 

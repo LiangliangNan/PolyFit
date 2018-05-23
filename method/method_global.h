@@ -13,10 +13,6 @@ namespace Method {
 	extern METHOD_API double lambda_model_coverage;
 	extern METHOD_API double lambda_model_complexity;
 
-	// - two points considered as coincident; 
-	// - a point considered to be on a plane, etc.
-	extern METHOD_API double coincident_threshold;
-
 	//________________ names for various quality measures ____________________
 
 	extern METHOD_API std::string facet_attrib_supporting_vertex_group;

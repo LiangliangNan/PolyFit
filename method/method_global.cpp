@@ -3,11 +3,9 @@
 
 namespace Method {
 
-	double lambda_data_fitting = 0.46;
+	double lambda_data_fitting = 0.43;
 	double lambda_model_coverage = 0.27;
-	double lambda_model_complexity = 0.27;
-
-	double coincident_threshold = 1e-5;
+	double lambda_model_complexity = 0.30;
 
 	//________________ names for various quality measures ____________________
 
