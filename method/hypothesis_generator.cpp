@@ -45,7 +45,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 // For debugging (identifying topological issues)
-//#define DISPLAY_ADJACENCY_STATISTICS
+#define DISPLAY_ADJACENCY_STATISTICS
 
 
 HypothesisGenerator::HypothesisGenerator(PointSet* pset)
@@ -536,8 +536,9 @@ void HypothesisGenerator::compute_intersections(
 	existing_vts.clear();
 	new_vts.clear();
 
-	// the value really doesn't matter as long as it is small.
-	double threshold = std::numeric_limits<double>::min();
+	// the value really doesn't matter.
+	const double threshold = 1e-10;
+
 	Plane3d* plane = facet_attrib_supporting_plane_[cutter];
 
 	Plane3d* supporting_plane = facet_attrib_supporting_plane_[f];
@@ -731,7 +732,7 @@ void HypothesisGenerator::pairwise_cut(Map* mesh)
 				MapTypes::Facet* current_face = faces_to_be_cut[j];
 				std::vector<MapTypes::Facet*> tmp = cut(current_face, cutter, mesh);
 				new_faces.insert(tmp.begin(), tmp.end());
-				if (tmp.empty()) { 
+				if (tmp.empty()) {
 					remained_faces.insert(current_face);
 				}
 			}
