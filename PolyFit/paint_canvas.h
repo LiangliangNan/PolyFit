@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../basic/color.h"
 #include "../math/math_types.h"
 #include "../basic/canvas.h"
-#include "../method/polyfit_info.h"
 #include "../model/point_set.h"
 #include "../model/map.h"
 #include "../math/linear_program_solver.h"
@@ -34,7 +33,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 class MainWindow;
 class SurfaceRender;
 class PointSetRender;
-
+class HypothesisGenerator;
 
 class PaintCanvas : public QGLViewer
 {
@@ -124,7 +123,7 @@ protected:
 	SurfaceRender*	mesh_render_;
 	PointSetRender* point_set_render_;
 
-	PolyFitInfo		polyfit_info_;
+	HypothesisGenerator* hypothesis_;
 
 	bool		show_hint_text_;
 	QString     hint_text_;

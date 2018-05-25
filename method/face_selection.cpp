@@ -20,16 +20,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "face_selection.h"
 #include "method_global.h"
+#include "../basic/stop_watch.h"
 #include "../model/point_set.h"
 #include "../model/map_geometry.h"
 #include "../basic/logger.h"
 #include "../model/map_editor.h"
 
 #include <algorithm>
-
-
-// For debugging (identifying topological issues)
-//#define DISPLAY_ADJACENCY_STATISTICS
 
 
 FaceSelection::FaceSelection(PointSet* pset, Map* model)
@@ -39,89 +36,271 @@ FaceSelection::FaceSelection(PointSet* pset, Map* model)
 }
 
 
-void FaceSelection::IntersectionAdjacency::init(Map* model, const std::vector<Plane3d*>& supporting_planes) {
-	edge_container_.clear();
-	plane_index_.clear();
-	vertex_source_planes_.bind_if_defined(model, "VertexSourcePlanes");
+void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, LinearProgramSolver::SolverName solver_name) {
+	if (pset_ == 0 || model_ == 0)
+		return;
 
-	int num = int(supporting_planes.size());
-	for (int i = 0; i < num; ++i) {
-		Plane3d* plane = supporting_planes[i];
-		plane_index_[plane] = i;
+	facet_attrib_supporting_vertex_group_.bind_if_defined(model_, Method::facet_attrib_supporting_vertex_group);
+	if (!facet_attrib_supporting_vertex_group_.is_bound()) {
+		Logger::err("-") << "attribute " << Method::facet_attrib_supporting_vertex_group << " doesn't exist" << std::endl;
+		return;
+	}
+	facet_attrib_supporting_point_num_.bind_if_defined(model_, Method::facet_attrib_supporting_point_num);
+	if (!facet_attrib_supporting_point_num_.is_bound()) {
+		Logger::err("-") << "attribute " << Method::facet_attrib_supporting_point_num << " doesn't exist" << std::endl;
+		return;
+	}
+	facet_attrib_facet_area_.bind_if_defined(model_, Method::facet_attrib_facet_area);
+	if (!facet_attrib_facet_area_.is_bound()) {
+		Logger::err("-") << "attribute " << Method::facet_attrib_facet_area << " doesn't exist" << std::endl;
+		return;
+	}
+	facet_attrib_covered_area_.bind_if_defined(model_, Method::facet_attrib_covered_area);
+	if (!facet_attrib_covered_area_.is_bound()) {
+		Logger::err("-") << "attribute " << Method::facet_attrib_covered_area << " doesn't exist" << std::endl;
+		return;
 	}
 
-	FOR_EACH_HALFEDGE(Map, model, it) {
-		if (it->facet() == nil)
+	edge_source_planes_.bind_if_defined(model_, "EdgeSourcePlanes");
+	vertex_source_planes_.bind_if_defined(model_, "VertexSourcePlanes");
+	facet_attrib_supporting_plane_.bind_if_defined(model_, "FacetSupportingPlane");
+
+	//////////////////////////////////////////////////////////////////////////
+
+	double total_points = double(pset_->points().size());
+	std::size_t idx = 0;
+	MapFacetAttribute<std::size_t>	facet_indices(model_);
+	FOR_EACH_FACET(Map, model_, it) {
+		Map::Facet* f = it;
+		facet_indices[f] = idx;
+		++idx;
+	}
+
+	//-------------------------------------
+
+	StopWatch w;
+
+	//-------------------------------------
+
+	// binary variables:
+	// x[0] ... x[num_faces - 1] : binary labels of all the input faces
+	// x[num_faces] ... x[num_faces + num_edges] : binary labels of all the intersecting edges (remain or not)
+	// x[num_faces + num_edges] ... x[num_faces + num_edges + num_edges] : binary labels of corner edges (sharp edge of not)
+
+	Logger::out("-") << "formulating binary program...." << std::endl;
+	w.start();
+
+	std::size_t num_faces = model_->size_of_facets();
+	std::size_t num_edges = 0;
+
+	typedef typename HypothesisGenerator::Intersection Intersection;
+	std::map<const Intersection*, std::size_t> edge_usage_status;	// keep or remove an intersecting edges
+	for (std::size_t i = 0; i < adjacency.size(); ++i) {
+		const Intersection& fan = adjacency[i];
+		if (fan.size() == 4) {
+			std::size_t var_idx = num_faces + num_edges;
+			edge_usage_status[&fan] = var_idx;
+			++num_edges;
+		}
+	}
+
+	//double coeff_data_fitting = Method::lambda_data_fitting / total_points;
+	//double coeff_coverage = Method::lambda_model_coverage / model_->bbox().area();
+	//double coeff_complexity = Method::lambda_model_complexity / double(fans.size());
+	// choose a better scale
+	double coeff_data_fitting = Method::lambda_data_fitting;
+	double coeff_coverage = total_points * Method::lambda_model_coverage / model_->bbox().area();
+	double coeff_complexity = total_points * Method::lambda_model_complexity / double(adjacency.size());
+
+	program_.clear();
+	LinearObjective* objective = program_.create_objective(LinearObjective::MINIMIZE);
+
+	std::map<const Intersection*, std::size_t> edge_sharp_status;	// the edge is sharp or not
+	std::size_t num_sharp_edges = 0;
+	for (std::size_t i = 0; i < adjacency.size(); ++i) {
+		const Intersection& fan = adjacency[i];
+		if (fan.size() == 4) {
+			std::size_t var_idx = num_faces + num_edges + num_sharp_edges;
+			edge_sharp_status[&fan] = var_idx;
+
+			// accumulate model complexity term
+			objective->add_coefficient(var_idx, coeff_complexity);
+			++num_sharp_edges;
+		}
+	}
+	assert(num_edges == num_sharp_edges);
+
+	FOR_EACH_FACET(Map, model_, it) {
+		Map::Facet* f = it;
+		std::size_t var_idx = facet_indices[f];
+
+		// accumulate data fitting term
+		double num = facet_attrib_supporting_point_num_[f];
+		objective->add_coefficient(var_idx, -coeff_data_fitting * num);
+
+		// accumulate model coverage term
+		double uncovered_area = (facet_attrib_facet_area_[f] - facet_attrib_covered_area_[f]);
+		objective->add_coefficient(var_idx, coeff_coverage * uncovered_area);
+	}
+
+	std::size_t total_variables = num_faces + num_edges + num_sharp_edges;
+	Logger::out("-") << "#total variables: " << total_variables << std::endl;
+	Logger::out(" ") << "    - face is selected: " << num_faces << std::endl;
+	Logger::out(" ") << "    - edge is used: " << num_edges << std::endl;
+	Logger::out(" ") << "    - edge is sharp: " << num_sharp_edges << std::endl;
+
+#if 1
+	const std::vector<Variable*>& variables = program_.create_n_variables(total_variables);
+	for (std::size_t i = 0; i < total_variables; ++i) {
+		Variable* v = variables[i];
+		v->set_variable_type(Variable::BINARY);
+	}
+#else // Liangliang: I was just curious about how the results look like if all variables 
+	//             are relaxed to be continuous.
+	const std::vector<Variable*>& variables = program_.create_n_variables(total_variables);
+	for (std::size_t i = 0; i < total_variables; ++i) {
+		Variable* v = variables[i];
+		v->set_variable_type(Variable::CONTINUOUS);
+		v->set_bounds(Variable::DOUBLE, 0, 1);
+	}
+#endif
+
+	//////////////////////////////////////////////////////////////////////////
+
+	// Add constraints: the number of faces associated with an edge must be either 2 or 0
+	std::size_t var_edge_used_idx = 0;
+	for (std::size_t i = 0; i < adjacency.size(); ++i) {
+		LinearConstraint* c = program_.create_constraint(LinearConstraint::FIXED, 0.0, 0.0);
+		const Intersection& fan = adjacency[i];
+		for (std::size_t j = 0; j < fan.size(); ++j) {
+			MapTypes::Facet* f = fan[j]->facet();
+			std::size_t var_idx = facet_indices[f];
+			c->add_coefficient(var_idx, 1.0);
+		}
+
+		if (fan.size() == 4) {
+			std::size_t var_idx = num_faces + var_edge_used_idx;
+			c->add_coefficient(var_idx, -2.0);  // 
+			++var_edge_used_idx;
+		}
+		else { // boundary edge
+			   // will be set to 0 (i.e., we don't allow open surface)
+		}
+	}
+
+	// Add constraints: for the sharp edges. The explanation of posing this constraint can be found here:
+	// https://user-images.githubusercontent.com/15526536/30185644-12085a9c-942b-11e7-831d-290dd2a4d50c.png
+	double M = 1.0;
+	for (std::size_t i = 0; i < adjacency.size(); ++i) {
+		const Intersection& fan = adjacency[i];
+		if (fan.size() != 4)
 			continue;
 
-		Map::Vertex* s = it->vertex();
-		Map::Vertex* t = it->opposite()->vertex();
+		// if an edge is sharp, the edge must be selected first:
+		// X[var_edge_usage_idx] >= X[var_edge_sharp_idx]	
+		LinearConstraint* c = program_.create_constraint();
+		std::size_t var_edge_usage_idx = edge_usage_status[&fan];
+		c->add_coefficient(var_edge_usage_idx, 1.0);
+		std::size_t var_edge_sharp_idx = edge_sharp_status[&fan];
+		c->add_coefficient(var_edge_sharp_idx, -1.0);
+		c->set_bound(LinearConstraint::LOWER, 0.0);
 
-		const std::set<Plane3d*>& set_s = vertex_source_planes_[s];
-		const std::set<Plane3d*>& set_t = vertex_source_planes_[t];
+		for (std::size_t j = 0; j < fan.size(); ++j) {
+			MapTypes::Facet* f1 = fan[j]->facet();
+			Plane3d* plane1 = facet_attrib_supporting_plane_[f1];
+			std::size_t fid1 = facet_indices[f1];
+			for (std::size_t k = j + 1; k < fan.size(); ++k) {
+				MapTypes::Facet* f2 = fan[k]->facet();
+				Plane3d* plane2 = facet_attrib_supporting_plane_[f2];
+				std::size_t fid2 = facet_indices[f2];
 
-		std::vector<int> s_indices, t_indices;
-		std::set<Plane3d*>::const_iterator pos = set_s.begin();
-		for (; pos != set_s.end(); ++pos) {
-			int idx = plane_index_[*pos];
-			s_indices.push_back(idx);
+				if (plane1 != plane2) {
+					// the constraint is:
+					//X[var_edge_sharp_idx] + M * (3 - (X[fid1] + X[fid2] + X[var_edge_usage_idx])) >= 1
+					// which equals to  
+					//X[var_edge_sharp_idx] - M * X[fid1] - M * X[fid2] - M * X[var_edge_usage_idx] >= 1 - 3M
+					c = program_.create_constraint();
+					c->add_coefficient(var_edge_sharp_idx, 1.0);
+					c->add_coefficient(fid1, -M);
+					c->add_coefficient(fid2, -M);
+					c->add_coefficient(var_edge_usage_idx, -M);
+					c->set_bound(LinearConstraint::LOWER, 1.0 - 3.0 * M);
+				}
+			}
 		}
-		pos = set_t.begin();
-		for (; pos != set_t.end(); ++pos) {
-			int idx = plane_index_[*pos];
-			t_indices.push_back(idx);
-		}
-		assert(s_indices.size() == 3);
-		assert(t_indices.size() == 3);
-		std::sort(s_indices.begin(), s_indices.end());
-		std::sort(t_indices.begin(), t_indices.end());
-
-		int idx_s = ((s_indices[0] * num) + s_indices[1]) * num + s_indices[2];
-		int idx_t = ((t_indices[0] * num) + t_indices[1]) * num + t_indices[2];
-
-		if (idx_s > idx_t)
-			ogf_swap(idx_s, idx_t);
-
-		edge_container_[idx_s][idx_t].insert(it);
 	}
+
+	Logger::out("-") << "#total constraints: " << program_.constraints().size() << std::endl;
+	Logger::out("-") << "formulating binary program done. " << w.elapsed() << " sec" << std::endl;
+
+	//////////////////////////////////////////////////////////////////////////
+
+	// Optimize model
+	Logger::out("-") << "solving the binary program. Please wait..." << std::endl;
+	w.start();
+
+	LinearProgramSolver solver;
+	if (solver.solve(&program_, solver_name)) {
+		Logger::out("-") << "solving the binary program done. " << w.elapsed() << " sec" << std::endl;
+
+		// mark results
+		const std::vector<double>& X = solver.solution();
+		std::vector<Map::Facet*> to_delete;
+		FOR_EACH_FACET(Map, model_, it) {
+			Map::Facet* f = it;
+			std::size_t idx = facet_indices[f];
+			//if (static_cast<int>(X[idx]) == 0) { // Liangliang: be careful, floating point!!!
+			//if (static_cast<int>(X[idx]) != 1) { // Liangliang: be careful, floating point!!!
+			if (static_cast<int>(std::round(X[idx])) == 0) {
+				to_delete.push_back(f);
+			}
+		}
+
+		MapEditor editor(model_);
+		for (std::size_t i = 0; i < to_delete.size(); ++i) {
+			Map::Facet* f = to_delete[i];
+			editor.erase_facet(f->halfedge());
+		}
+
+		//////////////////////////////////////////////////////////////////////////
+
+		// mark the sharp edges
+		MapHalfedgeAttribute<bool> edge_is_sharp(model_, "SharpEdge");
+		FOR_EACH_EDGE(Map, model_, it)
+			edge_is_sharp[it] = false;
+
+		for (std::size_t i = 0; i < adjacency.size(); ++i) {
+			const Intersection& fan = adjacency[i];
+			if (fan.size() != 4)
+				continue;
+
+			std::size_t idx_sharp_var = edge_sharp_status[&fan];
+			if (static_cast<int>(X[idx_sharp_var]) == 1) {
+				for (std::size_t j = 0; j < fan.size(); ++j) {
+					Map::Halfedge* e = fan[j];
+					Map::Facet* f = e->facet();
+					if (f) { // some faces may be deleted
+						std::size_t fid = facet_indices[f];
+						// if (static_cast<int>(X[fid]) == 1) { // Liangliang: be careful, floating point!!!
+						if (static_cast<int>(std::round(X[fid])) == 1) {
+							edge_is_sharp[e] = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	else {
+		Logger::out("-") << "solving the binary program failed." << w.elapsed() << std::endl;
+	}
+
+	facet_attrib_supporting_vertex_group_.unbind();
+	facet_attrib_supporting_point_num_.unbind();
+	facet_attrib_facet_area_.unbind();
+	facet_attrib_covered_area_.unbind();
 
 	vertex_source_planes_.unbind();
-}
-
-
-std::vector<FaceSelection::FaceStar> FaceSelection::IntersectionAdjacency::extract(Map* model, const std::vector<Plane3d*>& supporting_planes) {
-	init(model, supporting_planes);
-
-#ifdef DISPLAY_ADJACENCY_STATISTICS
-	std::map<std::size_t, std::size_t>   num_each_sized_fans;
-	for (std::size_t i = 1; i < 20; ++i)
-		num_each_sized_fans[i] = 0;
-#endif
-
-	std::vector<FaceStar> fans;
-	std::map< std::size_t, std::map< std::size_t, std::set<MapTypes::Halfedge*> > >::const_iterator it = edge_container_.begin();
-	for (; it != edge_container_.end(); ++it) {
-		const std::map < std::size_t, std::set<MapTypes::Halfedge*> >& tmp = it->second;
-		std::map< std::size_t, std::set<MapTypes::Halfedge*> >::const_iterator cur = tmp.begin();
-		for (; cur != tmp.end(); ++cur) {
-			const std::set<MapTypes::Halfedge*>& edges = cur->second;
-			FaceStar fan;
-			fan.insert(fan.end(), edges.begin(), edges.end());
-			fans.push_back(fan);
-
-#ifdef DISPLAY_ADJACENCY_STATISTICS
-			++num_each_sized_fans[fan.size()];
-#endif
-		}
-	}
-
-#ifdef DISPLAY_ADJACENCY_STATISTICS
-	std::map<std::size_t, std::size_t>::iterator pos = num_each_sized_fans.begin();
-	for (; pos != num_each_sized_fans.end(); ++pos) {
-		if (pos->second > 0)
-			std::cout << "\t" << pos->first << " - sized fans: " << pos->second << std::endl;
-	}
-#endif
-
-	return fans;
+	edge_source_planes_.unbind();
+	facet_attrib_supporting_plane_.unbind();
 }

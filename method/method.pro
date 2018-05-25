@@ -19,11 +19,10 @@ CONFIG(release, debug|release) { DEFINES += NDEBUG }
 
 SOURCES += \
     alpha_shape_mesh.cpp \
-    face_selection_optimization.cpp \
     face_selection.cpp \
     hypothesis_generator.cpp \
-    method_global.cpp \
-    polyfit_info.cpp
+    method_global.cpp
+
 HEADERS += \
     alpha_shape_CGAL4.10_and_earlier.h \
     alpha_shape_CGAL4.11_and_later.h \
@@ -33,8 +32,7 @@ HEADERS += \
     face_selection.h \
     hypothesis_generator.h \
     method_common.h \
-    method_global.h \
-    polyfit_info.h
+    method_global.h
 
 INCLUDEPATH += . \
 #    $$quote($(CGAL_DIR)/include)

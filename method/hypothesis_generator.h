@@ -33,14 +33,12 @@ class Map;
 class PointSet;
 class VertexGroup;
 class MapEditor;
-class PolyFitInfo;
 
 namespace MapTypes {
 	class Vertex;
 	class Facet;
 	class Halfedge;
 }
-
 
 class METHOD_API HypothesisGenerator
 {
@@ -50,11 +48,25 @@ public:
 
 	void refine_planes();
 
-	Map* generate(PolyFitInfo* polyfit_info);
+	Map* generate();
+
+	void compute_confidences(Map* mesh, bool use_conficence = false);
+
+	// Intersection: a set of 'faces' intersecting at a common edge
+	struct Intersection : public std::vector<MapTypes::Halfedge*> {
+		const vec3* s;
+		const vec3* t;
+	};
+	typedef typename std::vector<Intersection>		Adjacency;
+
+	// the adjacency information will be used to formulate the hard constraints.
+	Adjacency extract_adjacency(Map* mesh);
+
+	bool ready_for_optimization(Map* mesh) const;
 
 private:
 	// construct mesh for the bbox of the point set
-	Map* construct_bbox_mesh(std::vector<Plane3d*>& supporting_planes);
+	Map* construct_bbox_mesh();
 
 	Map* compute_proxy_mesh(Map* bbox_mesh);
 
@@ -62,9 +74,9 @@ private:
 	void pairwise_cut(Map* mesh);
 
 private:
-	void collect_valid_planes(std::vector<Plane3d*>& supporting_planes);
+	void collect_valid_planes();
 
-	void merge(VertexGroup* g1, VertexGroup* g2, float max_dist);
+	void merge(VertexGroup* g1, VertexGroup* g2);
 
 	// test if face 'f' insects plane 'plane'
 	bool do_intersect(MapTypes::Facet* f, MapTypes::Facet* plane);
@@ -95,10 +107,10 @@ private:
 	// collect all faces in 'mesh' that intersect 'face'
 	std::set<MapTypes::Facet*> collect_intersecting_faces(MapTypes::Facet* face, Map* mesh);
 
-	void triplet_intersection(const std::vector<Plane3d*>& supporting_planes);
+	void triplet_intersection();
 
 	// query the intersecting point for existing data base, i.e., triplet_intersection_
-	bool query_intersection(Plane3d* plane1, Plane3d* plane2, Plane3d* plane3, vec3& p);
+	vec3* query_intersection(Plane3d* plane1, Plane3d* plane2, Plane3d* plane3);
 
 	// compute the intersection of a plane triplet
 	// returns true if the intersection exists (p returns the point)
@@ -109,18 +121,33 @@ private:
 	// faces by collapsing the edges.
 	void remove_degenerated_facets(Map* mesh);
 
+	// std::vector<unsigned int>& points returns the point indices projected in f.
+	// returns the 'number' of points projected in f (accounts for a notion of confidence)
+	float facet_points_projected_in(PointSet* pset, VertexGroup* g, MapTypes::Facet* f, float max_dist, std::vector<unsigned int>& points);
+
+	// returns average spacing
+	float compute_point_confidences(PointSet* pset, int s1 = 6, int s2 = 16, int s3 = 32);
+
+	// clear cached intermediate results
+	void clear();
+
 private:
 	PointSet* pset_;
 
 	MapFacetAttribute<VertexGroup*> facet_attrib_supporting_vertex_group_;
-
 	MapFacetAttribute<Plane3d*>		facet_attrib_supporting_plane_;
 
 	std::vector<VertexGroup::Ptr>		plane_segments_;
 	std::map<VertexGroup*, Plane3d*>	vertex_group_plane_;
+
+	std::vector<Plane3d*>  supporting_planes_;		// including the bbox face planes
+	float				   max_dist_;				// maximum distance to the supporting plane
 	
 	// How to use: triplet_intersection_[plane_min][plane_mid][plane_max]
-	std::map<Plane3d*, std::map<Plane3d*, std::map<Plane3d*, vec3> > >  triplet_intersection_;
+	std::map<Plane3d*, std::map<Plane3d*, std::map<Plane3d*, vec3*> > >  triplet_intersection_;
+
+	// precomputed intersecting points of all plane triplets
+	std::vector< vec3*>		intersecting_points_;
 
 	// to avoid numerical issues (there are always small differences when computing the intersecting 
 	// point of a plane triplet), I store how a edge is computed (from two planes). Then, I just need 

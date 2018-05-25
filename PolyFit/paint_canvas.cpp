@@ -62,6 +62,7 @@ PaintCanvas::PaintCanvas(QWidget *parent, QGLFormat format)
 	, show_result_(true)
 	, show_hint_text_(true)
 	, show_mouse_hint_(false)
+	, hypothesis_(nil)
 {
 	setFPSIsDisplayed(true);
 
@@ -107,7 +108,8 @@ void PaintCanvas::clear() {
 	if (optimized_mesh_)
 		optimized_mesh_.forget();
 
-	polyfit_info_.clear();
+	if (hypothesis_)
+		delete hypothesis_;
 }
 
 // in case you're running PolyFit on an ancient machine where 
@@ -585,8 +587,12 @@ void PaintCanvas::refinePlanes() {
 
 	main_window_->disableActions(true);
 
-	HypothesisGenerator gen(pointSet());
-	gen.refine_planes();
+
+	if (hypothesis_)
+		delete hypothesis_;
+	hypothesis_ = new HypothesisGenerator(point_set_);
+
+	hypothesis_->refine_planes();
 
 	main_window_->checkBoxShowInput->setChecked(true);
 	main_window_->actionGenerateFacetHypothesis->setDisabled(false);
@@ -605,6 +611,11 @@ void PaintCanvas::generateFacetHypothesis() {
 		return;
 	}
 
+	if (!hypothesis_) {
+		Logger::warn("-") << "please refine the planes first" << std::endl;
+		return;
+	}
+
 	const std::vector<VertexGroup::Ptr>& groups = point_set_->groups();
 	if (groups.empty()) {
 		Logger::warn("-") << "planar segments do not exist" << std::endl;
@@ -616,8 +627,7 @@ void PaintCanvas::generateFacetHypothesis() {
 	Logger::out("-") << "generating plane hypothesis..." << std::endl;
 
 	StopWatch w;
-	HypothesisGenerator hypo(point_set_);
-	hypothesis_mesh_ = hypo.generate(&polyfit_info_);
+	hypothesis_mesh_ = hypothesis_->generate();
 	if (hypothesis_mesh_) {
 		Logger::out("-") << "done. " << w.elapsed() << " sec." << std::endl;
 
@@ -649,7 +659,7 @@ void PaintCanvas::generateQualityMeasures() {
 		return;
 	}
 
-	if (!hypothesis_mesh_) {
+	if (!hypothesis_mesh_ || !hypothesis_) {
 		Logger::warn("-") << "face hypothesis do not exist" << std::endl;
 		return;
 	}
@@ -662,8 +672,8 @@ void PaintCanvas::generateQualityMeasures() {
 	}
 
 	main_window_->disableActions(true);
-
-	polyfit_info_.generate(point_set_, hypothesis_mesh_, false);
+	
+	hypothesis_->compute_confidences(hypothesis_mesh_, false);
 
 	main_window_->checkBoxShowCandidates->setChecked(true);
 	main_window_->actionOptimization->setDisabled(false);
@@ -685,7 +695,7 @@ void PaintCanvas::optimization(LinearProgramSolver::SolverName solver) {
 		return;
 	}
 
-	if (!hypothesis_mesh_) {
+	if (!hypothesis_mesh_ || !hypothesis_) {
 		Logger::warn("-") << "face hypothesis do not exist" << std::endl;
 		return;
 	}
@@ -696,18 +706,18 @@ void PaintCanvas::optimization(LinearProgramSolver::SolverName solver) {
 		return;
 	}
 
-	if (!polyfit_info_.ready_for_optimization(hypothesis_mesh_)) {
+	if (!hypothesis_->ready_for_optimization(hypothesis_mesh_)) {
 		Logger::warn("-") << "please generate quality measures first" << std::endl;
 		return;
 	}
 
 	main_window_->updateWeights();
-
 	main_window_->disableActions(true);
-
 	Map* mesh = Geom::duplicate(hypothesis_mesh_);
+
+	const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
 	FaceSelection selector(point_set_, mesh);
-	selector.optimize(&polyfit_info_, solver);
+	selector.optimize(adjacency, solver);
 
 	optimized_mesh_ = mesh;
 

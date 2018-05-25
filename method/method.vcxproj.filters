@@ -29,9 +29,6 @@
     <ClInclude Include="alpha_shape_mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="polyfit_info.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="face_selection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -52,13 +49,7 @@
     <ClCompile Include="alpha_shape_mesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="polyfit_info.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="face_selection.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="face_selection_optimization.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

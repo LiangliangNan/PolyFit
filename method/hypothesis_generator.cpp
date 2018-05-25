@@ -20,8 +20,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "hypothesis_generator.h"
 #include "cgal_types.h"
 #include "alpha_shape.h"
-#include "polyfit_info.h"
 #include "method_global.h"
+#include "alpha_shape_mesh.h"
 #include "../basic/progress.h"
 #include "../basic/logger.h"
 #include "../basic/assertions.h"
@@ -34,11 +34,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../model/map_editor.h"
 #include "../model/map_circulators.h"
 #include "../model/map_geometry.h"
+#include "../model/kdtree_search.h"
 
 #include <CGAL/convex_hull_2.h>
 #include <CGAL/Projection_traits_xy_3.h>
 
 #include <algorithm>
+
+
+
+
+// For debugging (identifying topological issues)
+//#define DISPLAY_ADJACENCY_STATISTICS
 
 
 HypothesisGenerator::HypothesisGenerator(PointSet* pset)
@@ -49,6 +56,7 @@ HypothesisGenerator::HypothesisGenerator(PointSet* pset)
 
 HypothesisGenerator::~HypothesisGenerator()
 {
+	clear();
 }
 
 
@@ -68,7 +76,7 @@ static std::list<unsigned int> points_on_plane(VertexGroup* g, const Plane3d& pl
 	return result;
 }
 
-void HypothesisGenerator::merge(VertexGroup* g1, VertexGroup* g2, float max_dist) {
+void HypothesisGenerator::merge(VertexGroup* g1, VertexGroup* g2) {
 	std::vector<VertexGroup::Ptr>& groups = pset_->groups();
 	const std::vector<vec3>& points = pset_->points();
 
@@ -147,7 +155,7 @@ void HypothesisGenerator::refine_planes() {
 					const std::list<unsigned int>& set1on2 = points_on_plane(g1, plane2, avg_max_dist);
 					const std::list<unsigned int>& set2on1 = points_on_plane(g2, plane1, avg_max_dist);
 					if (set1on2.size() > num_threshold || set2on1.size() > num_threshold) {
-						merge(g1, g2, avg_max_dist);
+						merge(g1, g2);
 						merged = true;
 						break;
 					}
@@ -166,8 +174,8 @@ void HypothesisGenerator::refine_planes() {
 }
 
 
-void HypothesisGenerator::collect_valid_planes(std::vector<Plane3d*>& supporting_planes) {
-	supporting_planes.clear();
+void HypothesisGenerator::collect_valid_planes() {
+	supporting_planes_.clear();
 	plane_segments_.clear();
 	vertex_group_plane_.clear();
 
@@ -178,7 +186,7 @@ void HypothesisGenerator::collect_valid_planes(std::vector<Plane3d*>& supporting
 
 		plane_segments_.push_back(g);
 		Plane3d* plane = new Plane3d(g->plane());
-		supporting_planes.push_back(plane);
+		supporting_planes_.push_back(plane);
 		vertex_group_plane_[g] = plane;
 	}
 }
@@ -209,7 +217,7 @@ static void check_source_planes(Map* mesh) {
 }
 
 
-Map* HypothesisGenerator::construct_bbox_mesh(std::vector<Plane3d*>& supporting_planes) {
+Map* HypothesisGenerator::construct_bbox_mesh() {
 	Box3d box = pset_->bbox();
 	float delta = box.radius() * 0.01f;
 
@@ -244,7 +252,7 @@ Map* HypothesisGenerator::construct_bbox_mesh(std::vector<Plane3d*>& supporting_
 	builder.end_facet();
 	MapTypes::Facet* f = builder.current_facet();
 	Plane3d* plane = new Plane3d(Geom::facet_plane(f));
-	supporting_planes.push_back(plane);
+	supporting_planes_.push_back(plane);
 	face_supporting_plane[f] = plane;
 
 	builder.begin_facet();
@@ -255,7 +263,7 @@ Map* HypothesisGenerator::construct_bbox_mesh(std::vector<Plane3d*>& supporting_
 	builder.end_facet();
 	f = builder.current_facet();
 	plane = new Plane3d(Geom::facet_plane(f));
-	supporting_planes.push_back(plane);
+	supporting_planes_.push_back(plane);
 	face_supporting_plane[f] = plane;
 
 	builder.begin_facet();
@@ -266,7 +274,7 @@ Map* HypothesisGenerator::construct_bbox_mesh(std::vector<Plane3d*>& supporting_
 	builder.end_facet();
 	f = builder.current_facet();
 	plane = new Plane3d(Geom::facet_plane(f));
-	supporting_planes.push_back(plane);
+	supporting_planes_.push_back(plane);
 	face_supporting_plane[f] = plane;
 
 	builder.begin_facet();
@@ -277,7 +285,7 @@ Map* HypothesisGenerator::construct_bbox_mesh(std::vector<Plane3d*>& supporting_
 	builder.end_facet();
 	f = builder.current_facet();
 	plane = new Plane3d(Geom::facet_plane(f));
-	supporting_planes.push_back(plane);
+	supporting_planes_.push_back(plane);
 	face_supporting_plane[f] = plane;
 
 	builder.begin_facet();
@@ -288,7 +296,7 @@ Map* HypothesisGenerator::construct_bbox_mesh(std::vector<Plane3d*>& supporting_
 	builder.end_facet();
 	f = builder.current_facet();
 	plane = new Plane3d(Geom::facet_plane(f));
-	supporting_planes.push_back(plane);
+	supporting_planes_.push_back(plane);
 	face_supporting_plane[f] = plane;
 
 	builder.begin_facet();
@@ -299,7 +307,7 @@ Map* HypothesisGenerator::construct_bbox_mesh(std::vector<Plane3d*>& supporting_
 	builder.end_facet();
 	f = builder.current_facet();
 	plane = new Plane3d(Geom::facet_plane(f));
-	supporting_planes.push_back(plane);
+	supporting_planes_.push_back(plane);
 	face_supporting_plane[f] = plane;
 
 	builder.end_surface();
@@ -548,31 +556,33 @@ void HypothesisGenerator::compute_intersections(
 			existing_vts.push_back(h->vertex());
 		}
 		else if (plane->squared_ditance(s) > threshold) {	// cut at the edge
-			if (source_planes.size() == 2) {  // if the edge was computed from two faces, I use the source faces for computing the intersecting point
-				if (plane->intersection(s, t)) {
-					Plane3d* plane1 = *(source_planes.begin());
-					Plane3d* plane2 = *(source_planes.rbegin());
-					Plane3d* plane3 = plane;
+			if (plane->intersection(s, t)) {
+				Plane3d* plane1 = *(source_planes.begin());
+				Plane3d* plane2 = *(source_planes.rbegin());
+				Plane3d* plane3 = plane;
 
-					if (plane3 != plane1 && plane3 != plane2) {
-						vec3 p;
-						if (query_intersection(plane1, plane2, plane3, p))
-							new_vts.push_back(EdgePos(h, p));
-						else {
-							if (intersection_plane_triplet(plane1, plane2, plane3, p)) {
-								triplet_intersection_[plane1][plane2][plane3] = p; // store the intersection in our data base
-								new_vts.push_back(EdgePos(h, p));
-							}
-							else
-								Logger::warn("-") << "fatal error. should have intersection. " << new_vts.size() << std::endl;
+				if (plane3 != plane1 && plane3 != plane2) {
+					vec3* p = query_intersection(plane1, plane2, plane3);
+					if (p)
+						new_vts.push_back(EdgePos(h, *p));
+					else {
+						vec3 q;
+						if (intersection_plane_triplet(plane1, plane2, plane3, q)) {
+							vec3* new_point = new vec3(q);
+							triplet_intersection_[plane1][plane2][plane3] = new_point; // store the intersection in our data base
+							intersecting_points_.push_back(new_point);
+							new_vts.push_back(EdgePos(h, *new_point));
 						}
+						else
+							Logger::warn("-") << "fatal error. should have intersection. " << new_vts.size() << std::endl;
 					}
 				}
 			}
-			else {
-				// if reached here, the plane cut the face at an edge, so nothing to do
-			}
 		}
+		else {
+			// if reached here, we will test the next edge
+		}
+
 		h = h->next();
 	} while (h != f->halfedge());
 }
@@ -711,16 +721,22 @@ void HypothesisGenerator::pairwise_cut(Map* mesh)
 		// 1. f will be cut by all the intersecting_faces
 		//    note: after each cut, the original face doesn't exist any more and it is replaced by multiple pieces.
 		//          then each piece will be cut by another face.
-		std::vector<MapTypes::Facet*> pieces;
-		pieces.push_back(f);
+		std::vector<MapTypes::Facet*> faces_to_be_cut;
+		faces_to_be_cut.push_back(f);
 		while (!intersecting_faces.empty()) {
-			std::vector<MapTypes::Facet*> new_faces;
+			std::set<MapTypes::Facet*> new_faces;		// stores the new faces
+			std::set<MapTypes::Facet*> remained_faces;	// faces that will be cut later
 			MapTypes::Facet* cutter = *(intersecting_faces.begin());
-			for (std::size_t j = 0; j < pieces.size(); ++j) {
-				std::vector<MapTypes::Facet*> tmp = cut(pieces[j], cutter, mesh);
-				new_faces.insert(new_faces.end(), tmp.begin(), tmp.end());
+			for (std::size_t j = 0; j < faces_to_be_cut.size(); ++j) {
+				MapTypes::Facet* current_face = faces_to_be_cut[j];
+				std::vector<MapTypes::Facet*> tmp = cut(current_face, cutter, mesh);
+				new_faces.insert(tmp.begin(), tmp.end());
+				if (tmp.empty()) { 
+					remained_faces.insert(current_face);
+				}
 			}
-			pieces = new_faces;
+			faces_to_be_cut = std::vector<MapTypes::Facet*>(new_faces.begin(), new_faces.end());
+			faces_to_be_cut.insert(faces_to_be_cut.end(), remained_faces.begin(), remained_faces.end());
 			intersecting_faces.erase(cutter);
 		}
 
@@ -765,25 +781,27 @@ bool HypothesisGenerator::intersection_plane_triplet(const Plane3d* plane1, cons
 }
 
 
-void HypothesisGenerator::triplet_intersection(const std::vector<Plane3d*>& supporting_planes) {
+void HypothesisGenerator::triplet_intersection() {
 	triplet_intersection_.clear();
 
-	std::vector<Plane3d*> all_planes = supporting_planes;
-	std::sort(all_planes.begin(), all_planes.end());
+	std::sort(supporting_planes_.begin(), supporting_planes_.end());
 
-	for (std::size_t i = 0; i < all_planes.size(); ++i) {
-		Plane3d* plane1 = all_planes[i];
-		for (std::size_t j = i + 1; j < all_planes.size(); ++j) {
-			Plane3d* plane2 = all_planes[j];
-			for (std::size_t k = j + 1; k < all_planes.size(); ++k) {
-				Plane3d* plane3 = all_planes[k];
+	for (std::size_t i = 0; i < supporting_planes_.size(); ++i) {
+		Plane3d* plane1 = supporting_planes_[i];
+		for (std::size_t j = i + 1; j < supporting_planes_.size(); ++j) {
+			Plane3d* plane2 = supporting_planes_[j];
+			for (std::size_t k = j + 1; k < supporting_planes_.size(); ++k) {
+				Plane3d* plane3 = supporting_planes_[k];
 
 				assert(plane1 < plane2);
 				assert(plane2 < plane3);
 
 				vec3 p;
-				if (intersection_plane_triplet(plane1, plane2, plane3, p))
-					triplet_intersection_[plane1][plane2][plane3] = p; // store the intersection in our data base
+				if (intersection_plane_triplet(plane1, plane2, plane3, p)) {
+					vec3* new_point = new vec3(p);
+					triplet_intersection_[plane1][plane2][plane3] = new_point; // store the intersection in our data base
+					intersecting_points_.push_back(new_point);
+				}
 			}
 		}
 	}
@@ -818,7 +836,7 @@ void HypothesisGenerator::remove_degenerated_facets(Map* mesh) {
 }
 
 
-bool HypothesisGenerator::query_intersection(Plane3d* plane1, Plane3d* plane2, Plane3d* plane3, vec3& p) {
+vec3* HypothesisGenerator::query_intersection(Plane3d* plane1, Plane3d* plane2, Plane3d* plane3) {
 	Plane3d* min_plane = ogf_min(plane1, plane2, plane3);
 	Plane3d* max_plane = ogf_max(plane1, plane2, plane3);
 
@@ -831,23 +849,22 @@ bool HypothesisGenerator::query_intersection(Plane3d* plane1, Plane3d* plane2, P
 		mid_plane = plane3;
 
 	if (triplet_intersection_.find(min_plane) == triplet_intersection_.end())
-		return false;
+		return 0;
 
-	std::map<Plane3d*, std::map<Plane3d*, vec3> >& tmp2 = triplet_intersection_[min_plane];
+	std::map<Plane3d*, std::map<Plane3d*, vec3*> >& tmp2 = triplet_intersection_[min_plane];
 	if (tmp2.find(mid_plane) == tmp2.end())
-		return false;
+		return 0;
 
-	std::map<Plane3d*, vec3>& tmp3 = tmp2[mid_plane];
+	std::map<Plane3d*, vec3*>& tmp3 = tmp2[mid_plane];
 	if (tmp3.find(max_plane) == tmp3.end())
-		return false;
+		return 0;
 
-	p = tmp3[max_plane];
-	return true;
+	return tmp3[max_plane];
 }
 
 
 
-Map* HypothesisGenerator::generate(PolyFitInfo* polyfit_info) {
+Map* HypothesisGenerator::generate() {
 	if (!pset_)
 		return nil;
 
@@ -856,9 +873,9 @@ Map* HypothesisGenerator::generate(PolyFitInfo* polyfit_info) {
 		return nil;
 	}
 
-	collect_valid_planes(polyfit_info->planes);
+	collect_valid_planes();
 
-	Map* bbox_mesh = construct_bbox_mesh(polyfit_info->planes);
+	Map* bbox_mesh = construct_bbox_mesh();
 	Map* mesh = compute_proxy_mesh(bbox_mesh);
 	if (!mesh)
 		return nil;
@@ -870,7 +887,7 @@ Map* HypothesisGenerator::generate(PolyFitInfo* polyfit_info) {
 	edge_source_planes_.bind(mesh, "EdgeSourcePlanes");
 	vertex_source_planes_.bind(mesh, "VertexSourcePlanes");
 
-	triplet_intersection(polyfit_info->planes);
+	triplet_intersection();
 	pairwise_cut(mesh);
 	check_source_planes(mesh);
 
@@ -883,4 +900,275 @@ Map* HypothesisGenerator::generate(PolyFitInfo* polyfit_info) {
 	vertex_source_planes_.unbind();
 
 	return mesh;
+}
+
+
+void HypothesisGenerator::clear() {
+	for (std::size_t i = 0; i < supporting_planes_.size(); ++i)
+		delete supporting_planes_[i];
+	supporting_planes_.clear();
+
+	for (std::size_t i = 0; i < intersecting_points_.size(); ++i)
+		delete intersecting_points_[i];
+	intersecting_points_.clear();
+}
+
+
+
+
+float HypothesisGenerator::compute_point_confidences(PointSet* pset, int s1 /* = 6 */, int s2 /* = 16 */, int s3 /* = 32 */) {
+	std::vector<vec3>& points = pset->points();
+	std::vector<float>& planar_qualities = pset->planar_qualities();
+
+	if (planar_qualities.size() != points.size())
+		planar_qualities.resize(points.size());
+
+	KdTreeSearch_var kdtree = new KdTreeSearch;
+	kdtree->begin();
+	kdtree->add_vertex_set(pset);
+	kdtree->end();
+
+	std::vector<int> neighbor_size;
+	neighbor_size.push_back(s1);
+	neighbor_size.push_back(s2);
+	neighbor_size.push_back(s3);
+
+	std::vector< std::vector<double> > eigen_values(3);
+	for (int i = 0; i < 3; ++i)
+		eigen_values[i].resize(3);
+
+	double total = 0;
+	ProgressLogger progress(points.size());
+	for (std::size_t i = 0; i < points.size(); ++i) {
+		const vec3& p = points[i];
+		for (int j = 0; j < 3; ++j) {
+			std::vector<unsigned int> neighbors;
+			std::vector<double> sqr_distances;
+			kdtree->find_closest_K_points(p, neighbor_size[j], neighbors, sqr_distances);
+
+			PrincipalAxes3d pca;
+			pca.begin();
+			double avg = 0;
+			for (unsigned int k = 0; k < neighbors.size(); ++k) {
+				pca.add_point(points[neighbors[k]]);
+				if (j == 0) {
+					avg += std::sqrt(sqr_distances[k]);
+				}
+			}
+			pca.end();
+			total += (avg / neighbors.size());
+
+			for (int k = 0; k < 3; ++k)
+				eigen_values[j][k] = pca.eigen_value(3 - k - 1); // eigen values are sorted in descending order
+
+			assert(eigen_values[j][0] <= eigen_values[j][1] && eigen_values[j][1] <= eigen_values[j][2]);
+		}
+
+		double conf = 0.0;
+		for (int j = 0; j < 3; ++j) {
+			conf += (1 - 3.0 * eigen_values[j][0] / (eigen_values[j][0] + eigen_values[j][1] + eigen_values[j][2])) * (eigen_values[j][1] / eigen_values[j][2]);
+		}
+		conf /= 3.0;
+		planar_qualities[i] = static_cast<float>(conf);
+		progress.next();
+	}
+	return static_cast<float>(total / points.size());
+}
+
+
+void HypothesisGenerator::compute_confidences(Map* mesh, bool use_conficence /* = false */) {
+	facet_attrib_supporting_vertex_group_.bind(mesh, Method::facet_attrib_supporting_vertex_group);
+
+	StopWatch w;
+	Logger::out("-") << "computing point confidences..." << std::endl;
+	double avg_spacing = compute_point_confidences(pset_, 6, 16, 25);
+	float radius = static_cast<float>(avg_spacing)* 5.0f;
+	Logger::out("-") << "done. avg spacing: " << avg_spacing << ". " << w.elapsed() << " sec." << std::endl;
+
+	std::vector<VertexGroup::Ptr>& groups = pset_->groups();
+	const std::vector<vec3>& pts = pset_->points();
+
+	float max_dist = 0;
+	for (std::size_t i = 0; i < groups.size(); ++i) {
+		VertexGroup* g = groups[i];
+		const Plane3d& plane = g->plane();
+		for (std::size_t j = 0; j < g->size(); ++j) {
+			int idx = g->at(j);
+			const vec3& p = pts[idx];
+			float sdist = plane.squared_ditance(p);
+			max_dist = std::max(max_dist, sdist);
+		}
+	}
+	max_dist = std::sqrt(max_dist);
+
+	//////////////////////////////////////////////////////////////////////////
+
+	MapFacetAttribute<double>	facet_attrib_supporting_point_num(mesh, Method::facet_attrib_supporting_point_num);
+	MapFacetAttribute<double>	facet_attrib_facet_area(mesh, Method::facet_attrib_facet_area);
+	MapFacetAttribute<double>	facet_attrib_covered_area(mesh, Method::facet_attrib_covered_area);
+
+	Logger::out("-") << "computing face confidences..." << std::endl;
+	w.start();
+	ProgressLogger progress(mesh->size_of_facets());
+	FOR_EACH_FACET(Map, mesh, it) {
+		Map::Facet* f = it;
+
+		double face_area = Geom::facet_area(f);
+		if (face_area < 1e-16) {
+			Logger::err("-") << "degenerate facet with area: " << face_area << std::endl;
+			FacetHalfedgeCirculator cir(f);
+			for (; !cir->end(); ++cir) {
+				Logger::err("-") << cir->vertex()->point() << std::endl;
+			}
+			Logger::err("-") << std::endl;
+			continue;
+		}
+
+		VertexGroup* g = facet_attrib_supporting_vertex_group_[f];
+
+		std::vector<unsigned int> points;
+		double num = facet_points_projected_in(pset_, g, f, max_dist, points);
+		if (use_conficence)
+			facet_attrib_supporting_point_num[f] = num;
+		else
+			facet_attrib_supporting_point_num[f] = static_cast<double>(points.size());
+
+		facet_attrib_facet_area[f] = face_area;
+
+		Map::Ptr alpha_mesh = AlphaShapeMesh::apply(pset_, points, g->plane(), radius);
+		double covered_area = 0;
+		if (alpha_mesh) {
+			FOR_EACH_FACET(Map, alpha_mesh, it)
+				covered_area += Geom::triangle_area(it);
+		}
+		facet_attrib_covered_area[f] = covered_area;
+
+		if (covered_area > face_area) {
+			// this may not be an error (floating point precision limit)
+			facet_attrib_covered_area[f] = face_area;
+		}
+		progress.next();
+	}
+
+	facet_attrib_supporting_vertex_group_.unbind();
+
+	Logger::out("-") << "done. " << w.elapsed() << " sec." << std::endl;
+}
+
+
+float HypothesisGenerator::facet_points_projected_in(PointSet* pset, VertexGroup* g, MapTypes::Facet* f, float max_dist, std::vector<unsigned int>& points) {
+	const Plane3d& plane = g->plane();
+	const vec3& orig = plane.point();
+	const vec3& base1 = plane.base1();
+	const vec3& base2 = plane.base2();
+
+	const Polygon3d& plg3d = Geom::facet_polygon(f);
+	const Polygon2d& plg2d = Geom::to_2d(orig, base1, base2, plg3d);
+	const std::vector<vec3>& pts = pset->points();
+	const std::vector<float>& confidences = pset->planar_qualities();
+
+	points.clear();
+	float epsilon = max_dist * 0.5f;// considering noise and outliers
+	float count = 0.0f;
+	for (int i = 0; i < g->size(); ++i) {
+		unsigned int idx = g->at(i);
+		const vec3& p = pts[idx];
+		const vec2& q = Geom::to_2d(orig, base1, base2, p);
+		if (Geom::point_is_in_polygon(plg2d, q)) {
+			points.push_back(idx);
+			float dist = std::sqrt(plane.squared_ditance(p));
+			if (dist < epsilon) { // in case of numerical issues (floating point precision)
+				count += (1 - dist / epsilon) * confidences[idx];
+			}
+		}
+	}
+
+	return count;
+}
+
+
+
+HypothesisGenerator::Adjacency HypothesisGenerator::extract_adjacency(Map* mesh) {
+	vertex_source_planes_.bind(mesh, "VertexSourcePlanes");
+
+	// an edge is denoted by its two end points
+	typedef typename std::map< vec3*, std::set<MapTypes::Halfedge*> >	Edge_map;
+	typedef typename std::map< vec3*, Edge_map >						Face_pool;
+	Face_pool face_pool;
+
+	FOR_EACH_HALFEDGE(Map, mesh, h) {
+		if (h->facet() == 0)
+			continue;
+
+		Map::Vertex* sd = h->opposite()->vertex();
+		Map::Vertex* td = h->vertex();
+
+		std::set<Plane3d*>& set_s = vertex_source_planes_[sd];
+		std::set<Plane3d*>& set_t = vertex_source_planes_[td];
+		CGAL_assertion(set_s.size() == 3);
+		CGAL_assertion(set_t.size() == 3);
+
+		std::vector<Plane3d*> s_planes(set_s.begin(), set_s.end());
+		CGAL_assertion(s_planes[0] < s_planes[1]);
+		CGAL_assertion(s_planes[1] < s_planes[2]);
+		vec3* s = triplet_intersection_[s_planes[0]][s_planes[1]][s_planes[2]];
+
+		std::vector<Plane3d*> t_planes(set_t.begin(), set_t.end());
+		CGAL_assertion(t_planes[0] < t_planes[1]);
+		CGAL_assertion(t_planes[1] < t_planes[2]);
+		vec3* t = triplet_intersection_[t_planes[0]][t_planes[1]][t_planes[2]];
+
+		if (s > t)
+			std::swap(s, t);
+		face_pool[s][t].insert(h);
+	}
+
+#ifdef DISPLAY_ADJACENCY_STATISTICS
+	std::map<std::size_t, std::size_t>   num_each_sized_fans;
+	for (std::size_t i = 1; i < 20; ++i)
+		num_each_sized_fans[i] = 0;
+#endif
+
+	Adjacency fans;
+	Face_pool::const_iterator it = face_pool.begin();
+	for (; it != face_pool.end(); ++it) {
+		const vec3* s = it->first;
+		const Edge_map& tmp = it->second;
+		Edge_map::const_iterator cur = tmp.begin();
+		for (; cur != tmp.end(); ++cur) {
+			const vec3* t = cur->first;
+			const std::set<Map::Halfedge*>& faces = cur->second;
+			Intersection fan;
+			fan.s = s;
+			fan.t = t;
+			fan.insert(fan.end(), faces.begin(), faces.end());
+			fans.push_back(fan);
+
+#ifdef DISPLAY_ADJACENCY_STATISTICS
+			++num_each_sized_fans[fan.size()];
+#endif
+		}
+	}
+
+#ifdef DISPLAY_ADJACENCY_STATISTICS
+	std::map<std::size_t, std::size_t>::iterator pos = num_each_sized_fans.begin();
+	for (; pos != num_each_sized_fans.end(); ++pos) {
+		if (pos->second > 0)
+			std::cout << "\t" << pos->first << " - sized fans: " << pos->second << std::endl;
+	}
+#endif
+
+	vertex_source_planes_.unbind();
+
+	return fans;
+}
+
+
+bool HypothesisGenerator::ready_for_optimization(Map* mesh) const {
+	return (
+		supporting_planes_.size() > 4 &&
+		MapFacetAttribute<double>::is_defined(mesh, Method::facet_attrib_supporting_point_num) &&
+		MapFacetAttribute<double>::is_defined(mesh, Method::facet_attrib_facet_area) &&
+		MapFacetAttribute<double>::is_defined(mesh, Method::facet_attrib_covered_area)
+		);
 }
