@@ -710,6 +710,7 @@ void HypothesisGenerator::pairwise_cut(Map* mesh)
 		all_faces.push_back(f);
 	}
 
+	ProgressLogger progress(all_faces.size());
 	for (std::size_t i = 0; i < all_faces.size(); ++i) {
 		MapTypes::Facet* f = all_faces[i];
 
@@ -746,6 +747,7 @@ void HypothesisGenerator::pairwise_cut(Map* mesh)
 			Map::Facet* fa = cutting_faces[j];
 			cut(fa, f, mesh);
 		}
+		progress.next();
 	}
 }
 

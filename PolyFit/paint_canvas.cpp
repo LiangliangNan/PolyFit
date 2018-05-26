@@ -108,8 +108,10 @@ void PaintCanvas::clear() {
 	if (optimized_mesh_)
 		optimized_mesh_.forget();
 
-	if (hypothesis_)
+	if (hypothesis_) {
 		delete hypothesis_;
+		hypothesis_ = 0;
+	}
 }
 
 // in case you're running PolyFit on an ancient machine where 
