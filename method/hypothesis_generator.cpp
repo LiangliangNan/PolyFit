@@ -45,7 +45,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 // For debugging (identifying topological issues)
-#define DISPLAY_ADJACENCY_STATISTICS
+//#define DISPLAY_ADJACENCY_STATISTICS
 
 
 HypothesisGenerator::HypothesisGenerator(PointSet* pset)
