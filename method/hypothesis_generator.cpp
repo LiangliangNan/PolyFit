@@ -583,9 +583,15 @@ void HypothesisGenerator::compute_intersections(
 				Plane3d* plane3 = cutting_plane;
 
 				if (plane3 != plane1 && plane3 != plane2) {
-					vec3* p = query_intersection(plane1, plane2, plane3);
-					if (p)
-						new_vts.push_back(EdgePos(h, *p));
+					const vec3* p = query_intersection(plane1, plane2, plane3);
+					if (p) {
+						if (distance2(*p, s) <= Method::snap_sqr_distance_threshold)		// snap to 's'
+							existing_vts.push_back(vs);
+						else if (distance2(*p, t) <= Method::snap_sqr_distance_threshold)	// snap to 't'
+							existing_vts.push_back(vt);
+						else
+							new_vts.push_back(EdgePos(h, *p));
+					}
 					else
 						Logger::err("-") << "Fatal error: should have intersection" << std::endl;
 				}
@@ -604,18 +610,6 @@ void HypothesisGenerator::compute_intersections(
 
 // split an existing edge, meanwhile, assign the new edges the original source faces (the old edge lies in the intersection of the two faces)
 MapTypes::Vertex* HypothesisGenerator::split_edge(const EdgePos& ep, MapEditor* editor, MapTypes::Facet* cutter) {
-	
-	// if the split is very close to an existing vertex, we do snap
-	MapTypes::Halfedge* edge = ep.edge;
-	const vec3& s = edge->prev()->vertex()->point();
-	const vec3& t = edge->vertex()->point();
-	if (distance2(s, ep.pos) <= Method::snap_sqr_distance_threshold)
-		return edge->prev()->vertex();
-	else if (distance2(t, ep.pos) <= Method::snap_sqr_distance_threshold)
-		return edge->vertex();
-
-	// then we have to split
-
 	const std::set<Plane3d*>& sfs = edge_source_planes_[ep.edge];
 	assert(sfs.size() == 2);
 
