@@ -96,7 +96,7 @@ void HypothesisGenerator::merge(VertexGroup* g1, VertexGroup* g2) {
 		groups.erase(pos);
 	}
 	else {
-		std::cerr << "fatal error: vertex group doesn't exist" << std::endl;
+		Logger::err("-") << "fatal error: vertex group doesn't exist" << std::endl;
 	}
 
 	pos = std::find(groups.begin(), groups.end(), g2);
@@ -104,7 +104,7 @@ void HypothesisGenerator::merge(VertexGroup* g1, VertexGroup* g2) {
 		groups.erase(pos);
 	}
 	else {
-		std::cerr << "fatal error: vertex group doesn't exist" << std::endl;
+		Logger::err("-") << "fatal error: vertex group doesn't exist" << std::endl;
 	}
 }
 
@@ -328,7 +328,7 @@ Map* HypothesisGenerator::construct_bbox_mesh() {
 			vertex_source_planes[it].insert(plane);
 		}
 		if (cit->size() != 3)
-			std::cout << "fatal_error. A bbox mesh corner does not relate to 3 planes" << std::endl;
+			Logger::err("-") << "fatal_error. A bbox mesh corner does not relate to 3 planes" << std::endl;
 	}
 
 	return mesh;
@@ -447,7 +447,7 @@ Map* HypothesisGenerator::compute_proxy_mesh(Map* bbox_mesh) {
 						}
 						std::set<Plane3d*> tmp = edge_source_planes[h];
 						if (tmp.size() != 2) {
-							std::cout << "fatal error: edge_source_planes[h].size() != 2. Size = " << tmp.size() << std::endl;
+							Logger::err("-") << "fatal error: edge_source_planes[h].size() != 2. Size = " << tmp.size() << std::endl;
 						}
 					}
 				}
@@ -539,45 +539,58 @@ void HypothesisGenerator::compute_intersections(
 	// the value really doesn't matter.
 	const double threshold = 1e-10;
 
-	Plane3d* plane = facet_attrib_supporting_plane_[cutter];
+	Plane3d* cutting_plane = facet_attrib_supporting_plane_[cutter];
 
 	Plane3d* supporting_plane = facet_attrib_supporting_plane_[f];
-	if (supporting_plane == plane)
+	if (supporting_plane == cutting_plane)
 		return;
 
 	Map::Halfedge* h = f->halfedge();
 	do {
 		const std::set<Plane3d*>& source_planes = edge_source_planes_[h];
-		if (source_planes.find(plane) != source_planes.end()) // plane cut the face at an edge
+		if (source_planes.find(cutting_plane) != source_planes.end()) // the edge lies on the cutting plane
 			return;
 
-		const vec3& s = h->opposite()->vertex()->point();
-		const vec3& t = h->vertex()->point();
-		if (plane->squared_ditance(t) <= threshold) {		// plane cuts at vertex 't'
-			existing_vts.push_back(h->vertex());
+		MapTypes::Vertex* vs = h->opposite()->vertex();
+		MapTypes::Vertex* vt = h->vertex();
+		const vec3& s = vs->point();
+		const vec3& t = vt->point();
+
+		Sign s_side = cutting_plane->orient(s);
+		Sign t_side = cutting_plane->orient(t);
+
+		if (t_side == ZERO) {
+			if (s_side == ZERO)  // the edge lies on the cutting plane
+				return;
+			else
+				existing_vts.push_back(vt);
 		}
-		else if (plane->squared_ditance(s) > threshold) {	// cut at the edge
-			if (plane->intersection(s, t)) {
+
+		else if (
+			(s_side == POSITIVE && t_side == NEGATIVE) ||
+			(s_side == NEGATIVE && t_side == POSITIVE)) // intersects at the interior of the edge
+		{
+			double s_sdist = cutting_plane->squared_ditance(s);
+			double t_sdist = cutting_plane->squared_ditance(t);
+
+			if (s_sdist <= Method::snap_sqr_distance_threshold)		// plane cuts at vertex 's'
+				existing_vts.push_back(vs);
+			else if (t_sdist <= Method::snap_sqr_distance_threshold) // plane cuts at vertex 't'
+				existing_vts.push_back(vt);
+			else {
 				Plane3d* plane1 = *(source_planes.begin());
 				Plane3d* plane2 = *(source_planes.rbegin());
-				Plane3d* plane3 = plane;
+				Plane3d* plane3 = cutting_plane;
 
 				if (plane3 != plane1 && plane3 != plane2) {
 					vec3* p = query_intersection(plane1, plane2, plane3);
 					if (p)
 						new_vts.push_back(EdgePos(h, *p));
-					else {
-						vec3 q;
-						if (intersection_plane_triplet(plane1, plane2, plane3, q)) {
-							vec3* new_point = new vec3(q);
-							triplet_intersection_[plane1][plane2][plane3] = new_point; // store the intersection in our data base
-							intersecting_points_.push_back(new_point);
-							new_vts.push_back(EdgePos(h, *new_point));
-						}
-						else
-							Logger::warn("-") << "fatal error. should have intersection. " << new_vts.size() << std::endl;
-					}
+					else
+						Logger::err("-") << "Fatal error: should have intersection" << std::endl;
 				}
+				else
+					Logger::err("-") << "Fatal error: should not have duplicated planes." << std::endl;
 			}
 		}
 		else {
@@ -591,20 +604,31 @@ void HypothesisGenerator::compute_intersections(
 
 // split an existing edge, meanwhile, assign the new edges the original source faces (the old edge lies in the intersection of the two faces)
 MapTypes::Vertex* HypothesisGenerator::split_edge(const EdgePos& ep, MapEditor* editor, MapTypes::Facet* cutter) {
+	
+	// if the split is very close to an existing vertex, we do snap
+	MapTypes::Halfedge* edge = ep.edge;
+	const vec3& s = edge->prev()->vertex()->point();
+	const vec3& t = edge->vertex()->point();
+	if (distance2(s, ep.pos) <= Method::snap_sqr_distance_threshold)
+		return edge->prev()->vertex();
+	else if (distance2(t, ep.pos) <= Method::snap_sqr_distance_threshold)
+		return edge->vertex();
+
+	// then we have to split
+
 	const std::set<Plane3d*>& sfs = edge_source_planes_[ep.edge];
+	assert(sfs.size() == 2);
 
 	MapTypes::Vertex* v = editor->split_edge(ep.edge);
 	v->set_point(ep.pos);
 
-	if (sfs.size() == 2) {
-		MapTypes::Halfedge* h = v->halfedge();
-		edge_source_planes_[h] = sfs;
-		edge_source_planes_[h->opposite()] = sfs;
+	MapTypes::Halfedge* h = v->halfedge();
+	edge_source_planes_[h] = sfs;
+	edge_source_planes_[h->opposite()] = sfs;
 
-		h = h->next();
-		edge_source_planes_[h] = sfs;
-		edge_source_planes_[h->opposite()] = sfs;
-	}
+	h = h->next();
+	edge_source_planes_[h] = sfs;
+	edge_source_planes_[h->opposite()] = sfs;
 
 	vertex_source_planes_[v] = sfs;
 	vertex_source_planes_[v].insert(facet_attrib_supporting_plane_[cutter]);
@@ -620,13 +644,17 @@ std::vector<Map::Facet*> HypothesisGenerator::cut(MapTypes::Facet* f, MapTypes::
 	std::vector<EdgePos> new_vts;
 	compute_intersections(f, cutter, existing_vts, new_vts);
 
-	{ // this seem redundant, because in previous step it has been confirmed that cut is needed
-		if (existing_vts.size() + new_vts.size() != 2)
+	if (existing_vts.size() + new_vts.size() != 2)
+		return new_faces;
+	else if (existing_vts.size() == 2) {
+		// test if the two intersecting points are both very close to an existing vertex.
+		// Since we allow snapping, we test if the two intersecting points are the same.
+		if (existing_vts[0] == existing_vts[1])
 			return new_faces;
-		else if (existing_vts.size() == 2) {
-			if (halfedge_exists_between_vertices(existing_vts[0], existing_vts[1]))
-				return new_faces;
-		}
+
+		// test if an edge already exists, i.e., the plane cuts at this edge
+		if (halfedge_exists_between_vertices(existing_vts[0], existing_vts[1]))
+			return new_faces;
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -634,65 +662,55 @@ std::vector<Map::Facet*> HypothesisGenerator::cut(MapTypes::Facet* f, MapTypes::
 	VertexGroup* g = facet_attrib_supporting_vertex_group_[f];
 	MapEditor editor(mesh);
 
-	if (existing_vts.size() + new_vts.size() == 2) {
-		Map::Vertex* v0 = nil;
-		Map::Vertex* v1 = nil;
+	Map::Vertex* v0 = nil;
+	Map::Vertex* v1 = nil;
+	if (existing_vts.size() == 2) {
+		v0 = existing_vts[0];
+		v1 = existing_vts[1];
+	}
+	else if (existing_vts.size() == 1) {
+		v0 = existing_vts[0];
+		v1 = split_edge(new_vts[0], &editor, cutter);
+	}
+	else if (new_vts.size() == 2) {
+		v0 = split_edge(new_vts[0], &editor, cutter);
+		v1 = split_edge(new_vts[1], &editor, cutter);
+	}
 
-		if (existing_vts.size() == 2) {
-			v0 = existing_vts[0];
-			v1 = existing_vts[1];
+	Map::Halfedge* h0 = v0->halfedge();
+	if (h0->facet() != f) {
+		do {
+			h0 = h0->next()->opposite();
+			if (h0->facet() == f)
+				break;
+		} while (h0 != v0->halfedge());
+	}
+	assert(h0->facet() == f);
 
-			if (halfedge_exists_between_vertices(v0, v1)) {
-				std::cout << "---------fatal error: halfedge_exists_between_vertices(v0, v1)" << std::endl;
-			}
-		}
-		else if (existing_vts.size() == 1) {
-			v0 = existing_vts[0];
-			v1 = split_edge(new_vts[0], &editor, cutter);
-		}
-		else if (new_vts.size() == 2) {
-			v0 = split_edge(new_vts[0], &editor, cutter);
-			v1 = split_edge(new_vts[1], &editor, cutter);
-		}
+	Map::Halfedge* h1 = v1->halfedge();
+	if (h1->facet() != f) {
+		do {
+			h1 = h1->next()->opposite();
+			if (h1->facet() == f)
+				break;
+		} while (h1 != v1->halfedge());
+	}
+	assert(h1->facet() == f);
 
-		Map::Halfedge* h0 = v0->halfedge();
-		if (h0->facet() != f) {
-			do {
-				h0 = h0->next()->opposite();
-				if (h0->facet() == f)
-					break;
-			} while (h0 != v0->halfedge());
-		}
-		assert(h0->facet() == f);
+	if (editor.can_split_facet(h0, h1)) {
+		Map::Halfedge* h = editor.split_facet(h0, h1);
+		if (h) {
+			edge_source_planes_[h].insert(facet_attrib_supporting_plane_[f]);
+			edge_source_planes_[h].insert(facet_attrib_supporting_plane_[cutter]);
+			edge_source_planes_[h->opposite()].insert(facet_attrib_supporting_plane_[f]);
+			edge_source_planes_[h->opposite()].insert(facet_attrib_supporting_plane_[cutter]);
 
-		Map::Halfedge* h1 = v1->halfedge();
-		if (h1->facet() != f) {
-			do {
-				h1 = h1->next()->opposite();
-				if (h1->facet() == f)
-					break;
-			} while (h1 != v1->halfedge());
-		}
-		assert(h1->facet() == f);
-
-		if (editor.can_split_facet(h0, h1)) {
-			Map::Halfedge* h = editor.split_facet(h0, h1);
-			if (h) {
-				edge_source_planes_[h].insert(facet_attrib_supporting_plane_[f]);
-				edge_source_planes_[h].insert(facet_attrib_supporting_plane_[cutter]);
-				edge_source_planes_[h->opposite()].insert(facet_attrib_supporting_plane_[f]);
-				edge_source_planes_[h->opposite()].insert(facet_attrib_supporting_plane_[cutter]);
-
-				Map::Facet* f1 = h->facet();
-				facet_attrib_supporting_vertex_group_[f1] = g;
-				new_faces.push_back(f1);
-				Map::Facet* f2 = h->opposite()->facet();
-				facet_attrib_supporting_vertex_group_[f2] = g;
-				new_faces.push_back(f2);
-				return new_faces;
-			}
-			else
-				Logger::warn("-") << "fatal error. should have intersection. " << new_vts.size() << std::endl;
+			Map::Facet* f1 = h->facet();
+			facet_attrib_supporting_vertex_group_[f1] = g;
+			new_faces.push_back(f1);
+			Map::Facet* f2 = h->opposite()->facet();
+			facet_attrib_supporting_vertex_group_[f2] = g;
+			new_faces.push_back(f2);
 		}
 		else
 			Logger::warn("-") << "fatal error. should have intersection. " << new_vts.size() << std::endl;
@@ -816,15 +834,14 @@ void HypothesisGenerator::remove_degenerated_facets(Map* mesh) {
 	// because collapsing one edge affects other neighboring edges.
 	// std::vector<Map::Halfedge*> to_collapse;
 
-	double min_allowed_edge_length = 1e-5;
-
 	MapEditor editor(mesh);
 	bool degenerated_facet_found = false;
 	int count = 0;
 	do {
 		degenerated_facet_found = false;
 		FOR_EACH_EDGE(Map, mesh, it) {
-			if (Geom::edge_length(it) <= min_allowed_edge_length) {
+			double sd = distance2(it->vertex()->point(), it->prev()->vertex()->point());
+			if (sd < Method::snap_sqr_distance_threshold) {
 				degenerated_facet_found = true;
 				if (editor.collapse_edge(it)) {
 					++count;
