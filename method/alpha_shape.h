@@ -151,11 +151,11 @@ AlphaShape::AlphaShape(InputIterator first, InputIterator beyond) {
 		initialize_alpha_spectrum();
 	}
 
-	Alpha_iterator alpha = find_optimal_alpha(1);
-	if (alpha == alpha_end())
-		set_alpha(0.0f);
-	else 
-		set_alpha(*alpha);
+	//Alpha_iterator alpha = find_optimal_alpha(1);
+	//if (alpha == alpha_end())
+	//	set_alpha(0.0f);
+	//else 
+	//	set_alpha(*alpha);
 }
 
 
