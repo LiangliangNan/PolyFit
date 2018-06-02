@@ -726,12 +726,14 @@ void PaintCanvas::optimization(LinearProgramSolver::SolverName solver) {
 	main_window_->disableActions(true);
 	Map* mesh = Geom::duplicate(hypothesis_mesh_);
 
-//	const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
-//	FaceSelection selector(point_set_, mesh);
-//	selector.optimize(adjacency, solver);
-
+#if 1
+    const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
+    FaceSelection selector(point_set_, mesh);
+    selector.optimize(adjacency, solver);
+#else
     std::thread t(do_optimization, point_set_, mesh, hypothesis_, solver);
     t.join();
+#endif
 
 	optimized_mesh_ = mesh;
 
