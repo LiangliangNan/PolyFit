@@ -47,7 +47,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <cassert>
 #include <fstream>
 #include <algorithm>
-#include <thread>
 
 
 using namespace qglviewer;
@@ -692,14 +691,6 @@ void PaintCanvas::generateQualityMeasures() {
 }
 
 
-
-void do_optimization(PointSet* pset, Map* mesh, HypothesisGenerator* hypothesis, LinearProgramSolver::SolverName solver) {
-    const HypothesisGenerator::Adjacency& adjacency = hypothesis->extract_adjacency(mesh);
-    FaceSelection selector(pset, mesh);
-    selector.optimize(adjacency, solver);
-}
-
-
 void PaintCanvas::optimization(LinearProgramSolver::SolverName solver) {
 	if (!point_set_) {
 		Logger::warn("-") << "point set does not exist" << std::endl;
@@ -726,14 +717,9 @@ void PaintCanvas::optimization(LinearProgramSolver::SolverName solver) {
 	main_window_->disableActions(true);
 	Map* mesh = Geom::duplicate(hypothesis_mesh_);
 
-#if 1
-    const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
-    FaceSelection selector(point_set_, mesh);
-    selector.optimize(adjacency, solver);
-#else
-    std::thread t(do_optimization, point_set_, mesh, hypothesis_, solver);
-    t.join();
-#endif
+	const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
+	FaceSelection selector(point_set_, mesh);
+	selector.optimize(adjacency, solver);
 
 	optimized_mesh_ = mesh;
 
