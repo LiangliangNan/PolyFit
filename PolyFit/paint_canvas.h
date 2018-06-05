@@ -94,7 +94,7 @@ public Q_SLOTS:
 	void refinePlanes();
 	void generateFacetHypothesis();
 	void generateQualityMeasures();
-	void optimization(LinearProgramSolver::SolverName solver);
+	void optimization();
 
 	void setShowInput(bool);
 	void setShowCandidates(bool);

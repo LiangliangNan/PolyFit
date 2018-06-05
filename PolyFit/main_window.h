@@ -27,7 +27,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../math/math_types.h"
 #include "../basic/logger.h"
 #include "../basic/progress.h"
-
+#include "../math/linear_program_solver.h"
 
 class QLabel;
 class QComboBox;
@@ -65,6 +65,8 @@ public:
 
 	void showCoordinateUnderMouse(const vec3& p, bool found) ;
 
+	LinearProgramSolver::SolverName active_solver() const;
+
 public Q_SLOTS:
 	bool open();
 	bool save();
@@ -74,8 +76,6 @@ public Q_SLOTS:
 
 	void resetWeights();
 	void setManualInputWeights(bool);
-
-	void optimization();
 
 	void about();
 

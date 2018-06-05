@@ -691,7 +691,7 @@ void PaintCanvas::generateQualityMeasures() {
 }
 
 
-void PaintCanvas::optimization(LinearProgramSolver::SolverName solver) {
+void PaintCanvas::optimization() {
 	if (!point_set_) {
 		Logger::warn("-") << "point set does not exist" << std::endl;
 		return;
@@ -719,7 +719,7 @@ void PaintCanvas::optimization(LinearProgramSolver::SolverName solver) {
 
 	const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
 	FaceSelection selector(point_set_, mesh);
-	selector.optimize(adjacency, solver);
+	selector.optimize(adjacency, main_window_->active_solver());
 
 	optimized_mesh_ = mesh;
 

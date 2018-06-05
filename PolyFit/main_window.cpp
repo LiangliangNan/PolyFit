@@ -203,7 +203,7 @@ void MainWindow::createActions() {
 	connect(actionRefinePlanes, SIGNAL(triggered()), mainCanvas_, SLOT(refinePlanes()));
 	connect(actionGenerateFacetHypothesis, SIGNAL(triggered()), mainCanvas_, SLOT(generateFacetHypothesis()));
 	connect(actionGenerateQualityMeasures, SIGNAL(triggered()), mainCanvas_, SLOT(generateQualityMeasures()));
-	connect(actionOptimization, SIGNAL(triggered()), this, SLOT(optimization()));
+	connect(actionOptimization, SIGNAL(triggered()), mainCanvas_, SLOT(optimization()));
 
 	connect(checkBoxShowInput, SIGNAL(toggled(bool)), mainCanvas_, SLOT(setShowInput(bool)));
 	connect(checkBoxShowCandidates, SIGNAL(toggled(bool)), mainCanvas_, SLOT(setShowCandidates(bool)));
@@ -586,17 +586,17 @@ void MainWindow::snapshotScreen() {
 }
 
 
-void MainWindow::optimization() {
+LinearProgramSolver::SolverName MainWindow::active_solver() const {
 	const QString& solverString = solverBox_->currentText();
 
-    if (solverString == "GLPK")
-		canvas()->optimization(LinearProgramSolver::GLPK);
+	if (solverString == "GLPK")
+		return LinearProgramSolver::GLPK;
 #ifdef HAS_GUROBI
-    else if (solverString == "GUROBI")
-        canvas()->optimization(LinearProgramSolver::GUROBI);
+	else if (solverString == "GUROBI")
+		return LinearProgramSolver::GUROBI;
 #endif
 	else if (solverString == "LPSOLVE")
-		canvas()->optimization(LinearProgramSolver::LPSOLVE);
+		return LinearProgramSolver::LPSOLVE;
 	else // (solverString == "SCIP")
-		canvas()->optimization(LinearProgramSolver::SCIP);
+		return LinearProgramSolver::SCIP;
 }
