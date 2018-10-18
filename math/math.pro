@@ -47,14 +47,14 @@ HEADERS += \
     linear_program_solver.h
 
 INCLUDEPATH += . \
-#    $$quote($(CGAL_DIR)/include) \
-#    $$quote($(CGAL_DIR)/include) \
-     $$PWD/../3rd_scip/scip \
-     $$quote($(GUROBI_DIR)/include)
+     $$PWD/../3rd_scip/scip
 
+win32: {
+#No Gurobi for other OSs
+INCLUDEPATH += $$quote($(GUROBI_DIR)/include)
 DEPENDPATH += . \
      $$quote($(GUROBI_DIR)/include)
-
+}
 
 
 unix:!symbian {
@@ -77,8 +77,7 @@ DEPENDPATH += $$PWD/../basic
 
 
 
-    # Gurobi
-
+# Gurobi
 win32 {
 CONFIG(release, debug|release): LIBS += -L$$(GUROBI_DIR)/lib/ -lgurobi_c++md2017
 CONFIG(debug, debug|release): LIBS += -L$$(GUROBI_DIR)/lib/ -lgurobi_c++mdd2017
@@ -86,16 +85,16 @@ INCLUDEPATH += $$(GUROBI_DIR)/include
 DEPENDPATH += $$(GUROBI_DIR)/include
 }
 else {
+#No Gurobi for other OSs
+
 #QMAKE_CXXFLAGS += -stdlib=libc++
 #QMAKE_CXXFLAGS += -stdlib=libstdc++
-
 #QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.11  # seems it does not work with higher version macOS?
 
-
-LIBS += -L$$PWD/../../../../../../Library/gurobi800/mac64/lib/ -lgurobi_stdc++
-INCLUDEPATH += $$PWD/../../../../../../Library/gurobi800/mac64/include
-DEPENDPATH += $$PWD/../../../../../../Library/gurobi800/mac64/include
-macx: PRE_TARGETDEPS += $$PWD/../../../../../../Library/gurobi800/mac64/lib/libgurobi_stdc++.a
+#LIBS += -L$$PWD/../../../../../../Library/gurobi800/mac64/lib/ -lgurobi_stdc++
+#INCLUDEPATH += $$PWD/../../../../../../Library/gurobi800/mac64/include
+#DEPENDPATH += $$PWD/../../../../../../Library/gurobi800/mac64/include
+#macx: PRE_TARGETDEPS += $$PWD/../../../../../../Library/gurobi800/mac64/lib/libgurobi_stdc++.a
 }
 
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../3rd_lpsolve/release/ -l3rd_lpsolve
