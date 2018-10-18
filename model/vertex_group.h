@@ -62,8 +62,6 @@ public:
 	const Color& color() const { return color_; }
 	void set_color(const Color& c) { color_ = c; }
 
-	void fit_plane();
-
 	void set_plane(const Plane3d& plane) { plane_ = plane; }
 	const Plane3d& plane() const { return plane_; }
 

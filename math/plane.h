@@ -254,7 +254,7 @@ typename GenericPlane3<FT>::Point3 GenericPlane3<FT>::projection(const Point3& p
 	FT den = coeff_[0] * coeff_[0] + coeff_[1] * coeff_[1] + coeff_[2] * coeff_[2];
 	FT lambda = num / den;
 
-	FT x = p.x - lambda *  coeff_[0];
+	FT x = p.x - lambda * coeff_[0];
 	FT y = p.y - lambda * coeff_[1];
 	FT z = p.z - lambda * coeff_[2];
 	return Point3(x, y, z);
