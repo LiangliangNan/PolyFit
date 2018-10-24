@@ -33,8 +33,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #else
 #pragma comment(lib, "gurobi_c++md2015.lib")
 #endif
-#elif (_MSC_VER >= 1910 && _MSC_VER <= 1914) // vs 2017
-#pragma comment(lib, "gurobi80.lib")
+#elif (_MSC_VER >= 1910 && _MSC_VER <= 1915) // vs 2017
+#pragma comment(lib, "gurobi81.lib")
 #ifdef _DEBUG
 #pragma comment(lib, "gurobi_c++mdd2017.lib")
 #else
