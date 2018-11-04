@@ -79,13 +79,8 @@ else: {
     INCLUDEPATH += $$PWD/../../../../../../opt/local/include
     DEPENDPATH += $$PWD/../../../../../../opt/local/include
 
-# CGAL has the auto_link feature#
-    LIBS += -L$$PWD/../../../../../../opt/local/lib/ -lCGAL.13.0.1
+    LIBS += -L$$PWD/../../../../../../opt/local/lib/ -lCGAL.13.0.2
     LIBS += -L$$PWD/../../../../../../opt/local/lib/ -lgmp.10
-
-#    INCLUDEPATH += $$PWD/../../../../../../../../usr/local/Cellar/gmp/6.1.2_2/include
-#    DEPENDPATH += $$PWD/../../../../../../../../usr/local/Cellar/gmp/6.1.2_2/include
-#    LIBS += -L$$PWD/../../../../../../../../usr/local/Cellar/gmp/6.1.2_2/lib/ -lgmp.10
 }
 
 
