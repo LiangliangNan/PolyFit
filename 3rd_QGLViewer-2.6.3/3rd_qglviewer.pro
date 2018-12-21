@@ -175,24 +175,6 @@ win32 {
 }
 
 
-## Liangliang: there must be a better way to do this. Please let me know. liangliang.nan@gmail.com
-#macx {
-#    MAC_SDK  = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk
-#    if( !exists( $$MAC_SDK) ) {
-#        MAC_SDK  = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk
-#        if( !exists( $$MAC_SDK) ) {
-#            MAC_SDK  = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk
-#            if( !exists( $$MAC_SDK) ) {
-#                MAC_SDK  = /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk
-#                if( !exists( $$MAC_SDK) ) {
-#                    error("The selected Mac OSX SDK does not exist at $$MAC_SDK!")
-#                }
-#            }
-#        }
-#    }
-#    macx:QMAKE_MAC_SDK = $$MAC_SDK
-#}
-
 SUBDIRS += \
     3rd_qglviewer.pro
 

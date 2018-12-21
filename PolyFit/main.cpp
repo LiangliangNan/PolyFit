@@ -45,8 +45,12 @@ int main(int argc, char **argv)
 	setlocale(LC_NUMERIC, "C");
 #endif
 
+    QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
-//	QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+#endif
+#if (QT_VERSION >= QT_VERSION_CHECK(5, 7, 0))
+    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
 #endif
 
 	QApplication app(argc, argv);
