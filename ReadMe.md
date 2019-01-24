@@ -24,6 +24,7 @@ You can also build PolyFit from the source code:
   - [CGAL](http://www.cgal.org/index.html) (v4.10, v4.11.1 have been tested)
    
 * Build PolyFit
+
 The following options are available. Please choose the one you are most familiar with:
   - PolyFit.sln: for Microsoft Visual Studio (tested on 64bits Windows 10)
   - PolyFit.pro: QtCreator (for macOS, Linux, Windows, etc.)
