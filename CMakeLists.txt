@@ -43,6 +43,8 @@ set(POLYFIT_soplex_DIR              ${POLYFIT_ROOT}/3rd_soplex)
 ### conditionally compile certain modules depending on libraries found on the system
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
+find_package(Boost REQUIRED)
+
 ################################################################################
 
 add_subdirectory(3rd_glpk)

@@ -26,8 +26,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <vector>
      
 
-#ifdef _WIN32 // Liangliang: My MacBook is broken :-(
-#define HAS_GUROBI
+#ifdef _WIN32
+//#define HAS_GUROBI    // Liangliang: uncomment this to use Gurobi
 #endif
 
 class MATH_API LinearProgramSolver
