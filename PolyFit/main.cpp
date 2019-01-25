@@ -31,7 +31,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 int main(int argc, char **argv)
 {
-	srand(time(0));
+    srand(time(nullptr));
 
 	//Locale management
 	//Force 'English' locale so as to get a consistent behavior everywhere
@@ -49,9 +49,6 @@ int main(int argc, char **argv)
 #if (QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
-//#if (QT_VERSION >= QT_VERSION_CHECK(5, 7, 0))
-//    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
-//#endif
 
 	QApplication app(argc, argv);
 
