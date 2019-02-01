@@ -141,8 +141,8 @@ public:
 	rotate() performs an inverse transformation. Same as inverse().rotate(v). */
 	vec3 inverse_rotate(const vec3& v) const;
 
-	/* Inversion *
-	/* Returns the inverse Quaternion (inverse rotation).
+    /* Inversion
+    Returns the inverse Quaternion (inverse rotation).
 	Result has a negated axis() direction and the same angle(). A composition (see operator*()) of a
 	Quaternion and its inverse() results in an identity function.
 	Use invert() to actually modify the Quaternion. */

@@ -342,10 +342,10 @@ void MainWindow::createToolBar()
 	solverBox_ = new QComboBox(this);
 	solverBox_->setFixedHeight(23);
 	solverBox_->setEditable(false);
-	solverBox_->addItem("SCIP");
 #ifdef HAS_GUROBI
-	solverBox_->addItem("GUROBI");
+    solverBox_->addItem("GUROBI");
 #endif
+    solverBox_->addItem("SCIP");
 	solverBox_->addItem("GLPK");
 	solverBox_->addItem("LPSOLVE");
 
@@ -597,6 +597,6 @@ LinearProgramSolver::SolverName MainWindow::active_solver() const {
 #endif
 	else if (solverString == "LPSOLVE")
 		return LinearProgramSolver::LPSOLVE;
-	else // (solverString == "SCIP")
+    else // default to SCIP
 		return LinearProgramSolver::SCIP;
 }
