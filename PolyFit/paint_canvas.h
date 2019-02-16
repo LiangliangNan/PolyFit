@@ -78,9 +78,6 @@ protected:
 	virtual void draw();
 	virtual void init();
 
-	// Mouse events functions
-	virtual void mouseMoveEvent(QMouseEvent *e);
-
 	// Keyboard events functions
 	virtual void keyPressEvent(QKeyEvent *e);
 

@@ -269,16 +269,6 @@ void PaintCanvas::draw() {
 	}
 }
 
-void PaintCanvas::mouseMoveEvent(QMouseEvent* e)
-{
-	bool found = false;
-	qglviewer::Vec p = camera()->pointUnderPixel(e->pos(), found);
-	main_window_->showCoordinateUnderMouse(vec3(p.x, p.y, p.z), found);
-
-	QGLViewer::mouseMoveEvent(e);
-}
-
-
 
 void PaintCanvas::keyPressEvent(QKeyEvent *e) {
 	e->ignore();

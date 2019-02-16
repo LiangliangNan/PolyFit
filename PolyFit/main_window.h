@@ -63,8 +63,6 @@ public:
 	void defaultRenderingForCandidates();
 	void defaultRenderingForResult();
 
-	void showCoordinateUnderMouse(const vec3& p, bool found) ;
-
 	LinearProgramSolver::SolverName active_solver() const;
 
 public Q_SLOTS:
@@ -114,7 +112,6 @@ private:
 	QComboBox*		solverBox_;
 
 	QLabel *statusLabel_,
-		*coordinateUnderMouseLabel_,
 		*numPointsLabel_,
 		*numHypoFacesLabel_,
 		*numOptimizedFacesLabel_;

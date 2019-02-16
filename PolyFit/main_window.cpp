@@ -297,11 +297,6 @@ void MainWindow::createStatusBar()
 	statusLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
 	statusBar()->addWidget(statusLabel_, 1);
 
-	coordinateUnderMouseLabel_ = new QLabel("XYZ = [-, -, -]");
-	coordinateUnderMouseLabel_->setFixedWidth(410);
-	coordinateUnderMouseLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-	statusBar()->addWidget(coordinateUnderMouseLabel_, 1);
-
 	QLabel* space1 = new QLabel;
 	statusBar()->addWidget(space1, 1);
 
@@ -391,12 +386,6 @@ void MainWindow::updateStatusBar()
 	numOptimizedFacesLabel_->setText(optimizedFaces);
 }
 
-void MainWindow::showCoordinateUnderMouse(const vec3& p, bool found) {
-	QString coordString = "XYZ = [-, -, -]";
-	if (found)
-		coordString = QString("XYZ = [%1, %2, %3]").arg(p.x).arg(p.y).arg(p.z);
-	coordinateUnderMouseLabel_->setText(coordString);
-}
 
 void MainWindow::about()
 {
