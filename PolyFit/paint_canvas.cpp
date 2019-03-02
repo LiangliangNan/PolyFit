@@ -431,6 +431,13 @@ void PaintCanvas::setMesh(Map* mesh) {
 
 void PaintCanvas::setPointSet(PointSet* pset) { 
 	point_set_ = pset; 
+
+    // assign each vertex group a random color
+    // (in case the user doesn't provide color information)
+    std::vector<VertexGroup::Ptr>& groups = pset->groups();
+    for (auto g : groups)
+        g->set_color(random_color());
+
 	fitScreen();
 
 	if (point_set_) {
