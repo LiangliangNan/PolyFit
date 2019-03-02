@@ -219,7 +219,7 @@ static void check_source_planes(Map* mesh) {
 
 Map* HypothesisGenerator::construct_bbox_mesh() {
 	Box3d box = pset_->bbox();
-	float delta = box.radius() * 0.01f;
+	float delta = box.radius() * 0.1f;
 
 	Map* mesh = new Map;
 	MapBuilder builder(mesh);
