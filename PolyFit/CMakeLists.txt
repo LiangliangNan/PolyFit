@@ -90,19 +90,14 @@ set(${PROJECT_NAME}_RESOURCES
     Resources/PolyFit.icns
     )
 
-if( MSVC )
-    add_executable( ${PROJECT_NAME} ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
-elseif( APPLE )
+if( APPLE )
     add_executable( ${PROJECT_NAME} MACOSX_BUNDLE ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
 else()
     add_executable( ${PROJECT_NAME} ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
 endif()
 
 
-
-
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "PolyFit")
-
 
 
 # The following define makes your compiler emit warnings if you use

@@ -1,16 +1,35 @@
+# ------------------------------------------------------------------------------
+#      Copyright (C) 2015 by Liangliang Nan (liangliang.nan@gmail.com)
+#      https://3d.bk.tudelft.nl/liangliang/
 #
-# Try to find GUROBI
-# Once done this will define
+#      This file is part of Easy3D: software for processing and rendering
+#      meshes and point clouds.
 #
-# GUROBI_FOUND           - system has GUROBI
-# GUROBI_INCLUDE_DIRS    - the GUROBI include directories
-# GUROBI_LIBRARIES       - Link these to use GUROBI
+#      Easy3D is free software; you can redistribute it and/or modify
+#      it under the terms of the GNU General Public License Version 3
+#      as published by the Free Software Foundation.
 #
+#      Easy3D is distributed in the hope that it will be useful,
+#      but WITHOUT ANY WARRANTY; without even the implied warranty of
+#      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#      GNU General Public License for more details.
+#
+#      You should have received a copy of the GNU General Public License
+#      along with this program. If not, see <http://www.gnu.org/licenses/>.
+# ------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------
+# This file sets up Gurobi for CMake. Once done this will define
+#
+#   GUROBI_FOUND           - system has GUROBI
+#   GUROBI_INCLUDE_DIRS    - the GUROBI include directories
+#   GUROBI_LIBRARIES       - Link these to use GUROBI
+# ------------------------------------------------------------------------------
 
 
 # Is it already configured?
 if (NOT GUROBI_FOUND)
-
 
     # Hardcoded search paths
     set(SEARCH_PATHS_FOR_HEADERS
