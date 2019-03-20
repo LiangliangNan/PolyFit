@@ -25,6 +25,15 @@
 #   GUROBI_FOUND           - system has GUROBI
 #   GUROBI_INCLUDE_DIRS    - the GUROBI include directories
 #   GUROBI_LIBRARIES       - Link these to use GUROBI
+#
+#  In your CMakeLists file, you need to add, e.g. (modify it if necessary):
+#        if (GUROBI_FOUND)
+#            message(STATUS "Gurobi include dir: " ${GUROBI_INCLUDE_DIRS})
+#            message(STATUS "Gurobi libraries: " ${GUROBI_LIBRARIES})
+#            target_compile_definitions(${PROJECT_NAME} PUBLIC HAS_GUROBI)
+#            target_include_directories(${PROJECT_NAME} PRIVATE ${GUROBI_INCLUDE_DIRS})
+#            target_link_libraries(${PROJECT_NAME} PRIVATE ${GUROBI_LIBRARIES})
+#        endif()
 # ------------------------------------------------------------------------------
 
 
