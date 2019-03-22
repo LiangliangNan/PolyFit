@@ -10,5 +10,5 @@
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDI_ICON_MAIN           ICON                    "PolyFit.ico"
+IDI_ICON_MAIN    ICON    "PolyFit.ico"
 

@@ -84,6 +84,10 @@ set(${PROJECT_NAME}_FORMS
     dlg/wgt_render.ui
     )
 
+if( APPLE )
+endif()
+
+
 set(${PROJECT_NAME}_RESOURCES
     Resources/PolyFit.qrc
     Resources/PolyFit.rc
@@ -91,6 +95,10 @@ set(${PROJECT_NAME}_RESOURCES
     )
 
 if( APPLE )
+    # set also the icon
+    set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/Resources/PolyFit.icns" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    set(MACOSX_BUNDLE_ICON_FILE ${CMAKE_CURRENT_LIST_DIR}/Resources/PolyFit.icns )
+
     add_executable( ${PROJECT_NAME} MACOSX_BUNDLE ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
 else()
     add_executable( ${PROJECT_NAME} ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
