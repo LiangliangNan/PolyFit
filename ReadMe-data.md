@@ -61,7 +61,7 @@ num_groups: M   // M is an integer denoting the number of segments/primitives/ob
 group_type: 0              // must be 0 standing for a plane (1 to 5 are other types of primitives)
 num_group_parameters: 4    // must be 4 (planes are represented using 4 parameters) 
 group_parameters: a b c d  // 4 floating point numbers (e.g., a, b, c, and d for a plane)
-group_lable: label         // the label (a string) of the 1st vertex group
+group_label: label         // the label (a string) of the 1st vertex group
 group_color: r g b         // 3 floating point numbers denoting the color of the 1st vertex group
 group_num_points: N        // N is an integer denoting the number of points in the 1st vertex group
 id1 ... idN                // N integer numbers denoting the indices of the points in the 1st vertex group
@@ -70,7 +70,7 @@ num_children: 0            // a segment/primitive/object may contain subgroups, 
 group_type: 0              // here starts the last segment in the point cloud (similar to the 1st one)
 num_group_parameters: 4    
 group_parameters: a b c d
-group_lable: label
+group_label: label
 group_color: r g b
 group_num_points: N
 id1 ... idN
