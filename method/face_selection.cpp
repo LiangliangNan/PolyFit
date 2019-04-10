@@ -29,6 +29,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <algorithm>
 
 
+#define ALLOW_OPEN_SURFACE
+
+
 FaceSelection::FaceSelection(PointSet* pset, Map* model)
 	: pset_(pset)
 	, model_(model)
@@ -85,7 +88,9 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	// binary variables:
 	// x[0] ... x[num_faces - 1] : binary labels of all the input faces
 	// x[num_faces] ... x[num_faces + num_edges] : binary labels of all the intersecting edges (remain or not)
-	// x[num_faces + num_edges] ... x[num_faces + num_edges + num_edges] : binary labels of corner edges (sharp edge of not)
+    // x[num_faces + num_edges] ... x[num_faces + num_edges + num_edges] : binary labels of corner edges (sharp edge or not)
+    // extra variables for open surfaces
+    // x[num_faces + num_edges + num_edges] ... x[num_faces + num_edges + num_edges + num_edges] : binary labels of boundary edges
 
 	Logger::out("-") << "formulating binary program...." << std::endl;
 	w.start();
@@ -106,8 +111,8 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 
 	//double coeff_data_fitting = Method::lambda_data_fitting / total_points;
 	//double coeff_coverage = Method::lambda_model_coverage / model_->bbox().area();
-	//double coeff_complexity = Method::lambda_model_complexity / double(fans.size());
-	// choose a better scale
+    //double coeff_complexity = Method::lambda_model_complexity / double(fans.size());
+    // choose a better scale
 	double coeff_data_fitting = Method::lambda_data_fitting;
 	double coeff_coverage = total_points * Method::lambda_model_coverage / model_->bbox().area();
 	double coeff_complexity = total_points * Method::lambda_model_complexity / double(adjacency.size());
@@ -130,6 +135,25 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	}
 	assert(num_edges == num_sharp_edges);
 
+#ifdef ALLOW_OPEN_SURFACE
+    double coeff_boundary = total_points * Method::lambda_boundary / double(num_edges);
+
+    std::map<const Intersection*, std::size_t> edge_boundary_status;	// the edge is sharp or not
+    std::size_t num_boundary_edges = 0;
+    for (std::size_t i = 0; i < adjacency.size(); ++i) {
+        const Intersection& fan = adjacency[i];
+        if (fan.size() == 4) {
+            std::size_t var_idx = num_faces + num_edges + num_sharp_edges + num_boundary_edges;
+            edge_boundary_status[&fan] = var_idx;
+
+            // accumulate boundary term
+            objective->add_coefficient(var_idx, coeff_boundary);
+            ++num_boundary_edges;
+        }
+    }
+    assert(num_edges == num_boundary_edges);
+#endif
+
 	FOR_EACH_FACET(Map, model_, it) {
 		Map::Facet* f = it;
 		std::size_t var_idx = facet_indices[f];
@@ -143,11 +167,19 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 		objective->add_coefficient(var_idx, coeff_coverage * uncovered_area);
 	}
 
-	std::size_t total_variables = num_faces + num_edges + num_sharp_edges;
+#ifdef ALLOW_OPEN_SURFACE
+    std::size_t total_variables = num_faces + num_edges + num_sharp_edges + num_boundary_edges;
+#else
+    std::size_t total_variables = num_faces + num_edges + num_sharp_edges;
+#endif
+
 	Logger::out("-") << "#total variables: " << total_variables << std::endl;
 	Logger::out(" ") << "    - face is selected: " << num_faces << std::endl;
 	Logger::out(" ") << "    - edge is used: " << num_edges << std::endl;
-	Logger::out(" ") << "    - edge is sharp: " << num_sharp_edges << std::endl;
+    Logger::out(" ") << "    - edge is sharp: " << num_sharp_edges << std::endl;
+#ifdef ALLOW_OPEN_SURFACE
+    Logger::out(" ") << "    - edge is boundary: " << num_boundary_edges << std::endl;
+#endif
 
 #if 1
 	const std::vector<Variable*>& variables = program_.create_n_variables(total_variables);
@@ -168,7 +200,6 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	//////////////////////////////////////////////////////////////////////////
 
 	// Add constraints: the number of faces associated with an edge must be either 2 or 0
-	std::size_t var_edge_used_idx = 0;
 	for (std::size_t i = 0; i < adjacency.size(); ++i) {
 		LinearConstraint* c = program_.create_constraint(LinearConstraint::FIXED, 0.0, 0.0);
 		const Intersection& fan = adjacency[i];
@@ -179,9 +210,13 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 		}
 
 		if (fan.size() == 4) {
-			std::size_t var_idx = num_faces + var_edge_used_idx;
-			c->add_coefficient(var_idx, -2.0);  // 
-			++var_edge_used_idx;
+#ifdef ALLOW_OPEN_SURFACE
+            std::size_t var_edge_boundary_idx = edge_boundary_status[&fan];
+            c->add_coefficient(var_edge_boundary_idx, 1.0);
+#endif
+
+            std::size_t var_edge_usage_idx = edge_usage_status[&fan];
+            c->add_coefficient(var_edge_usage_idx, -2.0);  //
 		}
 		else { // boundary edge
 			   // will be set to 0 (i.e., we don't allow open surface)
@@ -190,7 +225,7 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 
 	// Add constraints: for the sharp edges. The explanation of posing this constraint can be found here:
 	// https://user-images.githubusercontent.com/15526536/30185644-12085a9c-942b-11e7-831d-290dd2a4d50c.png
-	double M = 1.0;
+    const double M = 1.0;
 	for (std::size_t i = 0; i < adjacency.size(); ++i) {
 		const Intersection& fan = adjacency[i];
 		if (fan.size() != 4)
@@ -198,12 +233,12 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 
 		// if an edge is sharp, the edge must be selected first:
 		// X[var_edge_usage_idx] >= X[var_edge_sharp_idx]	
-		LinearConstraint* c = program_.create_constraint();
+        LinearConstraint* c = program_.create_constraint();
 		std::size_t var_edge_usage_idx = edge_usage_status[&fan];
-		c->add_coefficient(var_edge_usage_idx, 1.0);
+        c->add_coefficient(var_edge_usage_idx, 1.0);
 		std::size_t var_edge_sharp_idx = edge_sharp_status[&fan];
-		c->add_coefficient(var_edge_sharp_idx, -1.0);
-		c->set_bound(LinearConstraint::LOWER, 0.0);
+        c->add_coefficient(var_edge_sharp_idx, -1.0);
+        c->set_bound(LinearConstraint::LOWER, 0.0);
 
 		for (std::size_t j = 0; j < fan.size(); ++j) {
 			MapTypes::Facet* f1 = fan[j]->facet();
@@ -228,6 +263,16 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 				}
 			}
 		}
+
+#ifdef ALLOW_OPEN_SURFACE
+        // if an edge is boundary, the edge must be selected first:
+        // X[var_edge_usage_idx] >= X[var_boundary_idx]
+        LinearConstraint* boundary_constraint = program_.create_constraint();
+        boundary_constraint->add_coefficient(var_edge_usage_idx, 1.0);
+        std::size_t var_edge_boundary_idx = edge_boundary_status[&fan];
+        boundary_constraint->add_coefficient(var_edge_boundary_idx, -1.0);
+        boundary_constraint->set_bound(LinearConstraint::LOWER, 0.0);
+#endif
 	}
 
 	Logger::out("-") << "#total constraints: " << program_.constraints().size() << std::endl;
