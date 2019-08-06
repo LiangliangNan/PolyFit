@@ -26,6 +26,8 @@ You can also build PolyFit from the source code:
 * Build PolyFit. 
   - Use CMake to generate project files for your favorite IDEs
   
+**News**: Since Aug.5, 2019, PolyFit is also available in [CGAL](https://www.cgal.org/). Find more [here](https://www.cgal.org/2019/08/05/Polygonal_surface_reconstruction/).
+  
 ---
 
 ### Run PolyFit
