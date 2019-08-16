@@ -1,10 +1,11 @@
+(This is a log file recording how I depolyed PolyFit for macOS).
 
-0. go to the directory what the bundle file locates.
+0. Go to the directory where the bundle file locates.
 
-1. Check what other libraries your application links to using the otool:
+1. Check what other libraries your application links to using 'otool':
 	otool -L /Users/lnan/Projects/PolyFit/binary/PolyFit.app/Contents/MacOs/PolyFit
 
-2. Create a Frameworks directory inside the bundle. This follows the macOS application convention. We then copy the frameworks into the new directory. As frameworks contain symbolic links, we use the -R option.
+2. Create a Frameworks directory inside the bundle. This follows the macOS application convention. Then copy the frameworks into the new directory. As frameworks contain symbolic links, we use the -R option.
 	mkdir PolyFit.app/Contents/Frameworks
 	cp -R /Users/lnan/Qt5.11.0/5.11.0/clang_64/lib/QtCore.framework PolyFit.app/Contents/Frameworks/
 	cp -R /Users/lnan/Qt5.11.0/5.11.0/clang_64/lib/QtGui.framework PolyFit.app/Contents/Frameworks/
@@ -12,7 +13,7 @@
 	cp -R /Users/lnan/Qt5.11.0/5.11.0/clang_64/lib/QtWidgets.framework PolyFit.app/Contents/Frameworks/
 	cp -R /Users/lnan/Qt5.11.0/5.11.0/clang_64/lib/QtXml.framework PolyFit.app/Contents/Frameworks/
 
-3. Then we run install_name_tool to set the identification names for the frameworks. The first argument after -id is the new name, and the second argument is the framework that we want to rename. The text @executable_path is a special dyld variable telling dyld to start looking where the executable is located. The new names specifies that these frameworks are located in the directory directly under the Frameworks directory.
+3. Then run 'install_name_tool' to set the identification names for the frameworks. The first argument after -id is the new name, and the second argument is the framework that we want to rename. The text @executable_path is a special dyld variable telling dyld to start looking where the executable is located. The new names specifies that these frameworks are located in the directory directly under the Frameworks directory.
 	install_name_tool -id @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore PolyFit.app/Contents/Frameworks/QtCore.framework/Versions/5/QtCore
 	install_name_tool -id @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui PolyFit.app/Contents/Frameworks/QtGui.framework/Versions/5/QtGui
 	install_name_tool -id @executable_path/../Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL PolyFit.app/Contents/Frameworks/QtOpenGL.framework/Versions/5/QtOpenGL
@@ -26,7 +27,7 @@
 	install_name_tool -change @rpath/QtWidgets.framework/Versions/5/QtWidgets 	@executable_path/../Frameworks/QtWidgets.framework/Versions/5/QtWidgets PolyFit.app/Contents/MacOS/PolyFit
 	install_name_tool -change @rpath/QtXml.framework/Versions/5/QtXml 		@executable_path/../Frameworks/QtXml.framework/Versions/5/QtXml     	PolyFit.app/Contents/MacOS/PolyFit
 
-5. Copy the .dylib files into the Contents/Frameworks inside your .app folder. The trick after that is convincing the executable to look for the library in its new location rather than the location it was in when you linked the executable. (If you do a "otool -L ./MyProgram.app/Contents/MacOS/MyProgram" you will see the places where the program is looking for shared libraries, and you will see that it is not looking for your .dylib file in the Frameworks folder, yet). To do that you use the install_name_tool command, e.g.: 
+5. Copy the .dylib files into the Contents/Frameworks inside your .app folder. The trick after that is convincing the executable to look for the library in its new location rather than the location it was in when you linked the executable. (If you do a "otool -L ./MyProgram.app/Contents/MacOS/MyProgram" you will see the places where the program is looking for shared libraries, and you will see that it is not looking for your .dylib file in the Frameworks folder, yet). To do that you use the 'install_name_tool' command, e.g.: 
 	install_name_tool -change /the/old/path/to/the_library_name.dylib  "@executable_path/../Frameworks/the_library_name.dylib" ./MyProgram.app/Contents/MacOS/MyProgram
 NOTE: the "/the/old/path/to/the_library_name.dylib" should be that seen from the "otool -L" result.
 For my PolyFit, it is:
@@ -73,7 +74,7 @@ For my PolyFit, it is:
 	cp -R /Users/lnan/Qt5.11.0/5.11.0/clang_64/plugins/imageformats PolyFit.app/Contents/Plugins
 	cp -R /Users/lnan/Qt5.11.0/5.11.0/clang_64/plugins/platforms 	PolyFit.app/Contents/Plugins
 
-   Then using the otool, we see that the plugin links to the Qt frameworks it was built against. As we want the plugins to use the framework in the application bundle, we change them the same way as we did for the application. 
+   Then using 'otool', we see that the plugin links to the Qt frameworks it was built against. As we want the plugins to use the framework in the application bundle, we change them the same way as we did for the application. 
 	install_name_tool -change @rpath/QtGui.framework/Versions/5/QtGui  	@executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui 	PolyFit.app/Contents/Plugins/platforms/libqcocoa.dylib
 	install_name_tool -change @rpath/QtCore.framework/Versions/5/QtCore 	@executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore 	PolyFit.app/Contents/Plugins/platforms/libqcocoa.dylib
 	install_name_tool -change @rpath/QtWidgets.framework/Versions/5/QtWidgets 	@executable_path/../Frameworks/QtWidgets.framework/Versions/5/QtWidgets 	PolyFit.app/Contents/Plugins/platforms/libqcocoa.dylib
