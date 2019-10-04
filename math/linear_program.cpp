@@ -39,11 +39,11 @@ inline std::string from_integer(Int v, int width, char fill) {
 }
 
 
-//double Bounded::infinity_ = std::numeric_limits<double>::max();
-double Bounded::infinity_ = 1e20;		// in SCIP, values larger than 1e20 are considered infinity
+//double Bound::infinity_ = std::numeric_limits<double>::max();
+double Bound::infinity_ = 1e20;		// in SCIP, values larger than 1e20 are considered infinity
 
 
-Bounded::Bounded(
+Bound::Bound(
 	BoundType type /* = FREE */,
 	double lb /* = -infinity() */, 
 	double ub /* = +infinity() */
@@ -52,11 +52,11 @@ Bounded::Bounded(
 	set_bounds(type, lb, ub);
 }
 
-double Bounded::infinity() {
+double Bound::infinity() {
 	return infinity_;
 }
 
-void Bounded::set_bounds(BoundType type, double lb, double ub) {
+void Bound::set_bounds(BoundType type, double lb, double ub) {
 	switch (type)
 	{
 	case FIXED:
@@ -85,7 +85,7 @@ void Bounded::set_bounds(BoundType type, double lb, double ub) {
 	bound_type_ = type;
 }
 
-void Bounded::set_bound(BoundType type, double value) 
+void Bound::set_bound(BoundType type, double value) 
 {
 	switch (type)
 	{
@@ -119,7 +119,7 @@ void Bounded::set_bound(BoundType type, double value)
 }
 
 // query the single bound according to its bound type
-double Bounded::get_bound() const {
+double Bound::get_bound() const {
 	switch (bound_type_)
 	{
 	case FIXED:
@@ -137,7 +137,7 @@ double Bounded::get_bound() const {
 	}
 }
 
-void Bounded::set_bounds(double lb, double ub) {
+void Bound::set_bounds(double lb, double ub) {
 	if (lb <= -infinity_ && ub >= infinity_) { // free variable
 		std::cerr << "variable with bounds (" << lb << ", " << ub << ") should be a FREE variable" << std::endl;
 		bound_type_ = FREE;
@@ -159,7 +159,7 @@ void Bounded::set_bounds(double lb, double ub) {
 	upper_bound_ = ub;
 }
 
-void Bounded::get_bounds(double& lb, double& ub) const {
+void Bound::get_bounds(double& lb, double& ub) const {
 	lb = lower_bound_;
 	ub = upper_bound_;
 }
@@ -173,14 +173,14 @@ Variable::Variable(LinearProgram* program, VariableType t /* = CONTINUOUS*/)
 	, solution_value_(0.0)
 {
 	if (t == BINARY)
-		Bounded::set_bounds(0.0, 1.0);
+		Bound::set_bounds(0.0, 1.0);
 }
 
 
 void Variable::set_variable_type(VariableType t) {
 	variable_type_ = t;
 	if (t == BINARY)
-		Bounded::set_bounds(0.0, 1.0);
+		Bound::set_bounds(0.0, 1.0);
 }
 
 
@@ -225,7 +225,7 @@ double LinearExpression::solution_value(bool rounded /* = false*/) const {
 
 LinearConstraint::LinearConstraint(LinearProgram* program, LinearConstraint::BoundType bt, double lb, double ub) 
 	: LinearExpression(program)
-	, Bounded(bt, lb, ub) 
+	, Bound(bt, lb, ub) 
 {
 }
 

@@ -54,14 +54,14 @@ private:
 };
 
 
-class MATH_API Bounded
+class MATH_API Bound
 {
 public:
 	// bound type for variables and expressions
 enum BoundType { FIXED, LOWER, UPPER, DOUBLE, FREE };
 
 public:
-	Bounded(BoundType bt = FREE, double lb = -infinity(), double ub = +infinity());
+	Bound(BoundType bt = FREE, double lb = -infinity(), double ub = +infinity());
 
 	BoundType bound_type() const { return bound_type_; }
 
@@ -86,7 +86,7 @@ private:
 };
 
 
-class MATH_API Variable : public Bounded, public ProgramElement
+class MATH_API Variable : public Bound, public ProgramElement
 {
 public:
 enum VariableType { CONTINUOUS, INTEGER, BINARY };
@@ -139,7 +139,7 @@ private:
 };
 
 
-class MATH_API LinearConstraint : public LinearExpression, public Bounded
+class MATH_API LinearConstraint : public LinearExpression, public Bound
 {
 public:
 	// A constraint cannot belong to several models.
@@ -235,6 +235,31 @@ public:
 
 	// clear all variables, constraints, and the objective.
 	void clear();
+
+	//////////////////////////////////////////////////////////////////////////
+
+		// read/write linear program from/to a file. Format determined by file extension:
+	//  - "lp":   CPLEX LP format. CPLEX .lp files with linear and quadratic constraints 
+	//			  and objective, special ordered sets of type 1 and 2, indicators on linear 
+	//			  constraints, and semi-continuous variables. For writing, linear (general 
+	//			  and specialized), indicator, quadratic, second order cone, and special 
+	//			  ordered set constraints are supported.
+	//  - "mps":  MPS format. Allows to parse and write MPS files with linear and quadratic 
+	//			  constraints and objective, special ordered sets of type 1 and 2, indicators 
+	//			  on linear constraints, and semi-continuous variables. For writing, linear 
+	//			  (general and specialized), indicator, quadratic, second order cone, and 
+	//			  special ordered set constraints are supported.
+	//			  See http://en.wikipedia.org/wiki/MPS_%28format%29 for a description.
+	//  - "cip":  SCIP cip format. The CIP format consists of information written by the 
+	//            individual constraints. Thus, the format is defined within the constraint 
+	//            handlers. The CIP format is the only format within SCIP that allows to write 
+	//            and read all constraints; all other file formats are restricted to some 
+	//            particular sub-class of constraint integer programs.
+	bool load(const std::string& file_name);
+
+	// the parameter "use_simple_name" provides an option to save the variables/constrains' 
+	// original names or simple names like x0, x1... and c0, c1...
+	bool save(const std::string& file_name, bool use_simple_name = false) const;
 	
 private:
 	std::string			name_;

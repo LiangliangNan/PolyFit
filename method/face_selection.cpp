@@ -248,10 +248,10 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 		std::vector<Map::Facet*> to_delete;
 		FOR_EACH_FACET(Map, model_, it) {
 			Map::Facet* f = it;
-			std::size_t idx = facet_indices[f];
-			//if (static_cast<int>(X[idx]) == 0) { // Liangliang: be careful, floating point!!!
-			//if (static_cast<int>(X[idx]) != 1) { // Liangliang: be careful, floating point!!!
-			if (static_cast<int>(std::round(X[idx])) == 0) {
+			std::size_t fid = facet_indices[f];
+			//if (static_cast<int>(X[fid]) == 0) { // Liangliang: be careful, floating point!!!
+			//if (static_cast<int>(X[fid]) != 1) { // Liangliang: be careful, floating point!!!
+			if (static_cast<int>(std::round(X[fid])) == 0) {
 				to_delete.push_back(f);
 			}
 		}
