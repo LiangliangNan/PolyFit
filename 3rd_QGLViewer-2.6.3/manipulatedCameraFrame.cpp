@@ -35,7 +35,7 @@ using namespace std;
 
   \attention Created object is removeFromMouseGrabberPool(). */
 ManipulatedCameraFrame::ManipulatedCameraFrame()
-	: driveSpeed_(0.0), sceneUpVector_(0.0, 1.0, 0.0), rotatesAroundUpVector_(false), zoomsOnPivotPoint_(false)
+    : driveSpeed_(0.0), sceneUpVector_(0.0, 1.0, 0.0), rotatesAroundUpVector_(false), zoomsOnPivotPoint_(true)
 {
 	setFlySpeed(0.0);
 	removeFromMouseGrabberPool();
