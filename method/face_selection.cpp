@@ -239,6 +239,12 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	Logger::out("-") << "solving the binary program. Please wait..." << std::endl;
 	w.start();
 
+#if 0
+    // Save the problem into a file (in lp format), allowing me to use other solvers to
+    // solve it (easy to compare the performance of different solvers).
+    program_.save("D:/tmp/bunny.lp");
+#endif
+
 	LinearProgramSolver solver;
 	if (solver.solve(&program_, solver_name)) {
 		Logger::out("-") << "solving the binary program done. " << w.elapsed() << " sec" << std::endl;

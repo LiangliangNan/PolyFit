@@ -27,6 +27,7 @@ set(math_SOURCES
     quaternion.cpp
     semi_definite_symmetric_eigen.cpp
     linear_program.cpp
+    linear_program_io.cpp
     linear_program_solver.cpp
     linear_program_solver_GLPK.cpp
     linear_program_solver_LPSOLVE.cpp
