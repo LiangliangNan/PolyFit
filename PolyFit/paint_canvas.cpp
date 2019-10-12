@@ -161,11 +161,6 @@ void PaintCanvas::init()
 	//////////////////////////////////////////////////////////////////////////
 
 	glEnable(GL_DEPTH_TEST);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  //GL_ONE_MINUS_DST_ALPHA
-
-	// for transparent 
-	glAlphaFunc(GL_GREATER, 0);
-	glEnable(GL_ALPHA_TEST);
 	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
 	//////////////////////////////////////////////////////////////////////////
@@ -233,8 +228,8 @@ void PaintCanvas::draw() {
 
 	bool interacting = camera()->frame()->isManipulated();
 
-	if (point_set_ && show_input_ && point_set_render_)
-		point_set_render_->draw(point_set_);
+    if (point_set_ && show_input_ && point_set_render_)
+        point_set_render_->draw(point_set_);
 
 	if (hypothesis_mesh_ && show_candidates_ && mesh_render_) {
 		EdgeStyle s = mesh_render_->mesh_style();
@@ -266,7 +261,7 @@ void PaintCanvas::draw() {
 		drawText(30, 150, "  - Orbit: left button", font);
 		drawText(30, 180, "  - Pan:   right button", font);
 		drawText(30, 210, "  - Zoom:  wheel", font);
-	}
+    }
 }
 
 
