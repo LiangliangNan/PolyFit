@@ -20,7 +20,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "opengl_info.h"
 #include <iostream>
-#include <GL/glu.h>
+/* this is how we can safely include GLU */
+#if defined(__APPLE__) && defined(__MACH__)
+#   include <OpenGL/glu.h>
+#else
+#    include <GL/glu.h>
+#endif
 
 
 static const std::string err_msg = "error(null_string)";

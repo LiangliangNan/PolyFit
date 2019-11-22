@@ -25,7 +25,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../model/map_geometry.h" 
 #include "../math/quaternion.h"
 
-#include <GL/glu.h>
+/* this is how we can safely include GLU */
+#if defined(__APPLE__) && defined(__MACH__)
+#   include <OpenGL/glu.h>
+#else
+#    include <GL/glu.h>
+#endif
 
 static GLUquadric* g_quadric = 0;
 
