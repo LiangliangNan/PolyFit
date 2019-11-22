@@ -81,6 +81,7 @@ add_library(${PROJECT_NAME} STATIC ${lpsolve_SOURCES} ${lpsolve_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       FOLDER "3rd_party")
 
+set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${POLYFIT_lpsolve_DIR}

@@ -20,7 +20,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #ifndef PAINTCANVAS_H
 #define PAINTCANVAS_H
 
-#include "../renderer/glew.h"
+#include <GL/glew.h>
+
 #include "../3rd_QGLViewer-2.6.3/qglviewer.h"
 #include "../basic/color.h"
 #include "../math/math_types.h"

@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "opengl_info.h"
 #include <iostream>
+#include <GL/glu.h>
 
 
 static const std::string err_msg = "error(null_string)";

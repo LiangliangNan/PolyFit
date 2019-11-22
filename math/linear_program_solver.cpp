@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "linear_program_solver.h"
 
 #include <iostream>
+#include <cmath>
 
 
 bool LinearProgramSolver::check_program(const LinearProgram* program) const {

@@ -22,8 +22,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define _OPENGL_GLINFORMATION_H_
 
 #include "renderer_common.h"
-#include "glew.h"
 
+#include <GL/glew.h>
 #include <string>
 
 

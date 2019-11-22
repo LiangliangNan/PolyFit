@@ -39,6 +39,7 @@ set(POLYFIT_lpsolve_DIR             ${POLYFIT_ROOT}/3rd_lpsolve)
 set(POLYFIT_qglviewer_DIR           ${POLYFIT_ROOT}/3rd_QGLViewer-2.6.3)
 set(POLYFIT_scip_DIR                ${POLYFIT_ROOT}/3rd_scip)
 set(POLYFIT_soplex_DIR              ${POLYFIT_ROOT}/3rd_soplex)
+set(POLYFIT_glew_DIR                ${POLYFIT_ROOT}/3rd_glew)
 
 ### conditionally compile certain modules depending on libraries found on the system
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
@@ -61,6 +62,7 @@ add_subdirectory(3rd_lpsolve)
 add_subdirectory(3rd_QGLViewer-2.6.3)
 add_subdirectory(3rd_scip)
 add_subdirectory(3rd_soplex)
+add_subdirectory(3rd_glew)
 
 add_subdirectory(basic)
 add_subdirectory(math)

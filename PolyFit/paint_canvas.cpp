@@ -41,7 +41,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <QFileDialog>
 #include <QMouseEvent>
 #include <QMessageBox>
-#include <QColorMap>
 #include <QColorDialog>
 
 #include <cassert>

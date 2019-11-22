@@ -121,7 +121,7 @@ target_link_libraries( ${PROJECT_NAME} Qt5::Widgets )
 target_link_libraries( ${PROJECT_NAME} Qt5::OpenGL )
 target_link_libraries( ${PROJECT_NAME} Qt5::Xml )
 
-target_link_libraries( ${PROJECT_NAME} basic math model method renderer 3rd_QGLViewer-2.6.3)
+target_link_libraries( ${PROJECT_NAME} basic math model method renderer 3rd_glew 3rd_QGLViewer-2.6.3)
 
 
 

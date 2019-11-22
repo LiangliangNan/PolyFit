@@ -5,7 +5,6 @@ project(${PROJECT_NAME})
 
 
 set(renderer_HEADERS
-    glew.h
     opengl_info.h
     point_set_render.h
     renderer_common.h
@@ -17,25 +16,20 @@ set(renderer_SOURCES
     opengl_info.cpp
     point_set_render.cpp
     surface_render.cpp
-    glew.c
     )
-
-
-#target_include_directories(${PROJECT_NAME} PRIVATE
-#    ${POLYFIT_scip_DIR}
-#    ${POLYFIT_scip_DIR}/scip
-#    )
 
 
 add_library(${PROJECT_NAME} SHARED ${renderer_SOURCES} ${renderer_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       FOLDER "PolyFit")
 
+target_include_directories(${PROJECT_NAME} PRIVATE ${POLYFIT_glew_DIR}/include)
+
 find_package(OpenGL REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_LIBRARIES} basic math model)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_LIBRARIES} basic math model 3rd_glew)
 
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE RENDERER_EXPORTS GLEW_BUILD)
+target_compile_definitions(${PROJECT_NAME} PRIVATE RENDERER_EXPORTS)
 
 
 if (MSVC)

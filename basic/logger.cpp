@@ -39,7 +39,7 @@
 #include "logger.h"
 #include "basic_types.h"
 #include "assertions.h"
-
+#include <stdarg.h>
 
 /* 
 Disables the warning caused by passing 'this' as an argument while

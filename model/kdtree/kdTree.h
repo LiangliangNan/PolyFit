@@ -29,8 +29,8 @@
 #ifndef __kdtree_H_
 #define __kdtree_H_
 
-#include "Vector2D.h"
-#include "Vector3D.h"
+#include "vector2D.h"
+#include "vector3D.h"
 #include "PriorityQueue.h"
 #include <vector>
 

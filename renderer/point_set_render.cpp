@@ -23,8 +23,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../model/point_set.h"
 #include "../model/vertex_group.h"
 
+#include <GL/glew.h>
 
-#include "glew.h"
 
 
 PointSetRender::PointSetRender(Canvas* cvs)
