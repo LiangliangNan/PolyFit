@@ -23,6 +23,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include "renderer_common.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
 #include <GL/glew.h>
 #include <string>
 
