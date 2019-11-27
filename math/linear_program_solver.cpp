@@ -59,15 +59,15 @@ bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver)
 	switch (solver) {
 #ifdef HAS_GUROBI
 	case GUROBI:
-		return _solve_GUROBI(program);	break;
+        return _solve_GUROBI(program);
 #endif
 	case GLPK:
-		return _solve_GLPK(program);	break;
+        return _solve_GLPK(program);
 	case LPSOLVE:
-		return _solve_LPSOLVE(program);	break;
+        return _solve_LPSOLVE(program);
 	case SCIP:
-	default: // SCIP is the default solver
-		return _solve_SCIP(program);	break;
+        return _solve_SCIP(program);
 	}
+    return false;
 }
 

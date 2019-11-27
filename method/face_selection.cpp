@@ -298,7 +298,7 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 		}
 	}
 	else {
-		Logger::out("-") << "solving the binary program failed." << w.elapsed() << std::endl;
+        Logger::out("-") << "solving the binary program failed. " << w.elapsed() << " sec." << std::endl;
 	}
 
 	facet_attrib_supporting_vertex_group_.unbind();
