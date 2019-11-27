@@ -128,7 +128,7 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		model.setObjective(obj, minimize ? GRB_MINIMIZE : GRB_MAXIMIZE);
 
 		// Optimize model
-		Logger::out("-") << "using the GUROBI solver" << std::endl;
+        Logger::out("-") << "using the GUROBI solver (version " << GRB_VERSION_MAJOR << "." << GRB_VERSION_MINOR << ")." << std::endl;
 		model.optimize();
 
         int status = model.get(GRB_IntAttr_Status);
