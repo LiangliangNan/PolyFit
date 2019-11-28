@@ -37,7 +37,7 @@ FaceSelection::FaceSelection(PointSet* pset, Map* model)
 
 
 void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, LinearProgramSolver::SolverName solver_name) {
-	if (pset_ == 0 || model_ == 0)
+    if (pset_ == nullptr || model_ == nullptr)
 		return;
 
 	facet_attrib_supporting_vertex_group_.bind_if_defined(model_, Method::facet_attrib_supporting_vertex_group);
