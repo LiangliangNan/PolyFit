@@ -29,7 +29,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 // return the indices of boundary points
 Map* AlphaShapeMesh::apply(AlphaShape* as, const Plane3d& plane, float radius) {
-	float alpha_value = radius * radius;
+    double alpha_value = radius * radius;
 	as->set_alpha(alpha_value);
 
 	std::map<int, int> new_index;
@@ -39,7 +39,6 @@ Map* AlphaShapeMesh::apply(AlphaShape* as, const Plane3d& plane, float radius) {
 
 	int current_idx = 0;
 	for (AlphaShape::Finite_faces_iterator fit = as->finite_faces_begin(); fit != as->finite_faces_end(); ++fit) {
-		Face_handle pFace = fit;
 		CGAL_triangulation_postcondition(pFace != NULL);
 		if (as->classify(fit) == AlphaShape::INTERIOR) {
 			Triangle tri;
@@ -64,7 +63,7 @@ Map* AlphaShapeMesh::apply(AlphaShape* as, const Plane3d& plane, float radius) {
 	}
 
 	if (faces.empty())
-		return nil;
+        return nullptr;
 
 	Map* mesh = new Map;
 	MapBuilder builder(mesh);
@@ -77,8 +76,8 @@ Map* AlphaShapeMesh::apply(AlphaShape* as, const Plane3d& plane, float radius) {
 	for (std::size_t i = 0; i < faces.size(); ++i) {
 		const Triangle& tri = faces[i];
 		builder.begin_facet();
-		for (int j = 0; j < 3; ++j) {
-			int idx = tri[j];
+        for (std::size_t j = 0; j < 3; ++j) {
+            int idx = tri[j];
 			builder.add_vertex_to_facet(idx);
 		}
 		builder.end_facet();
@@ -94,7 +93,7 @@ Map* AlphaShapeMesh::apply(AlphaShape* as, const Plane3d& plane, float radius) {
 Map* AlphaShapeMesh::apply(const VertexGroup* g, float radius) {
 	const PointSet* pset = g->point_set();
 	if (!pset)
-		return nil;
+        return nullptr;
 
 	std::size_t num_input = g->size();
 	const std::vector<vec3>& points = pset->points();
@@ -102,7 +101,7 @@ Map* AlphaShapeMesh::apply(const VertexGroup* g, float radius) {
 	std::list<Point2> pts;
 	const Plane3d& plane = g->plane();
 	for (std::size_t i = 0; i < num_input; ++i) {
-		int idx = g->at(i);
+        unsigned int idx = g->at(i);
 		const vec3& p = points[idx];
 		const vec2& q = plane.to_2d(p);
 		const Point2& qq = to_cgal_point(q);
@@ -118,14 +117,14 @@ Map* AlphaShapeMesh::apply(const VertexGroup* g, float radius) {
 Map* AlphaShapeMesh::apply(const PointSet* pset, const std::vector<unsigned int>& point_indices, const Plane3d& plane, float radius) {
 	if (point_indices.size() < 10) {
 		//Logger::out("-") << "very few points - no need to compute AlphaShapeMesh" << std::endl;
-		return nil;
+        return nullptr;
 	}
 
 	const std::vector<vec3>& points = pset->points();
 
 	std::list<Point2> pts;
 	for (std::size_t i = 0; i < point_indices.size(); ++i) {
-		int idx = point_indices[i];
+        unsigned int idx = point_indices[i];
 		const vec3& p = points[idx];
 		const vec2& q = plane.to_2d(p);
 		const Point2& qq = to_cgal_point(q);
