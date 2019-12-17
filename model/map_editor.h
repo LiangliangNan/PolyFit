@@ -75,6 +75,8 @@ public:
 
 	void erase_facet(Halfedge* h);
 
+    void reorient_facet(Halfedge* h);
+
 	//_____________ copy attributes _______________
 
 	void copy_attributes(Vertex* to, Vertex* from);
@@ -99,11 +101,11 @@ protected:
 	*/
 	bool can_merge_vertices(Halfedge* h0, Halfedge* h1);
 
-	/**
-	* To be explained by Nico.
-	* Note: should be called with both (h0,h1) and with (h1,h0)
-	*/
-	bool orbits_are_compatible(Halfedge* h0, Halfedge* h1);
+    /**
+    * To be explained by Nico.
+    * Note: should be called with both (h0,h1) and with (h1,h0)
+    */
+    bool orbits_are_compatible(Halfedge* h0, Halfedge* h1);
 
 	/**
 	* Checks the existence of an half_edge e such that

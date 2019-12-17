@@ -712,7 +712,12 @@ void PaintCanvas::optimization() {
 	FaceSelection selector(point_set_, mesh);
 	selector.optimize(adjacency, main_window_->active_solver());
 
-	optimized_mesh_ = mesh;
+#if 1 // to have consistent orientation for the final model
+    const HypothesisGenerator::Adjacency& adj = hypothesis_->extract_adjacency(mesh);
+    selector.re_orient(adj, main_window_->active_solver());
+#endif
+
+    optimized_mesh_ = mesh;
 
 	main_window_->checkBoxShowInput->setChecked(false);
 	main_window_->checkBoxShowCandidates->setChecked(false);

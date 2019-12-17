@@ -79,6 +79,7 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	//-------------------------------------
 
 	StopWatch w;
+    Logger::out("-") << "face selection..." << std::endl;
 
 	//-------------------------------------
 
@@ -309,4 +310,133 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	vertex_source_planes_.unbind();
 	edge_source_planes_.unbind();
 	facet_attrib_supporting_plane_.unbind();
+}
+
+
+
+void FaceSelection::re_orient(const HypothesisGenerator::Adjacency &adjacency, LinearProgramSolver::SolverName solver_name) {
+    if (model_ == nullptr)
+        return;
+
+#if 1
+    // check if input is legal
+    for (std::size_t i = 0; i<adjacency.size(); ++i) {
+        const auto& intersection = adjacency[i];
+        if (intersection.size() != 2) {
+            Logger::err("-") << "number of faces associated with an edge should be 2." << std::endl;
+            return;
+        }
+    }
+#endif
+
+    std::size_t idx = 0;
+    MapFacetAttribute<std::size_t>	facet_indices(model_);
+    FOR_EACH_FACET(Map, model_, it) {
+        Map::Facet* f = it;
+        facet_indices[f] = idx;
+        ++idx;
+    }
+
+    //-------------------------------------
+
+    StopWatch w;
+    Logger::out("-") << "re-orientation..." << std::endl;
+
+    //-------------------------------------
+
+    // binary variables:
+    // x[0] ... x[num_faces - 1] : binary labels of all the input faces
+
+    Logger::out("-") << "formulating binary program...." << std::endl;
+    w.start();
+
+    program_.clear();
+
+    const std::vector<Variable*>& variables = program_.create_n_variables(model_->size_of_facets());
+    for (std::size_t i = 0; i < variables.size(); ++i) {
+        Variable* v = variables[i];
+        v->set_variable_type(Variable::BINARY);
+    }
+
+    LinearObjective* objective = program_.create_objective(LinearObjective::MINIMIZE);
+    FOR_EACH_FACET(Map, model_, it) {
+        Map::Facet* f = it;
+        std::size_t var_idx = facet_indices[f];
+        objective->add_coefficient(var_idx, 1.0);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    typedef typename HypothesisGenerator::Intersection Intersection;
+
+    // Add constraints:
+    for (std::size_t i = 0; i < adjacency.size(); ++i) {
+        const Intersection& fan = adjacency[i];
+        assert(fan.size() == 2);
+
+        MapTypes::Halfedge* h0 = fan[0];
+        MapTypes::Halfedge* h1 = fan[1];
+
+        MapTypes::Facet* f0 = h0->facet();
+        MapTypes::Facet* f1 = h1->facet();
+        std::size_t var_idx0 = facet_indices[f0];
+        std::size_t var_idx1 = facet_indices[f1];
+
+        if (dot(Geom::vector(h0), Geom::vector(h1)) > 0) { // one must flip: x_i + x_j = 1
+            LinearConstraint* c = program_.create_constraint(LinearConstraint::FIXED, 1.0, 1.0);
+            c->add_coefficient(var_idx0, 1.0);
+            c->add_coefficient(var_idx1, 1.0);
+        }
+        else { // both flip, or both not: x_i - x_j = 0
+            LinearConstraint* c = program_.create_constraint(LinearConstraint::FIXED, 0.0, 0.0);
+            c->add_coefficient(var_idx0,  1.0);
+            c->add_coefficient(var_idx1, -1.0);
+        }
+    }
+
+    Logger::out("-") << "#total variables: " << program_.variables().size() << std::endl;
+    Logger::out("-") << "#total constraints: " << program_.constraints().size() << std::endl;
+    Logger::out("-") << "formulating binary program done. " << w.elapsed() << " sec" << std::endl;
+
+    //////////////////////////////////////////////////////////////////////////
+
+    // Optimize model
+    Logger::out("-") << "solving the binary program. Please wait..." << std::endl;
+    w.start();
+
+    LinearProgramSolver solver;
+    if (solver.solve(&program_, solver_name)) {
+        Logger::out("-") << "solving the binary program done. " << w.elapsed() << " sec" << std::endl;
+
+        MapFacetAttribute<bool> visited(model_);
+        FOR_EACH_FACET(Map, model_, it) {
+            Map::Facet* f = it;
+            visited[f] = false;
+        }
+
+        const std::vector<double>& X = solver.solution();
+        MapEditor editor(model_);
+        FOR_EACH_FACET(Map, model_, it) {
+            Map::Facet* f = it;
+            std::size_t fid = facet_indices[f];
+            if (static_cast<int>(std::round(X[fid])) == 1 && !visited[f]) {
+                editor.reorient_facet(f->halfedge());
+                visited[f] = true;
+            }
+        }
+        // Note: A border edge is now parallel to its opposite edge.
+        // We scan all border edges for this property. If it holds, we
+        // reorient the associated hole and search again until no border
+        // edge with that property exists any longer. Then, all holes are
+        // reoriented.
+        FOR_EACH_HALFEDGE(Map, model_, it) {
+            if (it->is_border() && it->vertex() == it->opposite()->vertex()) {
+                editor.reorient_facet(it);
+            }
+        }
+        model_->compute_facet_normals();
+    }
+    else {
+        Logger::out("-") << "solving the binary program failed. " << w.elapsed() << " sec." << std::endl;
+    }
 }

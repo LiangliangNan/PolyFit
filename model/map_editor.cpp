@@ -277,9 +277,10 @@ bool MapEditor::orbits_are_compatible(
 				)
 				) {
 				if (
-					hh0->opposite()->is_border() && hh1->is_border() ||
-					hh0->is_border() && hh1->opposite()->is_border()
-					) {
+                    (hh0->opposite()->is_border() && hh1->is_border()) ||
+                    (hh0->is_border() && hh1->opposite()->is_border())
+                    )
+                {
 					// Found a potential opposite edge.
 					nb_common++;
 				}
@@ -513,6 +514,33 @@ bool MapEditor::collapse_edge(Halfedge* h) {
 	delete_edge(hDle);
 
 	return true;
+}
+
+void MapEditor::reorient_facet(Map::Halfedge* first) {
+    if (first == nil) {
+        return;
+    }
+    Map::Halfedge* last = first;
+    Map::Halfedge* prev = first;
+    Map::Halfedge* start = first;
+    first = first->next();
+    Map::Vertex* new_v = start->vertex();
+    while (first != last) {
+        Map::Vertex*  tmp_v = first->vertex();
+        set_halfedge_vertex(first, new_v);
+        set_vertex_halfedge(first->vertex(), first);
+        new_v = tmp_v;
+        Map::Halfedge* next = first->next();
+        set_halfedge_next(first, prev);
+        set_halfedge_prev(first, next);
+        prev = first;
+        first = next;
+    }
+    set_halfedge_vertex(start, new_v);
+    set_vertex_halfedge(start->vertex(), start);
+    Map::Halfedge* next = start->next();
+    set_halfedge_next(start, prev);
+    set_halfedge_prev(start, next);
 }
 
 void MapEditor::copy_attributes(Vertex* to, Vertex* from) {

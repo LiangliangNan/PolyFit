@@ -53,6 +53,9 @@ public:
 
 	virtual void optimize(const HypothesisGenerator::Adjacency& adjacency, LinearProgramSolver::SolverName solver_name);
 
+    // NOTE: the adjacency is the one extracted after the face optimization step
+    virtual void re_orient(const HypothesisGenerator::Adjacency& adjacency, LinearProgramSolver::SolverName solver_name);
+
 private:
 	PointSet* pset_;
 	Map*      model_;
