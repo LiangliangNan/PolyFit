@@ -543,6 +543,105 @@ void MapEditor::reorient_facet(Map::Halfedge* first) {
     set_halfedge_prev(start, next);
 }
 
+
+
+bool MapEditor::glue(
+    Halfedge* h0, Halfedge* h1
+    )
+{
+    if (!can_glue(h0, h1)) {
+        return false;
+    }
+
+    vec3 new_p0 = Geom::barycenter(
+        h0->vertex()->point(), h1->opposite()->vertex()->point()
+        );
+
+    vec3 new_p1 = Geom::barycenter(
+        h1->vertex()->point(), h0->opposite()->vertex()->point()
+        );
+
+
+    // merge vertices if necessary
+
+    Vertex* dest0 = h0->vertex();
+    Vertex* dest1 = h1->vertex();
+
+    Vertex* org0 = h0->opposite()->vertex();
+    Vertex* org1 = h1->opposite()->vertex();
+
+    if (is_locked_[dest1]) {
+        is_locked_[org0] = true;
+    }
+
+    if (is_locked_[dest0]) {
+        is_locked_[org1] = true;
+    }
+
+    if (org0 != dest1) {
+        set_vertex_on_orbit(h1, org0);
+        delete_vertex(dest1);
+    }
+
+    if (org1 != dest0) {
+        set_vertex_on_orbit(h0, org1);
+        delete_vertex(dest0);
+    }
+
+    // set halfedge connections
+
+    make_sequence(h1->prev(), h0->next());
+    make_sequence(h0->prev(), h1->next());
+    make_opposite(h0->opposite(), h1->opposite());
+    make_vertex_key(h0->opposite());
+    make_vertex_key(h1->opposite());
+
+    org1->set_point(new_p0);
+    org0->set_point(new_p1);
+
+    delete_halfedge(h0);
+    delete_halfedge(h1);
+
+    return true;
+}
+
+bool MapEditor::can_glue(Halfedge* h0, Halfedge* h1) {
+
+    // Checks that both Halfedges are on the border.
+    if (!h0->is_border() || !h1->is_border()) {
+        return false;
+    }
+
+    // don't glue two halfedges on a same face
+    if (
+        h0->opposite()->facet() == h1->opposite()->facet()
+        ) {
+        return false;
+    }
+
+    // don't merge two vertices on a same halfedge
+    if (
+        halfedge_exists_between_vertices(
+        h0->vertex(), h1->opposite()->vertex()
+        ) ||
+        halfedge_exists_between_vertices(
+        h1->vertex(), h0->opposite()->vertex()
+        )
+        ) {
+        return false;
+    }
+
+    if (
+        !can_merge_vertices(h0, h1->opposite()) ||
+        !can_merge_vertices(h1, h0->opposite())
+        ) {
+        return false;
+    }
+
+    return true;
+}
+
+
 void MapEditor::copy_attributes(Vertex* to, Vertex* from) {
 	target()->vertex_attribute_manager()->copy_record(to, from);
 }

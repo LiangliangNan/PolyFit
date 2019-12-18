@@ -37,6 +37,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../method/face_selection.h"
 #include "../method/method_global.h"
 #include "../model/map_circulators.h"
+#include "../model/map_editor.h"
 
 #include <QFileDialog>
 #include <QMouseEvent>
@@ -712,9 +713,27 @@ void PaintCanvas::optimization() {
 	FaceSelection selector(point_set_, mesh);
 	selector.optimize(adjacency, main_window_->active_solver());
 
-#if 1 // to have consistent orientation for the final model
-    const HypothesisGenerator::Adjacency& adj = hypothesis_->extract_adjacency(mesh);
-    selector.re_orient(adj, main_window_->active_solver());
+#if 1
+    { // to have consistent orientation for the final model
+        const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
+        selector.re_orient(adjacency, main_window_->active_solver());
+    }
+
+    { // stitching
+        const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
+        MapEditor editor(mesh);
+        for (auto pair : adjacency) {
+            if (pair.size() != 2) {
+                std::cerr << "error: an edge should be associated with two faces" << std::endl;
+                continue;
+            }
+            auto h0 = pair[0];
+            auto h1 = pair[1];
+            if (dot(Geom::vector(h0), Geom::vector(h1)) < 0)
+                editor.glue(h0->opposite(), h1->opposite());
+        }
+    }
+
 #endif
 
     optimized_mesh_ = mesh;
