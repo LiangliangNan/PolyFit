@@ -713,7 +713,7 @@ void PaintCanvas::optimization() {
 	FaceSelection selector(point_set_, mesh);
 	selector.optimize(adjacency, main_window_->active_solver());
 
-#if 1
+#if 0 // not stable!!!
     { // to have consistent orientation for the final model
         const HypothesisGenerator::Adjacency& adjacency = hypothesis_->extract_adjacency(mesh);
         selector.re_orient(adjacency, main_window_->active_solver());
@@ -732,8 +732,17 @@ void PaintCanvas::optimization() {
             if (dot(Geom::vector(h0), Geom::vector(h1)) < 0)
                 editor.glue(h0->opposite(), h1->opposite());
         }
-    }
 
+        int num = 0;
+        FOR_EACH_EDGE(Map, mesh, it) {
+            if (it->is_border_edge())
+                ++num;
+        }
+        if (num == 0)
+            Logger::out("-") << "final model is watertight" << std::endl;
+        else
+            Logger::warn("-") << "final model has " << num << " border edges" << std::endl;
+    }
 #endif
 
     optimized_mesh_ = mesh;

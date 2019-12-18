@@ -172,13 +172,12 @@ void SurfaceRender::draw_corner_edges(Map* mesh, bool interacting) {
 		glLineWidth(sharp_edge_style_.width + 1.0f);
 		glBegin(GL_LINES);
 		FOR_EACH_EDGE_CONST(Map, mesh, it) {
-            if (!edge_is_sharp[it])
-                continue;
-
-            const vec3& t = it->vertex()->point();
-            glVertex3fv(t.data());
-            const vec3& s = it->opposite()->vertex()->point();
-            glVertex3fv(s.data());
+            if (edge_is_sharp[it] || it->is_border_edge()) {
+                const vec3& t = it->vertex()->point();
+                glVertex3fv(t.data());
+                const vec3& s = it->opposite()->vertex()->point();
+                glVertex3fv(s.data());
+            }
 		}
 		glEnd();
 	}
@@ -197,22 +196,21 @@ void SurfaceRender::draw_corner_edges(Map* mesh, bool interacting) {
 		glShadeModel(GL_SMOOTH);
 
 		FOR_EACH_EDGE_CONST(Map, mesh, it) {
-            if (!edge_is_sharp[it])
-                continue;
+            if (edge_is_sharp[it] || it->is_border_edge()) {
+                glPushMatrix();
+                const vec3& t = it->vertex()->point();
+                glTranslated(t.x, t.y, t.z);
+                gluSphere(g_quadric, r, slices, slices);
+                glPopMatrix();
 
-            glPushMatrix();
-            const vec3& t = it->vertex()->point();
-            glTranslated(t.x, t.y, t.z);
-            gluSphere(g_quadric, r, slices, slices);
-            glPopMatrix();
-
-            glPushMatrix();
-            const vec3& s = it->opposite()->vertex()->point();
-            glTranslated(s.x, s.y, s.z);
-            gluSphere(g_quadric, r, slices, slices);
-            glMultMatrixd(Quaternion(vec3(0, 0, 1), Geom::vector(it)).matrix());
-            gluCylinder(g_quadric, r, r, Geom::edge_length(it), slices, 1);
-            glPopMatrix();
+                glPushMatrix();
+                const vec3& s = it->opposite()->vertex()->point();
+                glTranslated(s.x, s.y, s.z);
+                gluSphere(g_quadric, r, slices, slices);
+                glMultMatrixd(Quaternion(vec3(0, 0, 1), Geom::vector(it)).matrix());
+                gluCylinder(g_quadric, r, r, Geom::edge_length(it), slices, 1);
+                glPopMatrix();
+            }
 		}
 	}
 }
