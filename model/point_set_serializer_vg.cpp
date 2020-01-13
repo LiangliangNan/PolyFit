@@ -213,6 +213,8 @@ void PointSetSerializer_vg::load_vg(PointSet* pset, const std::string& file_name
 	input >> dumy >> num_groups;
 	for (int i = 0; i<num_groups; ++i) {
 		VertexGroup::Ptr g = read_ascii_group(input);
+        if (!g)
+            continue;
 
 		if (!g->empty()) {
 			g->set_point_set(pset);
@@ -242,7 +244,9 @@ VertexGroup* PointSetSerializer_vg::read_ascii_group(std::istream& input) {
 
 	int num;
 	input >> dumy >> num;
-	assert(num == 4);
+    if (num != 4)
+        return nullptr;     // bad/unknown data
+
 	std::vector<float> para(num);
 	input >> dumy;
 	for (int i = 0; i < num; ++i)
@@ -322,6 +326,8 @@ void PointSetSerializer_vg::load_bvg(PointSet* pset, const std::string& file_nam
 	input.read((char*)&num_groups, sizeof(int));
 	for (int i = 0; i < num_groups; ++i) {
 		VertexGroup::Ptr g = read_binary_group(input);
+        if (!g)
+            continue;
 
 		if (!g->empty()) {
 			g->set_point_set(pset);
@@ -437,7 +443,8 @@ VertexGroup* PointSetSerializer_vg::read_binary_group(std::istream& input) {
 
 	int num;
 	input.read((char*)&num, sizeof(int));
-	assert(num == 4);
+    if (num != 4)
+        return nullptr;     // bad/unknown data
 
 	std::vector<float> para(num);
 	input.read((char*)para.data(), num * sizeof(float));
