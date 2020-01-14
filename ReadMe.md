@@ -24,9 +24,12 @@ You can also build PolyFit from the source code:
   - [CGAL](http://www.cgal.org/index.html) (v4.10, v4.11.1 have been tested)
    
 * Build PolyFit. 
-  - Use CMake to generate project files for your favorite IDEs
+  - There are many ways to build PolyFit. Choose one of the following (or whatever you prefer):
+    - Option 1: Use any IDE that can directly handle CMakeLists files to open the CMakeLists.txt in the root directory of PolyFit. Then you should have obtained a usable project and just build. I recommend using [CLion](https://www.jetbrains.com/clion/) or [QtCreator](https://www.qt.io/product).
+    - Option 2: Use CMake to generate project files for you IDE. Then load the project to your IDE and build.
+    - Option 3: Use CMake to generate Makefiles and then `make` (on Linux/macOS) or `nmake`(on Windows with Microsoft Visual Studio).
   
-**News**: Since Aug.5, 2019, PolyFit is also available in [CGAL](https://www.cgal.org/). Find more [here](https://www.cgal.org/2019/08/05/Polygonal_surface_reconstruction/).
+**News**: Since Aug. 5, 2019, PolyFit is also available in [CGAL](https://www.cgal.org/). Find more [here](https://www.cgal.org/2019/08/05/Polygonal_surface_reconstruction/).
   
 ---
 
