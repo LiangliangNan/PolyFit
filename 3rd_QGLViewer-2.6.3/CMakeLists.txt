@@ -132,12 +132,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     )
 
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE CREATE_QGLVIEWER_DLL)
-
 if (MSVC)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-        _CRT_SECURE_NO_WARNINGS
-        _CRT_SECURE_NO_DEPRECATE
+            _CRT_SECURE_NO_WARNINGS
+            _CRT_SECURE_NO_DEPRECATE
+            CREATE_QGLVIEWER_DLL
         )
 endif()
 
