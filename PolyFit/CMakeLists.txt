@@ -96,8 +96,8 @@ set(${PROJECT_NAME}_RESOURCES
 
 if( APPLE )
     # set also the icon
-    set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/Resources/PolyFit.icns" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-    set(MACOSX_BUNDLE_ICON_FILE ${CMAKE_CURRENT_LIST_DIR}/Resources/PolyFit.icns )
+#    set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/Resources/PolyFit.icns" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+#    set(MACOSX_BUNDLE_ICON_FILE ${CMAKE_CURRENT_LIST_DIR}/Resources/PolyFit.icns )
 
     add_executable( ${PROJECT_NAME} MACOSX_BUNDLE ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
 else()
