@@ -245,7 +245,7 @@ void PaintCanvas::draw() {
 		mesh_render_->draw(optimized_mesh_, interacting);
 	}
 
-	const static QFont font("Tekton Pro Ext", 12/*, QFont::Bold*/); // "Times", "Helvetica", "Bradley Hand ITC"
+	const static QFont font("Helvetica", 12/*, QFont::Bold*/); // "Times", "Helvetica", "Bradley Hand ITC"
 	if (show_hint_text_) {
 		if (!hint_text_.isEmpty()) {
 			glColor3f(0, 0, 0.7f);
