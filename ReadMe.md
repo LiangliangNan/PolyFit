@@ -35,7 +35,9 @@ You can also build PolyFit from the source code:
 
 ### Run PolyFit
 Super easy! This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
+
 ![](./images/gui.png)
+
 ---
 
 ### Data
