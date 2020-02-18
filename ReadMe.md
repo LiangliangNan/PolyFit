@@ -1,6 +1,6 @@
 # Polygonal surface reconstruction from point clouds
 
-![](polyfit.png)
+![](./images/polyfit.png)
 <p align="center">PolyFit reconstruction pipeline</p>
 
 PolyFit implements the hypothesis and selection based surface reconstruction method described in the following [paper](https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html):
@@ -35,7 +35,7 @@ You can also build PolyFit from the source code:
 
 ### Run PolyFit
 Super easy! This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
-
+![](./images/gui.png)
 ---
 
 ### Data
