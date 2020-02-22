@@ -79,7 +79,7 @@ private:
 	void merge(VertexGroup* g1, VertexGroup* g2);
 
 	// test if face 'f' insects plane 'plane'
-	bool do_intersect(MapTypes::Facet* f, MapTypes::Facet* plane);
+	bool do_intersect(MapTypes::Facet* f, Plane3d* plane);
 
 
 	struct EdgePos {
@@ -93,19 +93,19 @@ private:
 	// intersects the face at its edges).
 	void compute_intersections(
 		MapTypes::Facet* f,
-		MapTypes::Facet* plane,
+		Plane3d* plane,
 		std::vector<MapTypes::Vertex*>& existing_vts,
 		std::vector<EdgePos>& new_vts
 		);
 
-	std::vector<MapTypes::Facet*> cut(MapTypes::Facet* f, MapTypes::Facet* cutter, Map* mesh);
+	std::vector<MapTypes::Facet*> cut(MapTypes::Facet* f, Plane3d* cutter, Map* mesh);
 
 	// split an existing edge, meanwhile, assign the new edges the original source faces (the old edge 
 	// lies in the intersection of the two faces)
-	MapTypes::Vertex* split_edge(const EdgePos& ep, MapEditor* editor, MapTypes::Facet* cutter);
+	MapTypes::Vertex* split_edge(const EdgePos& ep, MapEditor* editor, Plane3d* cutting_plane);
 
 	// collect all faces in 'mesh' that intersect 'face'
-	std::set<MapTypes::Facet*> collect_intersecting_faces(MapTypes::Facet* face, Map* mesh);
+	std::set<Plane3d *> collect_cutting_planes(MapTypes::Facet* face, Map* mesh);
 
 	void triplet_intersection();
 

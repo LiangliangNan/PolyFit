@@ -19,12 +19,7 @@ if ( QT5_ROOT_PATH )
 endif()
 
 # find qt5 components
-# find_package(Qt5 COMPONENTS Core Gui OpenGL Widgets REQUIRED)
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Gui REQUIRED)
-find_package(Qt5OpenGL REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Xml REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui OpenGL Widgets Xml REQUIRED)
 
 # in the case no Qt5Config.cmake file could be found, cmake will explicitly ask the user for the QT5_DIR containing it!
 # thus no need to keep additional variables and checks
@@ -132,11 +127,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     )
 
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE CREATE_QGLVIEWER_DLL)
+
 if (MSVC)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
-            _CRT_SECURE_NO_WARNINGS
-            _CRT_SECURE_NO_DEPRECATE
-            CREATE_QGLVIEWER_DLL
+        _CRT_SECURE_NO_WARNINGS
+        _CRT_SECURE_NO_DEPRECATE
         )
 endif()
 

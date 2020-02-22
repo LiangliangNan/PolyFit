@@ -7,7 +7,7 @@ namespace Method {
 	double lambda_model_coverage = 0.27;
 	double lambda_model_complexity = 0.30;
 
-	double snap_sqr_distance_threshold = 1e-10;
+	double snap_sqr_distance_threshold = 1e-14;
 
 	//________________ names for various quality measures ____________________
 
