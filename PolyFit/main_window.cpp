@@ -453,7 +453,7 @@ bool MainWindow::open()
 {
 	QString fileName = QFileDialog::getOpenFileName(this,
 		tr("Open file"), curDataDirectory_,
-		tr("Supported Format (*.vg *.bvg *.obj *.png *.jpg)")
+		tr("Supported Format (*.vg *.bvg *.obj)")
 		);
 
 	if (fileName.isEmpty())
@@ -467,8 +467,7 @@ bool MainWindow::save()
 {
 	QString fileName = QFileDialog::getSaveFileName(this,
 		tr("Save file"), optimizedMeshFileName_,
-		tr("Mesh (*.obj)\n"
-			"Point Cloud (*.vg *.bvg)")
+		tr("Mesh (*.obj)")
 		);
 
 	if (fileName.isEmpty())
