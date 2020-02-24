@@ -94,10 +94,10 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	std::size_t num_faces = model_->size_of_facets();
 	std::size_t num_edges = 0;
 
-	typedef typename HypothesisGenerator::Intersection Intersection;
-	std::map<const Intersection*, std::size_t> edge_usage_status;	// keep or remove an intersecting edges
+	typedef typename HypothesisGenerator::SuperEdge SuperEdge;
+	std::map<const SuperEdge*, std::size_t> edge_usage_status;	// keep or remove an intersecting edges
 	for (std::size_t i = 0; i < adjacency.size(); ++i) {
-		const Intersection& fan = adjacency[i];
+		const SuperEdge& fan = adjacency[i];
 		if (fan.size() == 4) {
 			std::size_t var_idx = num_faces + num_edges;
 			edge_usage_status[&fan] = var_idx;
@@ -116,10 +116,10 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	program_.clear();
 	LinearObjective* objective = program_.create_objective(LinearObjective::MINIMIZE);
 
-	std::map<const Intersection*, std::size_t> edge_sharp_status;	// the edge is sharp or not
+	std::map<const SuperEdge*, std::size_t> edge_sharp_status;	// the edge is sharp or not
 	std::size_t num_sharp_edges = 0;
 	for (std::size_t i = 0; i < adjacency.size(); ++i) {
-		const Intersection& fan = adjacency[i];
+		const SuperEdge& fan = adjacency[i];
 		if (fan.size() == 4) {
 			std::size_t var_idx = num_faces + num_edges + num_sharp_edges;
 			edge_sharp_status[&fan] = var_idx;
@@ -172,7 +172,7 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	std::size_t var_edge_used_idx = 0;
 	for (std::size_t i = 0; i < adjacency.size(); ++i) {
 		LinearConstraint* c = program_.create_constraint(LinearConstraint::FIXED, 0.0, 0.0);
-		const Intersection& fan = adjacency[i];
+		const SuperEdge& fan = adjacency[i];
 		for (std::size_t j = 0; j < fan.size(); ++j) {
 			MapTypes::Facet* f = fan[j]->facet();
 			std::size_t var_idx = facet_indices[f];
@@ -193,7 +193,7 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 	// https://user-images.githubusercontent.com/15526536/30185644-12085a9c-942b-11e7-831d-290dd2a4d50c.png
 	double M = 1.0;
 	for (std::size_t i = 0; i < adjacency.size(); ++i) {
-		const Intersection& fan = adjacency[i];
+		const SuperEdge& fan = adjacency[i];
 		if (fan.size() != 4)
 			continue;
 
@@ -277,7 +277,7 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 			edge_is_sharp[it] = false;
 
 		for (std::size_t i = 0; i < adjacency.size(); ++i) {
-			const Intersection& fan = adjacency[i];
+			const SuperEdge& fan = adjacency[i];
 			if (fan.size() != 4)
 				continue;
 
@@ -321,8 +321,8 @@ void FaceSelection::re_orient(const HypothesisGenerator::Adjacency &adjacency, L
 #if 1
     // check if input is legal
     for (std::size_t i = 0; i<adjacency.size(); ++i) {
-        const auto& intersection = adjacency[i];
-        if (intersection.size() != 2) {
+        const auto& SuperEdge = adjacency[i];
+        if (SuperEdge.size() != 2) {
             Logger::err("-") << "number of faces associated with an edge should be 2." << std::endl;
             return;
         }
@@ -367,11 +367,11 @@ void FaceSelection::re_orient(const HypothesisGenerator::Adjacency &adjacency, L
 
     //////////////////////////////////////////////////////////////////////////
 
-    typedef typename HypothesisGenerator::Intersection Intersection;
+    typedef typename HypothesisGenerator::SuperEdge SuperEdge;
 
     // Add constraints:
     for (std::size_t i = 0; i < adjacency.size(); ++i) {
-        const Intersection& fan = adjacency[i];
+        const SuperEdge& fan = adjacency[i];
         assert(fan.size() == 2);
 
         MapTypes::Halfedge* h0 = fan[0];

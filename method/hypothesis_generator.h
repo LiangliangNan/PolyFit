@@ -53,11 +53,11 @@ public:
 	void compute_confidences(Map* mesh, bool use_conficence = false);
 
 	// Intersection: a set of 'faces' intersecting at a common edge
-	struct Intersection : public std::vector<MapTypes::Halfedge*> {
+	struct SuperEdge : public std::vector<MapTypes::Halfedge*> {
 		const vec3* s;
 		const vec3* t;
 	};
-	typedef typename std::vector<Intersection>		Adjacency;
+	typedef typename std::vector<SuperEdge>		Adjacency;
 
 	// the adjacency information will be used to formulate the hard constraints.
 	Adjacency extract_adjacency(Map* mesh);
@@ -81,28 +81,34 @@ private:
 	// test if face 'f' insects plane 'plane'
 	bool do_intersect(MapTypes::Facet* f, Plane3d* plane);
 
+    struct Intersection {
+        enum Type { EXISTING_VERTEX, NEW_VERTEX };
 
-	struct EdgePos {
-		EdgePos(MapTypes::Halfedge* e, const vec3& p) : edge(e), pos(p) {}
-		MapTypes::Halfedge* edge;
-		vec3				pos;
-	};
+        Intersection(Type t) : type(t), vtx(0), edge(0) {}
+        Type type;
+
+        // for EXISTING_VERTEX
+        Map::Vertex* vtx;
+
+        // for NEW_VERTEX
+        MapTypes::Halfedge* edge;
+        vec3				pos;
+    };
 
 	// compute the intersecting points of a face 'f' and a 'plane'. The intersecting points are returned 
 	// by 'existing_vts' (if the plane intersects the face at its vertices) and 'new_vts' (if the plane 
 	// intersects the face at its edges).
-	void compute_intersections(
-		MapTypes::Facet* f,
-		Plane3d* plane,
-		std::vector<MapTypes::Vertex*>& existing_vts,
-		std::vector<EdgePos>& new_vts
-		);
+    void compute_intersections(
+            MapTypes::Facet* f,
+            Plane3d* plane,
+            std::vector<Intersection>& intersections
+    );
 
 	std::vector<MapTypes::Facet*> cut(MapTypes::Facet* f, Plane3d* cutter, Map* mesh);
 
 	// split an existing edge, meanwhile, assign the new edges the original source faces (the old edge 
 	// lies in the intersection of the two faces)
-	MapTypes::Vertex* split_edge(const EdgePos& ep, MapEditor* editor, Plane3d* cutting_plane);
+	MapTypes::Vertex* split_edge(const Intersection& ep, MapEditor* editor, Plane3d* cutting_plane);
 
 	// collect all faces in 'mesh' that intersect 'face'
 	std::set<Plane3d *> collect_cutting_planes(MapTypes::Facet* face, Map* mesh);
