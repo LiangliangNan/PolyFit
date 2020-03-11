@@ -88,8 +88,8 @@ PaintCanvas::PaintCanvas(QWidget *parent, QGLFormat format)
 
 
 PaintCanvas::~PaintCanvas() {
-	// this is required by the following destruction of textures, shaders, etc.
-	makeCurrent();
+//	// this is required by the following destruction of textures, shaders, etc.
+//	makeCurrent();
 
 	delete point_set_render_;
 	delete mesh_render_;
