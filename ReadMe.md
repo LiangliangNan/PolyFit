@@ -37,7 +37,9 @@ Don't have any experience with C/C++ programming? Have a look at [How to build P
 
 ### Run PolyFit
 Super easy! This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
+
 <img src="./images/gui.png" align="center" width="600"/>
+
 ---
 
 ### Data
