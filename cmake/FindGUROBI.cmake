@@ -42,46 +42,48 @@ if (NOT GUROBI_FOUND)
 
     # Hardcoded search paths
     set(SEARCH_PATHS_FOR_HEADERS
-        "$ENV{GUROBI_HOME}/include"
-        "/Library/gurobi901/mac64/include"
-        "C:\\dev\\gurobi901\\win64\\include"
-    )
+            "$ENV{GUROBI_HOME}/include"
+            "/Library/gurobi901/mac64/include"
+            "C:\\dev\\gurobi901\\win64\\include"
+            )
 
     set(SEARCH_PATHS_FOR_LIBRARIES
-        "$ENV{GUROBI_HOME}/lib"
-        "/Library/gurobi901/mac64/lib"
-        "C:\\dev\\gurobi901\\win64\\lib"
-    )
+            "$ENV{GUROBI_HOME}/lib"
+            "/Library/gurobi901/mac64/lib"
+            "C:\\dev\\gurobi901\\win64\\lib"
+            )
 
     find_path(GUROBI_INCLUDE_DIR gurobi_c++.h
-      PATHS ${SEARCH_PATHS_FOR_HEADERS}
-    )
+            PATHS ${SEARCH_PATHS_FOR_HEADERS}
+            )
 
 
-    find_library( GUROBI_C_LIBRARY
-                  NAMES gurobi90
-                  PATHS ${SEARCH_PATHS_FOR_LIBRARIES}
-                  )
+    find_library(GUROBI_C_LIBRARY
+            NAMES gurobi90
+            PATHS ${SEARCH_PATHS_FOR_LIBRARIES}
+            )
 
-    find_library( GUROBI_CXX_LIBRARY_DEBUG
-                NAMES gurobi_c++ gurobi_c++mdd2017
-                PATHS ${SEARCH_PATHS_FOR_LIBRARIES}
-                )
+    find_library(GUROBI_CXX_LIBRARY_DEBUG
+            NAMES gurobi_c++ gurobi_c++mdd2017
+            PATHS ${SEARCH_PATHS_FOR_LIBRARIES}
+            )
 
-    find_library( GUROBI_CXX_LIBRARY_RELEASE
-                NAMES gurobi_c++ gurobi_c++md2017
-                PATHS ${SEARCH_PATHS_FOR_LIBRARIES}
-                )
+    find_library(GUROBI_CXX_LIBRARY_RELEASE
+            NAMES gurobi_c++ gurobi_c++md2017
+            PATHS ${SEARCH_PATHS_FOR_LIBRARIES}
+            )
 
     # setup header file directories
     set(GUROBI_INCLUDE_DIRS ${GUROBI_INCLUDE_DIR})
 
     # setup libraries files
-    set(GUROBI_LIBRARIES ${GUROBI_C_LIBRARY}
-        debug ${GUROBI_CXX_LIBRARY_DEBUG}
-        optimized ${GUROBI_CXX_LIBRARY_RELEASE})
+    set(GUROBI_LIBRARIES
+            debug ${GUROBI_CXX_LIBRARY_DEBUG}
+            optimized ${GUROBI_CXX_LIBRARY_RELEASE}
+            ${GUROBI_C_LIBRARY}
+            )
 
-endif()
+endif ()
 
 # Check that Gurobi was successfully found
 include(FindPackageHandleStandardArgs)
