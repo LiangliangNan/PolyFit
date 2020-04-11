@@ -44,12 +44,14 @@ if (NOT GUROBI_FOUND)
     set(SEARCH_PATHS_FOR_HEADERS
             "$ENV{GUROBI_HOME}/include"
             "/Library/gurobi901/mac64/include"
+            "/home/liangliang/dev/gurobi901/include"
             "C:\\dev\\gurobi901\\win64\\include"
             )
 
     set(SEARCH_PATHS_FOR_LIBRARIES
             "$ENV{GUROBI_HOME}/lib"
             "/Library/gurobi901/mac64/lib"
+            "/home/liangliang/dev/gurobi901/lib"
             "C:\\dev\\gurobi901\\win64\\lib"
             )
 
