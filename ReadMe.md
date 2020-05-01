@@ -1,3 +1,9 @@
+<p align="right">
+    <b> <img src="https://img.shields.io/badge/Supported%20Platforms-Windows%20%7C%20macOS%20%7C%20Linux-green" title="Supported Platforms"/> </b> <br>
+    <b> <img src="https://img.shields.io/badge/license-GPL-blue" title="license-GPL"/> </b> <br> <br>
+</p>
+
+
 # Polygonal surface reconstruction from point clouds
 
 ![](./images/polyfit.png)
@@ -38,7 +44,10 @@ Don't have any experience with C/C++ programming? Have a look at [How to build P
 ### Run PolyFit
 Super easy! This demo version provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
 
-<img src="./images/gui.png" align="center" width="600"/>
+<p align="center"> 
+     <img src="./images/gui.png" width="600"> 
+</p>
+
 
 ---
 
