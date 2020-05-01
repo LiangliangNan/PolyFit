@@ -6,6 +6,8 @@
 
 # Polygonal surface reconstruction from point clouds
 
+---
+
 ![](./images/polyfit.png)
 <p align="center">PolyFit reconstruction pipeline</p>
 
