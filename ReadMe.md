@@ -56,7 +56,7 @@ Super easy! This demo version provides a user interface with a few buttons (with
 ### Data
 Some test data can be downloaded from the [project page](https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html).
 
-More infomation about the data (e.g., data format) are described [here](https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.md).
+More information about the data (e.g., data format) is described [here](https://github.com/LiangliangNan/PolyFit/blob/master/ReadMe-data.md).
 
 **Plane extraction**. Incorporating plane extraction adds an unnecessary dependency to more third-party libraries (e.g., [RANSAC](http://cg.cs.uni-bonn.de/en/publications/paper-details/schnabel-2007-efficient/)). Besides, it has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be fine if some regions of the planes are missing). So I isolated this part from this demo version and you're expected to provide the planar segments as input. 
 
