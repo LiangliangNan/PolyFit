@@ -119,7 +119,7 @@ num_children: 0
 
 The parameters for most examples are as follows: fitting = 0.46, coverage = 0.27, and complexity = 0.27 (Note that weights in a 
 wide range can produce the same results). Slightly different weights (fitting = 0.3, coverage = 0.4, and complexity = 0.3) are used for the sofa example in Figure 4(i), where the background (ground plane) has a much higher density than the object (sofa), 
-thus the smaller data fitting weight. In case non-default parameters are used, these parameters are provided in the files names.
+thus the smaller data fitting weight. In case non-default parameters are used, these parameters are provided in the file names.
 
 ---
 
