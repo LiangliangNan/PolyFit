@@ -50,7 +50,11 @@ bool LinearProgramSolver::_solve_GUROBI(const LinearProgram* program) {
 		if (!check_program(program))
 			return false;
 
-		GRBEnv env = GRBEnv();
+		// I am using an academic license of Gurobi. Each time when a Gurobi environment is created, it pops up a
+		// notice "Academic license - for non-commercial use only".
+		// It is not possible to suppress this notice completely, but we can get the Gurobi environment only once and
+		// reuse it later on.
+		static GRBEnv env = GRBEnv();
 		env.set(GRB_IntParam_LogToConsole, 0);
 
 		GRBModel model = GRBModel(env);
