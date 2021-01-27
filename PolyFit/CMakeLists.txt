@@ -96,10 +96,23 @@ set(${PROJECT_NAME}_RESOURCES
 
 if( APPLE )
     # set also the icon
-#    set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/Resources/PolyFit.icns" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-#    set(MACOSX_BUNDLE_ICON_FILE ${CMAKE_CURRENT_LIST_DIR}/Resources/PolyFit.icns )
+    # This tells CMake where to find and install the ICON file
+    set(${PROJECT_NAME}_ICON ${CMAKE_CURRENT_SOURCE_DIR}/Resources/PolyFit.icns)
+    set_source_files_properties(${${PROJECT_NAME}_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
-    add_executable( ${PROJECT_NAME} MACOSX_BUNDLE ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
+    add_executable( ${PROJECT_NAME} MACOSX_BUNDLE ${${PROJECT_NAME}_ICON} ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
+
+    set_source_files_properties(${${PROJECT_NAME}_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+
+    ## Note: On macOS, high-DPI support is enabled by settings in the Info.plist file. Make sure they are present.
+    ## For more information, see: http://doc.qt.io/qt-5/highdpi.html
+    ## Enable high DPI support by using my Info.plist file in which I added NSHighResolutionCapable to be true.
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+            INSTALL_RPATH "@executable_path/../Frameworks"
+            MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME}
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Mac/PolyFit.plist"
+            MACOSX_BUNDLE_ICON_FILE PolyFit.icns
+            )
 else()
     add_executable( ${PROJECT_NAME} ${${PROJECT_NAME}_HEADERS} ${${PROJECT_NAME}_SOURCES} ${${PROJECT_NAME}_FORMS} ${${PROJECT_NAME}_RESOURCES} )
 endif()
@@ -122,12 +135,3 @@ target_link_libraries( ${PROJECT_NAME} Qt5::OpenGL )
 target_link_libraries( ${PROJECT_NAME} Qt5::Xml )
 
 target_link_libraries( ${PROJECT_NAME} basic math model method renderer 3rd_glew 3rd_QGLViewer-2.6.3)
-
-
-
-# Note: On macOS, high-DPI support is enabled by settings in the Info.plist file. Make sure they are present.
-# For more information, see: http://doc.qt.io/qt-5/highdpi.html
-# Enable high DPI support by using my Info.plist file in which I added NSHighResolutionCapable to be true.
-if( APPLE )
-    set_target_properties( ${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Mac/PolyFit.plist )
-endif()
