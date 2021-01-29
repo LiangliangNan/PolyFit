@@ -56,3 +56,5 @@ PolyFit/GeneratedFiles
 PolyFit/PolyFit.log
 PolyFit/PolyFit.vcxproj.user
 *.user
+.idea
+cmake-build*
