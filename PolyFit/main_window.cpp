@@ -300,7 +300,7 @@ void MainWindow::createStatusBar()
 	QLabel* space1 = new QLabel;
 	statusBar()->addWidget(space1, 1);
 
-	int length = 200;
+	int length = 150;
 	numPointsLabel_ = new QLabel;
 	numPointsLabel_->setFixedWidth(length);
 	numPointsLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
