@@ -300,7 +300,7 @@ void MainWindow::createStatusBar()
 	QLabel* space1 = new QLabel;
 	statusBar()->addWidget(space1, 1);
 
-	int length = 250;
+	int length = 200;
 	numPointsLabel_ = new QLabel;
 	numPointsLabel_->setFixedWidth(length);
 	numPointsLabel_->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -323,7 +323,7 @@ void MainWindow::createStatusBar()
 
 	progress_bar_ = new QProgressBar;
 	progress_bar_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-	progress_bar_->setFixedWidth(500);
+	progress_bar_->setFixedWidth(400);
 	statusBar()->addPermanentWidget(progress_bar_, 1);
 
 	//////////////////////////////////////////////////////////////////////////
