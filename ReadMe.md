@@ -38,7 +38,9 @@ You can also build PolyFit from the source code:
     - Option 3: Use CMake to generate Makefiles and then `make` (on Linux/macOS) or `nmake`(on Windows with Microsoft Visual Studio). For example, on Linux or macOS, you can simply
         ```
         $ cd PolyFit
-        $ cmake .
+        $ mkdir Release
+        $ cd Release
+        $ cmake -DCMAKE_BULID_TYPE=Release ..
         $ make
         ```
     Don't have any experience with C/C++ programming? Have a look at [How to build PolyFit step by step](./How_to_build.md).
