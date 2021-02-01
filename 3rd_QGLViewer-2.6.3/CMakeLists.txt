@@ -144,6 +144,7 @@ target_link_libraries( ${PROJECT_NAME} Qt5::OpenGL )
 target_link_libraries( ${PROJECT_NAME} Qt5::Xml )
 
 
+set (OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
-
+message(STATUS "OpenGL libraries: ${OPENGL_LIBRARIES}")
 target_link_libraries( ${PROJECT_NAME} ${OPENGL_LIBRARIES} )
