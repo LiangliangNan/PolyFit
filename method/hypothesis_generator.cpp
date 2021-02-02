@@ -915,7 +915,7 @@ void HypothesisGenerator::clear() {
 
 
 
-float HypothesisGenerator::compute_point_confidences(PointSet* pset, int s1 /* = 6 */, int s2 /* = 16 */, int s3 /* = 32 */) {
+float HypothesisGenerator::compute_point_confidences(PointSet* pset, int s1 /* = 6 */, int s2 /* = 16 */, int s3 /* = 32 */, ProgressLogger* progress) {
 	std::vector<vec3>& points = pset->points();
 	std::vector<float>& planar_qualities = pset->planar_qualities();
 
@@ -937,7 +937,6 @@ float HypothesisGenerator::compute_point_confidences(PointSet* pset, int s1 /* =
 		eigen_values[i].resize(3);
 
 	double total = 0;
-	ProgressLogger progress(points.size());
 	for (std::size_t i = 0; i < points.size(); ++i) {
 		const vec3& p = points[i];
 		for (int j = 0; j < 3; ++j) {
@@ -969,7 +968,9 @@ float HypothesisGenerator::compute_point_confidences(PointSet* pset, int s1 /* =
 		}
 		conf /= 3.0;
 		planar_qualities[i] = static_cast<float>(conf);
-		progress.next();
+
+		if (progress)
+		    progress->next();
 	}
 	return static_cast<float>(total / points.size());
 }
@@ -980,7 +981,8 @@ void HypothesisGenerator::compute_confidences(Map* mesh, bool use_conficence /* 
 
 	StopWatch w;
 	Logger::out("-") << "computing point confidences..." << std::endl;
-	double avg_spacing = compute_point_confidences(pset_, 6, 16, 25);
+    ProgressLogger progress(pset_->num_points() + mesh->size_of_facets());
+	double avg_spacing = compute_point_confidences(pset_, 6, 16, 25, &progress);
 	float radius = static_cast<float>(avg_spacing)* 5.0f;
 	Logger::out("-") << "done. avg spacing: " << avg_spacing << ". " << w.elapsed() << " sec." << std::endl;
 
@@ -1008,7 +1010,6 @@ void HypothesisGenerator::compute_confidences(Map* mesh, bool use_conficence /* 
 
 	Logger::out("-") << "computing face confidences..." << std::endl;
 	w.start();
-	ProgressLogger progress(mesh->size_of_facets());
 	FOR_EACH_FACET(Map, mesh, it) {
 		Map::Facet* f = it;
 

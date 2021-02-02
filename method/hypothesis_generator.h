@@ -33,6 +33,7 @@ class Map;
 class PointSet;
 class VertexGroup;
 class MapEditor;
+class ProgressLogger;
 
 namespace MapTypes {
 	class Vertex;
@@ -132,7 +133,7 @@ private:
 	float facet_points_projected_in(PointSet* pset, VertexGroup* g, MapTypes::Facet* f, float max_dist, std::vector<unsigned int>& points);
 
 	// returns average spacing
-	float compute_point_confidences(PointSet* pset, int s1 = 6, int s2 = 16, int s3 = 32);
+	float compute_point_confidences(PointSet* pset, int s1 = 6, int s2 = 16, int s3 = 32, ProgressLogger* progress = nullptr);
 
 	// clear cached intermediate results
 	void clear();
