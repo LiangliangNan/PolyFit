@@ -40,7 +40,7 @@ You can also build PolyFit from the source code:
         $ cd PolyFit
         $ mkdir Release
         $ cd Release
-        $ cmake -DCMAKE_BULID_TYPE=Release ..
+        $ cmake -DCMAKE_BUILD_TYPE=Release ..
         $ make
         ```
     Don't have any experience with C/C++ programming? Have a look at [How to build PolyFit step by step](./How_to_build.md).
