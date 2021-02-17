@@ -37,7 +37,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
                       FOLDER "PolyFit")
 
 
-find_package(CGAL REQUIRED COMPONENTS Core)
+find_package(CGAL REQUIRED)
 if(CGAL_FOUND)
     message("Found CGAL.")
     include(${CGAL_USE_FILE})
