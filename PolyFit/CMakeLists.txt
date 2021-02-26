@@ -47,18 +47,10 @@ if ( NOT QT5_ROOT_PATH )
         get_filename_component(QT5_ROOT_PATH ${QT_BINARY_DIR} DIRECTORY)
 endif()
 
-include_directories(${Qt5OpenGL_INCLUDE_DIRS}
-                    ${Qt5Widgets_INCLUDE_DIRS}
-                    ${Qt5Core_INCLUDE_DIRS}
-                    ${Qt5Gui_INCLUDE_DIRS}
-                    ${Qt5Xml_INCLUDE_DIRS}
-                   )
-
 
 # turn on QStringBuilder for more efficient string construction
 #	see https://doc.qt.io/qt-5/qstring.html#more-efficient-string-construction
 add_definitions( -DQT_USE_QSTRINGBUILDER )
-
 
 set(${PROJECT_NAME}_HEADERS
     main_window.h
@@ -83,10 +75,6 @@ set(${PROJECT_NAME}_FORMS
     dlg/weight_panel_manual.ui
     dlg/wgt_render.ui
     )
-
-if( APPLE )
-endif()
-
 
 set(${PROJECT_NAME}_RESOURCES
     Resources/PolyFit.qrc
