@@ -19,14 +19,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "point_set_serializer_vg.h"
+
+#include <cassert>
+
 #include "../basic/basic_types.h"
 #include "../basic/logger.h"
 #include "../basic/progress.h"
 #include "../basic/color.h"
 #include "../model/point_set.h"
-#include "../model/vertex_group.h"
-#include "../model/iterators.h"
-#include <cassert>
+
+
+//#define TRANSLATE_RELATIVE_TO_FIRST_POINT
 
 
 /*
@@ -180,13 +183,27 @@ void PointSetSerializer_vg::load_vg(PointSet* pset, const std::string& file_name
 	input >> dumy >> num;
 	std::vector<vec3>& points = pset->points();
 	points.resize(num);
+
+#ifdef TRANSLATE_RELATIVE_TO_FIRST_POINT
+	double x0, y0, z0;
+	input >> x0 >> y0 >> z0;
+    points[0] = vec3(0, 0, 0);
+
+    double x, y, z;
+    for (int i = 1; i < num; ++i) {
+		input >> x >> y >> z;
+		points[i] = vec3(x-x0, y-y0, z-z0);
+		std::streamoff pos = input.tellg();
+		progress.notify(pos);
+	}
+#else
 	for (int i = 0; i < num; ++i) {
 		input >> points[i];
 
 		std::streamoff pos = input.tellg();
 		progress.notify(pos);
 	}
-
+#endif
 	input >> dumy >> num;
 	std::vector<vec3>& colors = pset->colors();
 	colors.resize(num);
