@@ -185,7 +185,7 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 			++var_edge_used_idx;
 		}
 		else { // boundary edge
-			   // will be set to 0 (i.e., we don't allow open surface)
+		    // will be set to 0 (i.e., we don't allow open surface)
 		}
 	}
 
@@ -230,6 +230,19 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 			}
 		}
 	}
+
+#if 1
+    // Add some optional constraints: border faces must be removed
+    for (std::size_t i = 0; i < adjacency.size(); ++i) {
+        const SuperEdge &fan = adjacency[i];
+        if (fan.size() == 1) { // boundary edge
+            MapTypes::Facet* f = fan[0]->facet();
+            std::size_t var_idx = facet_indices[f];
+            LinearConstraint* c = program_.create_constraint(LinearConstraint::FIXED, 0.0, 0.0);
+            c->add_coefficient(var_idx, 1.0);
+        }
+    }
+#endif
 
 	Logger::out("-") << "#total constraints: " << program_.constraints().size() << std::endl;
 	Logger::out("-") << "formulating binary program done. " << w.elapsed() << " sec" << std::endl;
