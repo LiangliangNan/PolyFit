@@ -29,7 +29,7 @@ You can also build PolyFit from the source code:
 * Download the [source code](https://github.com/LiangliangNan/PolyFit).
 * Dependencies
   - [Qt](https://www.qt.io/) (v5.8.0, v5.9.2, v5.10.1 have been tested)
-  - [CGAL](http://www.cgal.org/index.html) (v4.10, v4.11.1 have been tested)
+  - [CGAL](http://www.cgal.org/index.html) (v4.10, v4.11.1, v5.0 have been tested)
    
 * Build PolyFit. 
   - There are many ways to build PolyFit. Choose one of the following (or whatever you are familiar with):
