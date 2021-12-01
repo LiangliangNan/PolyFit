@@ -76,6 +76,22 @@ Four solvers, namely Gurobi, SCIP, GLPK, and lp_solve, are provided (with source
 ### About the timing
 This demo implementation incorporates a progress logger in the user interface. Thus, running times should be (slightly) longer than those reported in our paper.  
 
+
+---
+
+### Citation
+If you use the code/program (or part) of PolyFit in a scientific work, please cite our paper:
+
+```bibtex
+@inproceedings{nan2017polyfit,
+  title={Polyfit: Polygonal surface reconstruction from point clouds},
+  author={Nan, Liangliang and Wonka, Peter},
+  booktitle={Proceedings of the IEEE International Conference on Computer Vision},
+  pages={2353--2361},
+  year={2017}
+}
+```
+
 ---
 
 ### License
