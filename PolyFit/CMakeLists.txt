@@ -19,4 +19,4 @@ add_library(${PROJECT_NAME} STATIC
 target_include_directories(${PROJECT_NAME} PUBLIC ${EASY3D_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC easy3d_core easy3d_util linear_program_solver)
 
-include(../../../cmake/UseCGAL.cmake)
+include(../cmake/UseCGAL.cmake)

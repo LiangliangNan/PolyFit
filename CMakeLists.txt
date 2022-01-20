@@ -1,3 +1,6 @@
+cmake_minimum_required(VERSION 3.12)
+project(PolyFit)
+
 set(POLYFIT_ROOT           ${CMAKE_CURRENT_LIST_DIR})
 set(POLYFIT_3RD_PARTY_DIR  ${POLYFIT_ROOT}/3rd_party)
 set(POLYFIT_scip_DIR       ${POLYFIT_3RD_PARTY_DIR}/3rd_scip)
