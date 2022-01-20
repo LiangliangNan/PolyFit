@@ -1,0 +1,2 @@
+add_subdirectory(3rd_scip)
+add_subdirectory(3rd_soplex)
