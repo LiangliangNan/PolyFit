@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     srand(time(nullptr));
 
 	//Locale management
-	//Force 'English' locale so as to get a consistent behavior everywhere
+	//Force 'English' locale to get a consistent behavior everywhere
 	QLocale locale = QLocale(QLocale::English);
 	locale.setNumberOptions(QLocale::c().numberOptions());
 	QLocale::setDefault(locale);

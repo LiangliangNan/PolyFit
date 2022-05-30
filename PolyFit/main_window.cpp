@@ -24,8 +24,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <QSettings>
 #include <QCloseEvent>
 #include <QPlainTextEdit>
-#include <QGroupBox>
-#include <QColorDialog>
 #include <QProgressBar>
 #include <QMimeData>
 #include <QComboBox>
@@ -37,12 +35,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "dlg/weight_panel_click.h"
 #include "dlg/weight_panel_manual.h"
 
-#include "../basic/logger.h"
 #include "../basic/file_utils.h"
-#include "../model/map.h"
-#include "../model/point_set.h"
 #include "../model/map_attributes.h"
-#include "../model/map_copier.h"
 #include "../model/map_builder.h"
 #include "../model/map_io.h"
 #include "../model/map_enumerator.h"
