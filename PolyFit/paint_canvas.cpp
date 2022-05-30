@@ -20,31 +20,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "paint_canvas.h"
 #include "main_window.h"
 #include "dlg/weight_panel_manual.h"
+
 #include "../3rd_QGLViewer-2.6.3/manipulatedCameraFrame.h"
-#include "../3rd_QGLViewer-2.6.3/camera.h"
 #include "../basic/file_utils.h"
 #include "../basic/stop_watch.h"
-#include "../model/map.h"
 #include "../model/map_editor.h"
 #include "../model/map_geometry.h"
-#include "../model/point_set.h"
-#include "../model/vertex_group.h"
 #include "../renderer/opengl_info.h"
 #include "../renderer/surface_render.h"
 #include "../renderer/point_set_render.h"
-#include "../renderer/rendering_styles.h"
 #include "../method/hypothesis_generator.h"
 #include "../method/face_selection.h"
-#include "../method/method_global.h"
-#include "../model/map_circulators.h"
-#include "../model/map_editor.h"
 
-#include <QFileDialog>
 #include <QMouseEvent>
 #include <QMessageBox>
-#include <QColorDialog>
 
-#include <cassert>
 #include <fstream>
 #include <algorithm>
 
