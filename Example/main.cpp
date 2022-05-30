@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../basic/logger.h"
 #include "../model/point_set.h"
 #include "../model/map.h"
+#include "../method/method_global.h"
 #include "../method/hypothesis_generator.h"
 #include "../method/face_selection.h"
 #include "../model/map_io.h"
@@ -36,6 +37,11 @@ int main(int argc, char **argv)
     const std::string input_file = std::string(POLYFIT_ROOT_DIR) + "/toy_data.bvg";
     // output mesh file name
     const std::string output_file = std::string(POLYFIT_ROOT_DIR) + "/toy_data-result.obj";
+
+    // below are the default parameters (change these when necessary)
+    Method::lambda_data_fitting = 0.43;
+    Method::lambda_model_coverage = 0.27;
+    Method::lambda_model_complexity = 0.3;
 
     // load point cloud from file
     PointSet* pset = PointSetIO::read(input_file);
