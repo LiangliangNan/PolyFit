@@ -19,7 +19,12 @@ if ( QT5_ROOT_PATH )
 endif()
 
 # find qt5 components
-find_package(Qt5 COMPONENTS Core Gui OpenGL Widgets Xml REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui OpenGL Widgets Xml QUIET)
+if (Qt5Core_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND AND Qt5Widgets_FOUND AND Qt5Xml_FOUND)
+        set(QT5_FOUND TRUE)
+else()
+        return()
+endif ()
 
 # in the case no Qt5Config.cmake file could be found, cmake will explicitly ask the user for the QT5_DIR containing it!
 # thus no need to keep additional variables and checks

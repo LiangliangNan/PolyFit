@@ -21,11 +21,24 @@ endif()
 
 # find qt5 components
 # find_package(Qt5 COMPONENTS Core Gui OpenGL Widgets REQUIRED)
-find_package(Qt5Core REQUIRED)
-find_package(Qt5Gui REQUIRED)
-find_package(Qt5OpenGL REQUIRED)
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Xml REQUIRED)
+find_package(Qt5Core QUIET)
+find_package(Qt5Gui QUIET)
+find_package(Qt5OpenGL QUIET)
+find_package(Qt5Widgets QUIET)
+find_package(Qt5Xml QUIET)
+
+if (Qt5Core_FOUND AND Qt5Gui_FOUND AND Qt5OpenGL_FOUND AND Qt5Widgets_FOUND)
+    set(QT5_FOUND TRUE)
+endif ()
+
+if (NOT QT5_FOUND)
+    message(WARNING "The demo program '${PROJECT_NAME}' requires Qt but Qt was not found. "
+            "You can set 'Qt5_DIR' to the directory containing 'Qt5Config.cmake' or 'qt5-config.cmake'. "
+            "Optionally, you can set the Qt5 root directory 'QT5_ROOT_PATH' to the directory "
+            "containing the 'bin' folder.")
+    return()
+endif ()
+
 
 # in the case no Qt5Config.cmake file could be found, cmake will explicitly ask the user for the QT5_DIR containing it!
 # thus no need to keep additional variables and checks

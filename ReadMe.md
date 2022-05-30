@@ -27,7 +27,7 @@ You can also build PolyFit from the source code:
    
 * Download the [source code](https://github.com/LiangliangNan/PolyFit).
 * Dependencies
-  - [Qt](https://www.qt.io/) (v5.8.0, v5.9.2, v5.10.1 have been tested)
+  - [Qt](https://www.qt.io/) (v5.8.0, v5.9.2, v5.10.1 have been tested). Qt is required by the [PolyFit demo](./PolyFit) with UI. You should still be able to build the [Example](./Example/main.cpp) without Qt. 
   - [CGAL](http://www.cgal.org/index.html) (v4.10, v4.11.1, v5.0 have been tested)
    
 * Build PolyFit. 
