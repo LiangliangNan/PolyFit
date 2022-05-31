@@ -78,12 +78,16 @@ int main(int argc, char **argv)
         std::cerr << "optimization failed: model has on faces" << std::endl;
         return EXIT_FAILURE;
     }
+    // now we don't need the point cloud anymore, and it can be deleted
+    delete pset;
 
     // step 4: save result to file
     if (MapIO::save(output_file, mesh))
         std::cout << "reconstructed model saved to file: " << output_file << std::endl;
-    else
+    else {
         std::cerr << "failed saving reconstructed model to file: " << output_file << std::endl;
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 };
