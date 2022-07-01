@@ -27,7 +27,7 @@ You can also build PolyFit from the source code:
    
 * Download the [source code](https://github.com/LiangliangNan/PolyFit).
 * Dependencies
-  - [Qt](https://www.qt.io/) (v5.8.0, v5.9.2, v5.10.1 have been tested). Qt is required by the [PolyFit demo](./PolyFit) with UI. You should still be able to build the [Example](./Example) without Qt. 
+  - [Qt](https://www.qt.io/) (v5.8.0, v5.9.2, v5.10.1 have been tested). Qt is required by the [GUI demo](./PolyFit). You should still be able to build the [command-line example](./Example) without Qt. 
   - [CGAL](http://www.cgal.org/index.html) (v4.10, v4.11.1, v5.0 have been tested)
    
 * Build PolyFit. 
@@ -49,9 +49,9 @@ You can also build PolyFit from the source code:
 ---
 
 ### Run PolyFit
-For the [commandline version](./Example), you can simply build and run it (the path to the input file is hard-coded in the [code](./Example/main.cpp)).
+For the [commandline example](./Example), you can simply build and run it (the path to the input file is hard-coded in the [code](./Example/main.cpp)).
 
-The [demo version](./PolyFit) provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
+The [GUI demo](./PolyFit) provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
 
 <p align="center"> 
      <img src="./images/gui.png" width="600"> 
