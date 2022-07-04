@@ -49,13 +49,6 @@ set(model_SOURCES
     kdtree/kdTree.cpp
     )
 
-
-#target_include_directories(${PROJECT_NAME} PRIVATE
-#    ${POLYFIT_scip_DIR}
-#    ${POLYFIT_scip_DIR}/scip
-#    )
-
-
 add_library(${PROJECT_NAME} SHARED ${model_SOURCES} ${model_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       FOLDER "PolyFit")

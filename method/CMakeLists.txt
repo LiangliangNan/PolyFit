@@ -24,14 +24,6 @@ set(method_SOURCES
     )
 
 
-#target_include_directories(${PROJECT_NAME} PRIVATE
-#    ${POLYFIT_scip_DIR}
-#    ${POLYFIT_scip_DIR}/scip
-#    )
-
-
-
-
 add_library(${PROJECT_NAME} SHARED ${method_SOURCES} ${method_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       FOLDER "PolyFit")
