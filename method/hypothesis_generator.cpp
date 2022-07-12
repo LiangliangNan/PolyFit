@@ -618,10 +618,63 @@ std::vector<Map::Facet*> HypothesisGenerator::cut(MapTypes::Facet* f, Plane3d* c
 
     std::vector<Intersection> vts;
     compute_intersections(f, cutter, vts);
-    if (vts.size() < 2) { // no actual intersection
+    if (vts.size() < 2) // no actual intersection
+        return new_faces;
+    else if (vts.size() >= 3) {
+#if 0
+        std::cerr << "This might cause an error: number of intersecting points is " << vts.size() << std::endl;
+        for (std::size_t i = 0; i < vts.size(); ++i) {
+            const auto &v = vts[i];
+            if (v.type == Intersection::EXISTING_VERTEX)
+                std::cerr << "\t" << i << ": plane intersects an existing vertex: " << v.vtx << " ("
+                                  << v.vtx->point() << ")" << std::endl;
+            else if (v.type == Intersection::NEW_VERTEX)
+                std::cerr << "\t" << i << ": plane intersects an edge: " << v.edge << " at (" << v.pos << "). Source: "
+                                  << v.edge->opposite()->vertex() << " (" << v.edge->opposite()->vertex()->point()
+                                  << "). Target: " << v.edge->vertex() << " (" << v.edge->vertex()->point() << ")"
+                                  << std::endl;
+        }
+#else
+        // remove the duplicated vertices
+
+        // mark the duplicated vertices
+        std::vector<unsigned char> duplicated(vts.size(), 0);
+        for (std::size_t i = 0; i < vts.size(); ++i) {
+            if (duplicated[i] == 1)
+                continue;
+            const auto &va = vts[i];
+            vec3 a;
+            if (va.type == Intersection::EXISTING_VERTEX)
+                a = va.vtx->point();
+            else if (va.type == Intersection::NEW_VERTEX)
+                a = va.pos;
+            for (std::size_t j = i + 1; j < vts.size(); ++j) {
+                if (duplicated[j] == 1)
+                    continue;
+                const auto &vb = vts[j];
+                vec3 b;
+                if (vb.type == Intersection::EXISTING_VERTEX)
+                    b = vb.vtx->point();
+                else if (vb.type == Intersection::NEW_VERTEX)
+                    b = vb.pos;
+
+                if (distance2(a, b) <= Method::snap_sqr_distance_threshold)
+                    duplicated[j] = 1;
+            }
+        }
+
+        // keep those that do not duplicate others
+        std::vector<Intersection> new_vts;
+        for (std::size_t i = 0; i < vts.size(); ++i) {
+            if (duplicated[i] == 0)
+                new_vts.push_back(vts[i]);
+        }
+        vts = new_vts;
+#endif
         return new_faces;
     }
 
+    // now we can assume there is only two intersecting points
     MapEditor editor(mesh);
 
     Map::Vertex* v0 = nil;
@@ -650,9 +703,8 @@ std::vector<Map::Facet*> HypothesisGenerator::cut(MapTypes::Facet* f, Plane3d* c
             }
         }
 	}
-	else {
+	else
         Logger::warn("-") << "This might be an error: number of intersecting points is " << vts.size() << std::endl;
-	}
 
 	//////////////////////////////////////////////////////////////////////////
 
