@@ -72,7 +72,14 @@ You can use my [Mapple](https://3d.bk.tudelft.nl/liangliang/software.html) to ex
 ---
 
 ### About the solvers
-Four solvers, namely Gurobi, SCIP, GLPK, and lp_solve, are provided (with source code) in PolyFit. The Gurobi solver is more efficient and reliable and should always be your first choice. In case you want a fast but open source solver, please try SCIP, which is slower than Gurobi but acceptable. The GLPK and lp_solve solvers only manage to solve small problems. They are too slow (and may not guarantee to succeed). For example the data "Fig1", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. For your convenience, the dynamic library of Gurobi is included in this distribution, but you may still need to obtain a license (free for academic use) from [here](https://user.gurobi.com/download/licenses/free-academic). 
+Four solvers, namely Gurobi, SCIP, GLPK, and lp_solve, are provided (with source code) in PolyFit. 
+The Gurobi solver is more efficient and reliable and should always be your first choice.
+To use Gurobi, you need to install it and also obtain a license (free for academic use) from 
+[here](https://www.gurobi.com/downloads/end-user-license-agreement-academic/). You may also need to modify the path(s) 
+to Gurobi in [FindGUROBI.cmake](./cmake/FindGUROBI.cmake), for CMake to find Gurobi.
+In case you want a fast but open source solver, please try SCIP, which is slower than Gurobi but acceptable. 
+The GLPK and lp_solve solvers only manage to solve small problems. They are too slow (and may not guarantee to succeed). 
+For example the data "Fig1", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. 
       
 ### About the timing
 This demo implementation incorporates a progress logger in the user interface. Thus, running times should be (slightly) longer than those reported in our paper.  
