@@ -17,5 +17,5 @@ target_link_libraries( ${PROJECT_NAME} basic math model method)
 target_compile_definitions(
         ${PROJECT_NAME}
         PRIVATE
-        "POLYFIT_ROOT_DIR=\"${POLYFIT_ROOT}\""
+        "POLYFIT_CODE_DIR=\"${POLYFIT_ROOT}\""
 )
