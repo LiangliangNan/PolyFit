@@ -48,6 +48,10 @@ if (NOT GUROBI_FOUND)
     # Hardcoded search paths
     set(SEARCH_PATHS_FOR_HEADERS
             "$ENV{GUROBI_HOME}/include"
+            "/Library/gurobi951/macos_universal2/include"
+            "/Library/gurobi950/mac64/include"
+            "/Library/gurobi950/macos_universal2/include"
+            "C:\\dev\\gurobi950\\win64\\include"
             "/Library/gurobi901/mac64/include"
             "/home/liangliang/dev/gurobi901/include"
             "C:\\dev\\gurobi901\\win64\\include"
@@ -55,6 +59,10 @@ if (NOT GUROBI_FOUND)
 
     set(SEARCH_PATHS_FOR_LIBRARIES
             "$ENV{GUROBI_HOME}/lib"
+            "/Library/gurobi951/macos_universal2/lib"
+            "/Library/gurobi950/mac64/lib"
+            "/Library/gurobi950/macos_universal2/lib"
+            "C:\\dev\\gurobi950\\win64\\lib"
             "/Library/gurobi901/mac64/lib"
             "/home/liangliang/dev/gurobi901/lib"
             "C:\\dev\\gurobi901\\win64\\lib"
@@ -66,7 +74,7 @@ if (NOT GUROBI_FOUND)
 
 
     find_library(GUROBI_C_LIBRARY
-            NAMES gurobi90
+            NAMES gurobi95 gurobi90 libgurobi
             PATHS ${SEARCH_PATHS_FOR_LIBRARIES}
             )
 
@@ -98,4 +106,11 @@ find_package_handle_standard_args(GUROBI DEFAULT_MSG GUROBI_INCLUDE_DIRS)
 find_package_handle_standard_args(GUROBI DEFAULT_MSG GUROBI_LIBRARIES)
 
 # Hide variables from CMake-Gui options
-mark_as_advanced(GUROBI_INCLUDE_DIR GUROBI_CXX_LIBRARY_DEBUG GUROBI_CXX_LIBRARY_RELEASE GUROBI_C_LIBRARY)
+mark_as_advanced(
+        GUROBI_INCLUDE_DIRS
+        GUROBI_INCLUDE_DIR
+        GUROBI_LIBRARIES
+        GUROBI_CXX_LIBRARY_DEBUG
+        GUROBI_CXX_LIBRARY_RELEASE
+        GUROBI_C_LIBRARY
+)
