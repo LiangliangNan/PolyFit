@@ -41,7 +41,6 @@
 #include <CGAL/Triangulation_face_base_2.h>
 #include <CGAL/Alpha_shape_vertex_base_2.h>
 #include <CGAL/Alpha_shape_face_base_2.h>
-#include <CGAL/internal/Lazy_alpha_nt_2.h>
 
 
 #define Alpha_shape_2 Alpha_shape_CGAL  
