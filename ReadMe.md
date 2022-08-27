@@ -42,7 +42,7 @@ You can also build PolyFit from the source code:
         $ cmake -DCMAKE_BUILD_TYPE=Release ..
         $ make
         ```
-    Don't have any experience with C/C++ programming? Have a look at [How to build PolyFit step by step](./How_to_build.md).
+    Don't have any experience with C/C++ programming? Have a look at [How to build PolyFit step by step](./code/How_to_build.md).
 
 **News**: Since Aug. 5, 2019, PolyFit is also available in [CGAL](https://www.cgal.org/). Find more [here](https://www.cgal.org/2019/08/05/Polygonal_surface_reconstruction/).
   
