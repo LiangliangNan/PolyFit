@@ -49,9 +49,9 @@ You can also build PolyFit from the source code:
 ---
 
 ### Run PolyFit
-For the [commandline example](./code/Example), you can simply build and run it (the path to the input file is hard-coded in the [code](./code/Example/main.cpp)).
-
-The [GUI demo](./code/PolyFit) provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
+This repository includes a [commandline example](./code/Example) and a [GUI demo](./code/PolyFit).
+- For the [commandline example](./code/Example), you can simply build and run it (the path to the input file is hard-coded in the [code](./code/Example/main.cpp)).
+- The [GUI demo](./code/PolyFit) provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
 
 <p align="center"> 
      <img src="./images/gui.png" width="600"> 
