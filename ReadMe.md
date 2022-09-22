@@ -80,6 +80,8 @@ to Gurobi in [FindGUROBI.cmake](./code/cmake/FindGUROBI.cmake), for CMake to fin
 In case you want a fast but open source solver, please try SCIP, which is slower than Gurobi but acceptable. 
 The GLPK and lp_solve solvers only manage to solve small problems. They are too slow (and may not guarantee to succeed). 
 For example the data "Fig1", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. 
+
+**Note for Linux users:** You may have to build the Gurobi library (`libgurobi_c++.a`) because the prebuilt one in the original package might NOT be compatible with your compiler. To do so, go to `src/build` and run `make`. Then replace the original `libgurobi_c++.a` (in the `lib` directory) with your generated file.
       
 ### About the timing
 This demo implementation incorporates a progress logger in the user interface. Thus, running times should be (slightly) longer than those reported in our paper.  
