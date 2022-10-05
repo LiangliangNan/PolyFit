@@ -60,10 +60,10 @@ if (NOT GUROBI_FOUND)
             "/home/liangliang/dev/gurobi951/include"
             "/home/liangliang/dev/gurobi950/include"
             "/home/liangliang/dev/gurobi901/include"
-            "C:\\dev\\gurobi952\\win64\\include"
-            "C:\\dev\\gurobi951\\win64\\include"
-            "C:\\dev\\gurobi950\\win64\\include"
-            "C:\\dev\\gurobi901\\win64\\include"
+            "D:\\dev\\Gurobi-9.5.2\\win64\\include"
+	    "D:\\dev\\gurobi951\\win64\\include"
+	    "D:\\dev\\gurobi950\\win64\\include"
+	    "D:\\dev\\gurobi901\\win64\\include"
             )
 
     set(SEARCH_PATHS_FOR_LIBRARIES
@@ -80,10 +80,10 @@ if (NOT GUROBI_FOUND)
             "/home/liangliang/dev/gurobi951/lib"
             "/home/liangliang/dev/gurobi950/lib"
             "/home/liangliang/dev/gurobi901/lib"
-            "C:\\dev\\gurobi952\\win64\\lib"
-            "C:\\dev\\gurobi951\\win64\\lib"
-            "C:\\dev\\gurobi950\\win64\\lib"
-            "C:\\dev\\gurobi901\\win64\\lib"
+            "D:\\dev\\Gurobi-9.5.2\\win64\\lib"
+	    "D:\\dev\\gurobi951\\win64\\lib"
+	    "D:\\dev\\gurobi950\\win64\\lib"
+	    "D:\\dev\\gurobi901\\win64\\lib"
             )
 
     find_path(GUROBI_INCLUDE_DIR gurobi_c++.h
