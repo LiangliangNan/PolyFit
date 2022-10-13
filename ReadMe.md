@@ -30,11 +30,13 @@ You can also build PolyFit from the source code:
   - [Qt](https://www.qt.io/) (v5.8.0, v5.9.2, v5.10.1 have been tested). Qt is required by the [GUI demo](./code/PolyFit). You should still be able to build the [command-line example](./Example) without Qt. 
   - [CGAL](http://www.cgal.org/index.html) (v4.10, v4.11.1, v5.0 have been tested)
    
-* Build PolyFit. 
-  - There are many ways to build PolyFit. Choose one of the following (or whatever you are familiar with):
-    - Option 1: Use any IDE that can directly handle CMakeLists files to open the CMakeLists.txt in the root directory of PolyFit. Then you should have obtained a usable project and just build. I recommend using [CLion](https://www.jetbrains.com/clion/) or [QtCreator](https://www.qt.io/product).
-    - Option 2: Use CMake to generate project files for your IDE. Then load the project to your IDE and build.
-    - Option 3: Use CMake to generate Makefiles and then `make` (on Linux/macOS) or `nmake`(on Windows with Microsoft Visual Studio). For example, on Linux or macOS, you can simply
+* Build PolyFit
+
+  There are many options to build PolyFit. Choose one of the following (not an exhausitive list):
+
+  - Option 1 (purely on command line): Use CMake to generate Makefiles and then `make` (on Linux/macOS) or `nmake`(on Windows with Microsoft 
+  Visual Studio). 
+    - On Linux or macOS
         ```
         $ cd PolyFit
         $ mkdir Release
@@ -42,9 +44,24 @@ You can also build PolyFit from the source code:
         $ cmake -DCMAKE_BUILD_TYPE=Release ..
         $ make
         ```
-    Don't have any experience with C/C++ programming? Have a look at [How to build PolyFit step by step](./code/How_to_build.md).
+    - On Windows with Microsoft Visual Studio
+        ```
+        $ cd PolyFit
+        $ mkdir Release
+        $ cd Release
+        $ cmake -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+        $ nmake
+        ```
+  
+  - Option 2: Use any IDE that can directly handle CMakeLists files to open the `CMakeLists.txt` in the **root** directory of 
+  PolyFit. Then you should have obtained a usable project and just build it. I recommend using 
+[CLion](https://www.jetbrains.com/clion/) or [QtCreator](https://www.qt.io/product).
+  
+  - Option 3: Use CMake-Gui to generate project files for your favorite IDE. Then load the project to your IDE and build it.
+  
+  Don't have any experience with C/C++ programming? Have a look at [How to build PolyFit step by step](./code/How_to_build.md).
 
-**News**: Since Aug. 5, 2019, PolyFit is also available in [CGAL](https://www.cgal.org/). Find more [here](https://www.cgal.org/2019/08/05/Polygonal_surface_reconstruction/).
+  **News**: Since Aug. 5, 2019, PolyFit is also available in [CGAL](https://www.cgal.org/). Find more [here](https://www.cgal.org/2019/08/05/Polygonal_surface_reconstruction/).
   
 ---
 
