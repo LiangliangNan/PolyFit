@@ -44,7 +44,7 @@ You can also build PolyFit from the source code:
         $ cmake -DCMAKE_BUILD_TYPE=Release ..
         $ make
         ```
-    - On Windows with Microsoft Visual Studio
+    - On Windows with Microsoft Visual Studio, use `x64 Native Tools Command Prompt for VS XXXX` (don't use the x86 one), then
         ```
         $ cd PolyFit
         $ mkdir Release
@@ -55,9 +55,9 @@ You can also build PolyFit from the source code:
   
   - Option 2: Use any IDE that can directly handle CMakeLists files to open the `CMakeLists.txt` in the **root** directory of 
   PolyFit. Then you should have obtained a usable project and just build it. I recommend using 
-[CLion](https://www.jetbrains.com/clion/) or [QtCreator](https://www.qt.io/product).
+[CLion](https://www.jetbrains.com/clion/) or [QtCreator](https://www.qt.io/product). For Windows users: your IDE must set for `x64`.
   
-  - Option 3: Use CMake-Gui to generate project files for your favorite IDE. Then load the project to your IDE and build it.
+  - Option 3: Use CMake-Gui to generate project files for your favorite IDE. Then load the project to your IDE and build it. For Windows users: your IDE must set for `x64`.
   
   Don't have any experience with C/C++ programming? Have a look at [How to build PolyFit step by step](./code/How_to_build.md).
 
