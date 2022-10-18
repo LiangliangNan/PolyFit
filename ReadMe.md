@@ -32,9 +32,9 @@ You can also build PolyFit from the source code:
    
 * Build PolyFit
 
-  There are many options to build PolyFit. Choose one of the following (not an exhausitive list):
+  There are many options to build PolyFit. Choose one of the following (not an exhaustive list):
 
-  - Option 1 (purely on command line): Use CMake to generate Makefiles and then `make` (on Linux/macOS) or `nmake`(on Windows with Microsoft 
+  - Option 1 (purely on the command line): Use CMake to generate Makefiles and then `make` (on Linux/macOS) or `nmake`(on Windows with Microsoft 
   Visual Studio). 
     - On Linux or macOS
         ```
@@ -44,7 +44,7 @@ You can also build PolyFit from the source code:
         $ cmake -DCMAKE_BUILD_TYPE=Release ..
         $ make
         ```
-    - On Windows with Microsoft Visual Studio, use `x64 Native Tools Command Prompt for VS XXXX` (don't use the x86 one), then
+    - On Windows with Microsoft Visual Studio, use the `x64 Native Tools Command Prompt for VS XXXX` (don't use the x86 one), then
         ```
         $ cd PolyFit
         $ mkdir Release
@@ -66,7 +66,7 @@ You can also build PolyFit from the source code:
 ---
 
 ### Run PolyFit
-This repository includes a [commandline example](./code/Example) and a [GUI demo](./code/PolyFit).
+This repository includes a [command-line example](./code/Example) and a [GUI demo](./code/PolyFit).
 - For the [commandline example](./code/Example), you can simply build and run it (the path to the input file is hard-coded in the [code](./code/Example/main.cpp)).
 - The [GUI demo](./code/PolyFit) provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
 
@@ -84,7 +84,7 @@ More information about the data (e.g., data format) is described [here](./data/R
 
 **Plane extraction**. Incorporating plane extraction adds an unnecessary dependency to more third-party libraries (e.g., [RANSAC](http://cg.cs.uni-bonn.de/en/publications/paper-details/schnabel-2007-efficient/)). Besides, it has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be fine if some regions of the planes are missing). So I isolated this part from this demo version and you're expected to provide the planar segments as input. 
 
-You can use my [Mapple](https://3d.bk.tudelft.nl/liangliang/software.html) to extract planes from point clouds. After you load the point cloud, go to the menu *Partition* -> *Extract Primitives*. To visualize the planes, change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes as bvg (**B**inary **V**ertex **G**roup) format. The ASCII format vg also works but slow. Please note, **PolyFit assumes that the model is closed and all necessary planes are provided**. 
+You can use my [Mapple](https://3d.bk.tudelft.nl/liangliang/software.html) to extract planes from point clouds. After you load the point cloud, go to the menu *Partition* -> *Extract Primitives*. To visualize the planes, change the renderer from 'Plain' to 'Group' in the Rendering panel (on the left side of Mapple). You can save the planes in bvg (**B**inary **V**ertex **G**roup) format. The ASCII format vg also works but is slow. Please note, **PolyFit assumes that the model is closed and all necessary planes are provided**. 
 
 ---
 
@@ -94,8 +94,8 @@ The Gurobi solver is more efficient and reliable and should always be your first
 To use Gurobi, you need to install it and also obtain a license (free for academic use) from 
 [here](https://www.gurobi.com/downloads/end-user-license-agreement-academic/). You may also need to modify the path(s) 
 to Gurobi in [FindGUROBI.cmake](./code/cmake/FindGUROBI.cmake), for CMake to find Gurobi.
-In case you want a fast but open source solver, please try SCIP, which is slower than Gurobi but acceptable. 
-The GLPK and lp_solve solvers only manage to solve small problems. They are too slow (and may not guarantee to succeed). 
+In case you want a fast but open-source solver, please try SCIP, which is slower than Gurobi but acceptable. 
+The GLPK and lp_solve solvers only manage to solve small problems. They are too slow (and thus may not guarantee to succeed). 
 For example the data "Fig1", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. 
 
 **Note for Linux users:** You may have to build the Gurobi library (`libgurobi_c++.a`) because the prebuilt one in the original package might NOT be compatible with your compiler. To do so, go to `src/build` and run `make`. Then replace the original `libgurobi_c++.a` (in the `lib` directory) with your generated file.
@@ -107,7 +107,7 @@ This demo implementation incorporates a progress logger in the user interface. T
 ---
 
 ### Citation
-If you use the code/program (or part) of PolyFit in a scientific work, please cite our paper:
+If you use the code/program (or part) of PolyFit in scientific work, please cite our paper:
 
 ```bibtex
 @inproceedings{nan2017polyfit,
