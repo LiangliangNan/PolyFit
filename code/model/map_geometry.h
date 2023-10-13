@@ -48,7 +48,7 @@
 namespace Geom {
 
 	inline vec3 vector(const Map::Halfedge* h) {
-		return h->vertex()->point() - h->prev()->vertex()->point();
+		return h->vertex()->point() - h->opposite()->vertex()->point();
 	}
 
 	MODEL_API vec3 facet_normal(const Map::Facet* f) ; 
