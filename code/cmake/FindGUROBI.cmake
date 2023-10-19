@@ -49,41 +49,19 @@ if (NOT GUROBI_FOUND)
     set(SEARCH_PATHS_FOR_HEADERS
             "$ENV{GUROBI_HOME}/include"
             "/Library/gurobi952/macos_universal2/include"
-            "/Library/gurobi951/macos_universal2/include"
-            "/Library/gurobi950/macos_universal2/include"
-            "/Library/gurobi901/macos_universal2/include"
             "/Library/gurobi952/mac64/include"
-            "/Library/gurobi951/mac64/include"
-            "/Library/gurobi950/mac64/include"
-            "/Library/gurobi901/mac64/include"
             "/home/liangliang/dev/gurobi952/include"
-            "/home/liangliang/dev/gurobi951/include"
-            "/home/liangliang/dev/gurobi950/include"
-            "/home/liangliang/dev/gurobi901/include"
+            "D:\\dev\\Gurobi-10.0.3\\win64\\include"
             "D:\\dev\\Gurobi-9.5.2\\win64\\include"
-	    "D:\\dev\\gurobi951\\win64\\include"
-	    "D:\\dev\\gurobi950\\win64\\include"
-	    "D:\\dev\\gurobi901\\win64\\include"
             )
 
     set(SEARCH_PATHS_FOR_LIBRARIES
             "$ENV{GUROBI_HOME}/lib"
             "/Library/gurobi952/macos_universal2/lib"
-            "/Library/gurobi951/macos_universal2/lib"
-            "/Library/gurobi950/macos_universal2/lib"
-            "/Library/gurobi901/macos_universal2/lib"
             "/Library/gurobi952/mac64/lib"
-            "/Library/gurobi951/mac64/lib"
-            "/Library/gurobi950/mac64/lib"
-            "/Library/gurobi901/mac64/lib"
             "/home/liangliang/dev/gurobi952/lib"
-            "/home/liangliang/dev/gurobi951/lib"
-            "/home/liangliang/dev/gurobi950/lib"
-            "/home/liangliang/dev/gurobi901/lib"
+            "D:\\dev\\Gurobi-10.0.3\\win64\\lib"
             "D:\\dev\\Gurobi-9.5.2\\win64\\lib"
-	    "D:\\dev\\gurobi951\\win64\\lib"
-	    "D:\\dev\\gurobi950\\win64\\lib"
-	    "D:\\dev\\gurobi901\\win64\\lib"
             )
 
     find_path(GUROBI_INCLUDE_DIR gurobi_c++.h
@@ -92,7 +70,7 @@ if (NOT GUROBI_FOUND)
 
 
     find_library(GUROBI_C_LIBRARY
-            NAMES gurobi95 gurobi90 libgurobi
+            NAMES gurobi100 libgurobi
             PATHS ${SEARCH_PATHS_FOR_LIBRARIES}
             )
 
