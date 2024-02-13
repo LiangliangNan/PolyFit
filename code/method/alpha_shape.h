@@ -165,7 +165,7 @@ inline std::vector<Face_handle> AlphaShape::get_all_finite_facets()
 
 	for (Finite_faces_iterator fit = finite_faces_begin(); fit != finite_faces_end(); ++fit) {
 		Face_handle pFace = fit;
-		CGAL_triangulation_postcondition(pFace != NULL);
+		CGAL_postcondition(pFace != NULL);
 		if (classify(pFace) == AlphaShape::INTERIOR)
 			facets.push_back(pFace);
 	}
@@ -187,7 +187,7 @@ inline void AlphaShape::traverse(const Face_handle& pFace, std::map<Face_handle,
 		for (int i = 0; i < 3; i++)
 		{
 			pNeighbor = fh->neighbor(i);
-			CGAL_triangulation_assertion(pNeighbor != NULL);
+			CGAL_assertion(pNeighbor != NULL);
 			if (classify(pNeighbor) == AlphaShape::INTERIOR){
 				int& id = ids[pNeighbor];
 				if (id == -1){
@@ -215,7 +215,7 @@ inline int AlphaShape::enumerate_solid_components(std::map<Face_handle, int>& co
 	for (face_it = finite_faces_begin(); face_it != finite_faces_end(); ++face_it)
 	{
 		Face_handle pFace = face_it;
-		CGAL_triangulation_postcondition(pFace != NULL);
+		CGAL_postcondition(pFace != NULL);
 
 		if (classify(pFace) == AlphaShape::INTERIOR) {
 			int& id = status[pFace];
