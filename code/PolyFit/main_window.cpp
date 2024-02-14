@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <QProgressBar>
 #include <QMimeData>
 #include <QComboBox>
+#include <QMenu>
 
 #include "main_window.h"
 #include "paint_canvas.h"
@@ -190,7 +191,36 @@ void MainWindow::dropEvent(QDropEvent *e) {
 
 void MainWindow::createActions() {
 	connect(actionOpen, SIGNAL(triggered()), this, SLOT(open()));
-	connect(actionSave, SIGNAL(triggered()), this, SLOT(save()));
+
+	// ------------------------------------------------------
+
+	// actions for save
+	QAction* actionSaveReconstruction = new QAction(this);
+	actionSaveReconstruction->setText("Save reconstruction");
+	connect(actionSaveReconstruction, SIGNAL(triggered()), this, SLOT(saveReconstruction()));
+
+	QAction* actionSaveCandidateFaces = new QAction(this);
+	actionSaveCandidateFaces->setText("Save candidate faces");
+	connect(actionSaveCandidateFaces, SIGNAL(triggered()), this, SLOT(saveCandidateFaces()));
+
+	QMenu* saveMenu = new QMenu();
+	saveMenu->addAction(actionSaveReconstruction);
+	saveMenu->addSeparator();
+	saveMenu->addAction(actionSaveCandidateFaces);
+
+	QToolButton* saveToolButton = new QToolButton();
+	saveToolButton->setText("Save");
+	saveToolButton->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+	saveToolButton->setMenu(saveMenu);
+	saveToolButton->setPopupMode(QToolButton::InstantPopup);
+	QIcon saveIcon;
+	saveIcon.addFile(QStringLiteral(":/Resources/filesave.png"), QSize(), QIcon::Normal, QIcon::Off);
+	saveToolButton->setIcon(saveIcon);
+
+	toolBarFile->insertWidget(actionSnapshot, saveToolButton);
+	toolBarFile->insertSeparator(actionSnapshot);
+
+	// ------------------------------------------------------
 
 	connect(actionSnapshot, SIGNAL(triggered()), this, SLOT(snapshotScreen()));
 
@@ -457,34 +487,57 @@ bool MainWindow::open()
 }
 
 
-bool MainWindow::save()
+bool MainWindow::saveReconstruction()
 {
 	QString fileName = QFileDialog::getSaveFileName(this,
-		tr("Save file"), optimizedMeshFileName_,
+		tr("Save the reconstruction result into an OBJ file"), optimizedMeshFileName_,
 		tr("Mesh (*.obj)")
 		);
 
 	if (fileName.isEmpty())
 		return false;
 
-	bool success = false;
 	std::string ext = FileUtils::extension(fileName.toStdString());
 	String::to_lowercase(ext);
 
-	if (ext == "obj")
-		success = MapIO::save(fileName.toStdString(), canvas()->optimizedMesh());
-	else 
-		success = PointSetIO::save(fileName.toStdString(), canvas()->pointSet());
+	if (ext == "obj") {
+		bool success = MapIO::save(fileName.toStdString(), canvas()->optimizedMesh());
+		if (success) {
+			setCurrentFile(fileName);
+			status_message("File saved", 500);
+			return true;
+		}
+	}
 
-	if (success) {
-		setCurrentFile(fileName);
-		status_message("File saved", 500);
-		return true;
-	}
-	else {
-		status_message("Saving failed", 500);
+	status_message("Saving failed", 500);
+	return false;
+}
+
+
+bool MainWindow::saveCandidateFaces()
+{
+	QString fileName = QFileDialog::getSaveFileName(this,
+		tr("Save candidate faces into an OBJ file"), optimizedMeshFileName_,
+		tr("Mesh (*.obj)")
+	);
+
+	if (fileName.isEmpty())
 		return false;
+
+	std::string ext = FileUtils::extension(fileName.toStdString());
+	String::to_lowercase(ext);
+
+	if (ext == "obj") {
+		bool success = MapIO::save(fileName.toStdString(), canvas()->hypothesisMesh());
+		if (success) {
+			setCurrentFile(fileName);
+			status_message("File saved", 500);
+			return true;
+		}
 	}
+
+	status_message("Saving failed", 500);
+	return false;
 }
 
 

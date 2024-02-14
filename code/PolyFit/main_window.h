@@ -67,7 +67,9 @@ public:
 
 public Q_SLOTS:
 	bool open();
-	bool save();
+	bool saveReconstruction();
+	bool saveCandidateFaces();
+
 	void updateStatusBar();
 
 	void snapshotScreen();
