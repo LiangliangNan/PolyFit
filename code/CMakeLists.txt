@@ -50,6 +50,9 @@ set(POLYFIT_glew_DIR                ${POLYFIT_ROOT}/3rd_glew)
 ### conditionally compile certain modules depending on libraries found on the system
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
+if (POLICY CMP0074)
+        cmake_policy(SET CMP0074 NEW)
+endif ()
 find_package(Boost REQUIRED)
 
 ################################################################################
