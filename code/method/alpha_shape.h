@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define _ALPHA_SHAPE_H_
 
 #include "cgal_types.h"
+#include <CGAL/version.h>
 
 /*
 Breaking change since CGAL 4.11: The dangerous implicit conversions between weighted Points
