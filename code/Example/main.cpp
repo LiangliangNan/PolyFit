@@ -34,9 +34,9 @@ int main(int argc, char **argv)
     Logger::initialize();
 
     // input point cloud file name
-    const std::string input_file = std::string(POLYFIT_CODE_DIR) + "/../data/toy_data.bvg";
+    const std::string input_file = (argc > 1) ? argv[1] : std::string(POLYFIT_CODE_DIR) + "/../data/toy_data.bvg";
     // output mesh file name
-    const std::string output_file = std::string(POLYFIT_CODE_DIR) + "/../data/toy_data-result.obj";
+    const std::string output_file = (argc > 2) ? argv[2] : std::string(POLYFIT_CODE_DIR) + "/../data/toy_data-result.obj";
 
     // below are the default parameters (change these when necessary)
     Method::lambda_data_fitting = 0.43;
