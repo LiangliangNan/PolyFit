@@ -74,8 +74,8 @@ public:
 
   typedef typename internal::Alpha_nt_selector_2<Gt,ExactAlphaComparisonTag>::Type_of_alpha Type_of_alpha;
   //check simplices are correctly instantiated
-  static_assert( (boost::is_same<Type_of_alpha,typename Dt::Face::FT>::value) );
-  static_assert( (boost::is_same<Type_of_alpha,typename Dt::Vertex::FT>::value) );
+  CGAL_static_assertion( (boost::is_same<Type_of_alpha,typename Dt::Face::FT>::value) );
+  CGAL_static_assertion( (boost::is_same<Type_of_alpha,typename Dt::Vertex::FT>::value) );
 
   typedef Type_of_alpha NT;
   typedef Type_of_alpha FT;

@@ -80,8 +80,8 @@ public:
   typedef Type_of_alpha               FT;
 
   //check simplices are correctly instantiated
-  static_assert( (boost::is_same<NT, typename Dt::Face::NT>::value) );
-  static_assert( (boost::is_same<NT, typename Dt::Vertex::NT>::value) );
+  CGAL_static_assertion( (boost::is_same<NT, typename Dt::Face::NT>::value) );
+  CGAL_static_assertion( (boost::is_same<NT, typename Dt::Vertex::NT>::value) );
 
   typedef typename Dt::Point Point;
 
