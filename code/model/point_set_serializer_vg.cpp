@@ -38,40 +38,43 @@ num_points: num
 x  y  z
 ...
 
-num_colors: num
-r g b
+num_colors: num		// can be 0; if not, it must equal to num_points
+r g b               // all values are floating point numbers in range [0,1]
 ...
 
-num_normals: num
-nx  ny  nz
+num_normals: num	// can be 0; if not, it must equal to num_points
+nx  ny  nz          // all values are floating point numbers in range [0,1]
 
-num_groups: num
+num_groups: num     // can be 0
 
-group_type: type (integer: 	VG_PLANE = 0, VG_CYLINDER = 1, VG_SPHERE = 2, VG_CONE = 3, VG_TORUS = 4, VG_GENERAL = 5)
-num_group_parameters: NUM_GROUP_PARAMETERS   // number of floating point values (integer)
+group_type: type    // integer: PLANE = 0, CYLINDER = 1, SPHERE = 2, CONE = 3, TORUS = 4, GENERAL = 5
+num_group_parameters: NUM_GROUP_PARAMETERS      // integer: the number of parameters for this group type.
+group_parameters: float[NUM_GROUP_PARAMETERS]   // NUM_GROUP_PARAMETERS values in range [0,1]. Parameters of the group.
+group_label: label                              // string: the label of the first group.
+group_color: color (r, g, b)                    // vec3: three values in range [0,1]. The color of the group.
+group_num_points: num	                        // integer: can be 0. The number of points in the group.
+idx ...                                         // integers: indices of the points in the group. Total number is group_num_points.
+
+num_children: num   // can be 0
+
+group_type: type
+num_group_parameters: NUM_GROUP_PARAMETERS
 group_parameters: float[NUM_GROUP_PARAMETERS]
-group_label: label  // the first group info
+group_label: label
 group_color: color (r, g, b)
 group_num_points: num
 idx ...
 
-num_children: num
-
-group_type: type (integer: 	VG_PLANE = 0, VG_CYLINDER = 1, VG_SPHERE = 2, VG_CONE = 3, VG_TORUS = 4, VG_GENERAL = 5)
-num_group_parameters: NUM_GROUP_PARAMETERS   // number of floating point values (integer)
+group_type: type
+num_group_parameters: NUM_GROUP_PARAMETERS
 group_parameters: float[NUM_GROUP_PARAMETERS]
-group_label: label  // 0th child of group 0
+group_label: label
 group_color: color (r, g, b)
 group_num_points: num
 idx ...
 
-group_type: type (integer: 	VG_PLANE = 0, VG_CYLINDER = 1, VG_SPHERE = 2, VG_CONE = 3, VG_TORUS = 4, VG_GENERAL = 5)
-num_group_parameters: NUM_GROUP_PARAMETERS   // number of floating point values (integer)
-group_parameters: float[NUM_GROUP_PARAMETERS]
-group_label: label  // 1st child of group 0
-group_color: color (r, g, b)
-group_num_points: num
-idx ...
+...
+
 */
 void PointSetSerializer_vg::save_vg(const PointSet* pset, const std::string& file_name) {
 	// open file
@@ -128,13 +131,13 @@ void PointSetSerializer_vg::save_vg(const PointSet* pset, const std::string& fil
 }
 
 /*
-group_type: type (integer: 	VG_PLANE = 0, VG_CYLINDER = 1, VG_SPHERE = 2, VG_CONE = 3, VG_TORUS = 4, VG_GENERAL = 5)
-num_group_parameters: NUM_GROUP_PARAMETERS   // number of floating point values (integer)
-group_parameters: float[NUM_GROUP_PARAMETERS]
-group_label: label  // the first group info
-group_color: color (r, g, b)
-group_num_points: num
-idx ...
+group_type: type    // integer: PLANE = 0, CYLINDER = 1, SPHERE = 2, CONE = 3, TORUS = 4, GENERAL = 5
+num_group_parameters: NUM_GROUP_PARAMETERS      // integer: the number of parameters for this group type.
+group_parameters: float[NUM_GROUP_PARAMETERS]   // NUM_GROUP_PARAMETERS values in range [0,1]. Parameters of this group.
+group_label: label                              // string: the label of this group.
+group_color: color (r, g, b)                    // vec3: three values in range [0,1]. The color of this group.
+group_num_points: num	                        // integer: can be 0. The number of points in this group.
+idx ...                                         // integers: indices of the points in this group. Total number is group_num_points.
 */
 void PointSetSerializer_vg::write_ascii_group(std::ostream& output, VertexGroup* g) {
 	//int type = g->type();
@@ -210,6 +213,10 @@ void PointSetSerializer_vg::load_vg(PointSet* pset, const std::string& file_name
 	for (int i = 0; i < num; ++i) {
 		input >> colors[i];
 
+        // in case the color values are in [0, 255], converting to [0, 1]
+        if (colors[i].x > 1.0f || colors[i].y > 1.0f || colors[i].z > 1.0f)
+            colors[i] /= 255.0f;
+
 		std::streamoff pos = input.tellg();
 		progress.notify(pos);
 	}
@@ -274,6 +281,10 @@ VertexGroup* PointSetSerializer_vg::read_ascii_group(std::istream& input) {
 
 	float r, g, b;
 	input >> dumy >> r >> g >> b;
+    // in case the color values are in [0, 255], converting to [0, 1]
+    if (r > 1.0f || g > 1.0f || b > 1.0f) {
+        r /= 255.0f; g /= 255.0f; b /= 255.0f;
+    }
 	Color color(r, g, b);
 
 	int num_points;
