@@ -13,10 +13,10 @@ Please consider citing the above paper if you use any of our data.
 The example data (along with additional test data and the reconstructed 3D models) are available at:
 https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
 
-For your own data, you can use my Mapple to extract planes. Here is the link to Mapple: 
-https://3d.bk.tudelft.nl/liangliang/software.html    
-After you load the point cloud to Mapple, go to 'Partition' menu and click 'Extract Primitives'. To visualize the planes, 
-change the renderer from 'Plain' to 'Group' in the Rendering panel (at the left side of Mapple). You can save the planes as bvg (Binary Vertex Group) format. The ASCII format vg also works but slow. 
+For your own data, you can use [Easy3D's Mapple](https://github.com/LiangliangNan/Easy3D/releases) to extract planes. 
+After you load the point cloud to Mapple, go to the menu 'Point Cloud' -> "RANSAC primitive extraction', select "Plane" as the target primitive type, 
+tune the parameters if needed, and then click the "Extract" button. Then the extracted planar primitives will be visualized with each primitive randomly colored. 
+You can save the extracted planes into a file in 'bvg' (Binary Vertex Group) format. The ASCII format 'vg' also works but is slower. 
 
 Below you will find the description of the file format and a simple example file.
  
@@ -24,7 +24,7 @@ Below you will find the description of the file format and a simple example file
 
 ### File format:
 
-PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format I have developed for my research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
+PolyFit assumes that planar segments have been extracted properly and are stored in vg (vertex group) format developed for my other research projects. The general vg format allows you to save a point cloud followed by its segmentation information:
 - For each point, its coordinates, normal, and color. 
 - For each segment (a group of points representing a primitive or an object), its label, model parameters, color, and the 
     indices of the points that belong to this segment.
@@ -32,25 +32,25 @@ PolyFit assumes that planar segments have been extracted properly and are stored
 PolyFit handles planes only, so the model parameters are simply the plane parameters (e.g., a, b, c, and d in the plane 
 equation ax + by + cz + d = 0).
 
-Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary format. Please refer to 'point_set_serializer_vg.cpp' of the source code for more information.
+Below is a details description of the ASCII vg format. The source code of PolyFit also contains an implementation for binary format. Please refer to [point_set_serializer_vg.cpp](https://github.com/LiangliangNan/PolyFit/blob/main/code/model/point_set_serializer_vg.cpp) of the source code for more information.
 
 ```
-// the coordinates of the points 
+// coordinates of the points 
 num_points: N   // N is an integer denoting the number of points
-x1  y1  z1	// 3 floating point numbers
+x1  y1  z1	     // 3 floating point numbers
 ...
 xN  yN  zN
 
-// the colors of the points 
+// colors of the points 
 num_colors: N   // N is an integer denoting the number of colors (can be different from the number of points)
-r1 g1 b1	// 3 floating point numbers
+r1 g1 b1	       // 3 floating point numbers, each in the range [0, 1]
 ...
 rN gN bN
 
-// the normals of the points 
+// normals of the points 
 
 num_normals: N  // N is an integer denoting the number of normals (can be different from the number of points or colors)
-nx1  ny1  nz1	// 3 floating point numbers
+nx1  ny1  nz1	  // 3 floating point numbers, each in the range [0, 1]
 ...
 nxN  nyN  nzN
 
@@ -59,14 +59,14 @@ num_groups: M   // M is an integer denoting the number of segments/primitives/ob
 
 // now the information for the 1st segment/primitive/object
 group_type: 0              // must be 0 standing for a plane (1 to 5 are other types of primitives)
-num_group_parameters: 4    // must be 4 (planes are represented using 4 parameters) 
+num_group_parameters: 4    // must be 4 (planes are represented using 4 parameters, same as in plane equations) 
 group_parameters: a b c d  // 4 floating point numbers (e.g., a, b, c, and d for a plane)
 group_label: label         // the label (a string) of the 1st vertex group
 group_color: r g b         // 3 floating point numbers denoting the color of the 1st vertex group
 group_num_points: N        // N is an integer denoting the number of points in the 1st vertex group
 id1 ... idN                // N integer numbers denoting the indices of the points in the 1st vertex group
 num_children: 0            // a segment/primitive/object may contain subgroups, but for PolyFit this must be 0
-...
+...                        // the information of the groups (except the first and last groups)
 group_type: 0              // here starts the last segment in the point cloud (similar to the 1st one)
 num_group_parameters: 4    
 group_parameters: a b c d
