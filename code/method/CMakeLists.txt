@@ -32,7 +32,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 find_package(CGAL REQUIRED)
 if (CGAL_FOUND)
     message(STATUS "Found CGAL ${CGAL_VERSION}")
-    include(${CGAL_USE_FILE})
     target_link_libraries(${PROJECT_NAME} ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES})
 else ()
     message(FATAL_ERROR "CGAL is required.")
