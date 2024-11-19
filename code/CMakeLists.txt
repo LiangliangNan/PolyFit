@@ -79,8 +79,6 @@ add_subdirectory(method)
 add_subdirectory(model)
 add_subdirectory(renderer)
 
-
-add_subdirectory(PolyFit)
 add_subdirectory(polyfit)
 
 
