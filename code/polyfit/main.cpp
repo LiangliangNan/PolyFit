@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 #include "../basic/logger.h"
+#include "../basic/file_utils.h"
 #include "../model/point_set.h"
 #include "../model/map.h"
 #include "../method/method_global.h"
@@ -33,10 +34,23 @@ int main(int argc, char **argv)
     // initialize the logger (this is not optional)
     Logger::initialize();
 
-    // input point cloud file name
-    const std::string input_file = (argc > 1) ? argv[1] : std::string(POLYFIT_CODE_DIR) + "/../data/toy_data.bvg";
-    // output mesh file name
-    const std::string output_file = (argc > 2) ? argv[2] : std::string(POLYFIT_CODE_DIR) + "/../data/toy_data-result.obj";
+    if (argc != 3) {
+        std::cerr << "Usage:" << std::endl
+                  << "\t./polyfit  <input_file.[vg] or [bvg]>  <output_file.obj>" << std::endl
+                  << "Example:" << std::endl
+                  << "\t./polyfit  sphere.bvg  sphere-result.obj" << std::endl;
+        return EXIT_FAILURE;
+    }
+    const std::string input_file = argv[1];
+    if (!FileUtils::is_file(input_file)) {
+        std::cerr << "file '" << input_file << "' does not exist. Please check and make sure the path is correct" << std::endl;
+        return EXIT_FAILURE;
+    }
+    const std::string output_file = argv[2];
+    if (FileUtils::extension(output_file) != "obj") {
+        std::cerr << "the output file is expected to have 'obj' as file extension" << std::endl;
+        return EXIT_FAILURE;
+    }
 
     // below are the default parameters (change these when necessary)
     Method::lambda_data_fitting = 0.43;

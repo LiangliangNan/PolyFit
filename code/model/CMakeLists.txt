@@ -49,7 +49,7 @@ set(model_SOURCES
     kdtree/kdTree.cpp
     )
 
-add_library(${PROJECT_NAME} SHARED ${model_SOURCES} ${model_HEADERS})
+add_library(${PROJECT_NAME} STATIC ${model_SOURCES} ${model_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       FOLDER "PolyFit")
 

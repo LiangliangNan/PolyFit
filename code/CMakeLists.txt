@@ -80,7 +80,7 @@ add_subdirectory(model)
 add_subdirectory(renderer)
 
 
-add_subdirectory(Example)
 add_subdirectory(PolyFit)
+add_subdirectory(polyfit)
 
 
