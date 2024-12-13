@@ -3,37 +3,69 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_completesol.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  COMPLETESOL - primal heuristic trying to complete given partial solutions
  * @author Jakob Witzig
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-#include <stdio.h>
-
+#include "blockmemshell/memory.h"
+#include "scip/cons_linear.h"
 #include "scip/heur_completesol.h"
-#include "scip/scipdefplugins.h"       /* needed for the secondary SCIP instance */
+#include "scip/pub_event.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_message.h"
 #include "scip/pub_misc.h"
-#include "scip/def.h"
+#include "scip/pub_sol.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_nlp.h"
+#include "scip/scip_nodesel.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define HEUR_NAME             "completesol"
 #define HEUR_DESC             "primal heuristic trying to complete given partial solutions"
-#define HEUR_DISPCHAR         'h'
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_LNS
 #define HEUR_PRIORITY         0
-#define HEUR_FREQ             1
+#define HEUR_FREQ             0
 #define HEUR_FREQOFS          0
 #define HEUR_MAXDEPTH         0
 #define HEUR_TIMING           SCIP_HEURTIMING_BEFOREPRESOL | SCIP_HEURTIMING_BEFORENODE
@@ -127,8 +159,7 @@ SCIP_RETCODE createSubproblem(
    SCIP_HEURDATA*        heurdata,           /**< heuristic's private data structure */
    SCIP_VAR**            subvars,            /**< the variables of the subproblem */
    SCIP_SOL*             partialsol,         /**< partial solution */
-   SCIP_Bool*            tightened,          /**< array to store for which variables we have found bound tightenings */
-   SCIP_Bool*            success             /**< pointer to store whether the creation was successful */
+   SCIP_Bool*            tightened           /**< array to store for which variables we have found bound tightenings */
    )
 {
    SCIP_VAR** vars;
@@ -144,8 +175,6 @@ SCIP_RETCODE createSubproblem(
    assert(subscip != NULL);
    assert(subvars != NULL);
    assert(heurdata != NULL);
-
-   *success = TRUE;
 
    /* if there is already a solution, add an objective cutoff */
    if( SCIPgetNSols(scip) > 0 )
@@ -197,6 +226,9 @@ SCIP_RETCODE createSubproblem(
       int idx;
 
       assert(SCIPvarIsActive(vars[i]));
+
+      if( subvars[i] == NULL )
+         continue;
 
       /* add objective function as a constraint, if a primal bound exists */
       if( SCIPisInfinity(scip, cutoff) )
@@ -312,54 +344,6 @@ SCIP_RETCODE createSubproblem(
    return SCIP_OKAY;
 }
 
-/** creates a new solution for the original problem by copying the solution of the subproblem */
-static
-SCIP_RETCODE createNewSol(
-   SCIP*                 scip,               /**< original SCIP data structure */
-   SCIP*                 subscip,            /**< SCIP structure of the subproblem */
-   SCIP_VAR**            subvars,            /**< the variables of the subproblem */
-   SCIP_HEUR*            heur,               /**< Completesol heuristic structure */
-   SCIP_SOL*             subsol,             /**< solution of the subproblem or the partial */
-   SCIP_Bool*            success             /**< used to store whether new solution was found or not */
-   )
-{
-   SCIP_VAR** vars;                          /* the original problem's variables */
-   int nvars;                                /* the original problem's number of variables */
-   SCIP_SOL* newsol;                         /* solution to be created for the original problem */
-   int v;
-
-   assert(scip != NULL);
-   assert(subscip != NULL);
-   assert(subvars != NULL);
-   assert(subsol != NULL);
-
-   /* get variables' data */
-   SCIP_CALL( SCIPgetVarsData(scip, &vars, &nvars, NULL, NULL, NULL, NULL) );
-
-   /* sub-SCIP may have more variables than the number of active (transformed) variables in the main SCIP
-    * since constraint copying may have required the copy of variables that are fixed in the main SCIP
-    */
-   assert(nvars <= SCIPgetNOrigVars(subscip));
-
-   /* create new solution for the original problem */
-   SCIP_CALL( SCIPcreateSol(scip, &newsol, heur) );
-
-   for( v = 0; v < nvars; v++ )
-   {
-      SCIP_Real solval = SCIPgetSolVal(subscip, subsol, subvars[v]);
-
-      assert(!SCIPisInfinity(subscip, solval) && !SCIPisInfinity(subscip, -solval));
-      assert(solval != SCIP_UNKNOWN); /*lint !e777*/
-
-      SCIP_CALL( SCIPsetSolVal(scip, newsol, vars[v], solval) );
-   }
-
-   /* try to add new solution to SCIP and free it immediately */
-   SCIP_CALL( SCIPtrySolFree(scip, &newsol, FALSE, FALSE, TRUE, TRUE, TRUE, success) );
-
-   return SCIP_OKAY;
-}
-
 /** perform a probing bound change or fixes the variable */
 static
 SCIP_RETCODE chgProbingBound(
@@ -419,7 +403,7 @@ SCIP_RETCODE tightenVariables(
    int                   nvars,              /**< number of problem variables */
    SCIP_SOL*             sol,                /**< solution to guide the bound changes */
    SCIP_Bool*            tightened,          /**< array to store if variable bound could be tightened */
-   SCIP_Bool*            success             /**< pointer to store the success */
+   SCIP_Bool*            infeasible          /**< pointer to store whether subproblem is infeasible */
    )
 {
 #ifndef NDEBUG
@@ -444,7 +428,7 @@ SCIP_RETCODE tightenVariables(
 
    SCIPdebugMsg(scip, "> start probing along the solution values\n");
 
-   *success = TRUE;
+   *infeasible = FALSE;
    abortearly = FALSE;
    nbndtightenings = 0;
    ndomredssum = 0;
@@ -582,14 +566,13 @@ SCIP_RETCODE tightenVariables(
                offset = REALABS(heurdata->boundwidening * (newub-newlb));
             else
             {
-               /* if one bound is finite, widen bound w.r.t. solution value and finite bound */
+               offset = 0.0;
+
+               /* if exactly one bound is finite, widen bound w.r.t. solution value and finite bound */
                if( !SCIPisInfinity(scip, -newlb) )
                   offset = REALABS(heurdata->boundwidening * (solval-newlb));
-               else
-               {
-                  assert(!SCIPisInfinity(scip, newub));
+               else if( !SCIPisInfinity(scip, newub) )
                   offset = REALABS(heurdata->boundwidening * (newub-solval));
-               }
             }
 
             /* update bounds */
@@ -630,7 +613,7 @@ SCIP_RETCODE tightenVariables(
                      if( cutoff )
                      {
                         SCIPdebugMsg(scip, "> subproblem is infeasible within the local bounds\n");
-                        *success = FALSE;
+                        *infeasible = TRUE;
                         return SCIP_OKAY;
                      }
 #ifdef SCIP_MORE_DEBUG
@@ -688,7 +671,7 @@ SCIP_RETCODE tightenVariables(
                      if( cutoff )
                      {
                         SCIPdebugMsg(scip, "> subproblem is infeasible within the local bounds\n");
-                        *success = FALSE;
+                        *infeasible = TRUE;
                         return SCIP_OKAY;
                      }
 #ifdef SCIP_MORE_DEBUG
@@ -767,8 +750,9 @@ SCIP_RETCODE setupAndSolve(
    valid = FALSE;
 
    /* copy complete SCIP instance */
-   SCIP_CALL( SCIPcopyConsCompression(scip, subscip, varmapf, NULL, "completesol", NULL, NULL, 0, FALSE, FALSE, TRUE, &valid) );
-   SCIPdebugMsg(scip, "Copying the SCIP instance returned with valid=%d.\n", valid);
+   SCIP_CALL( SCIPcopyConsCompression(scip, subscip, varmapf, NULL, "completesol", NULL, NULL, 0, FALSE, FALSE, FALSE,
+         TRUE, &valid) );
+   SCIPdebugMsg(scip, "Copying the SCIP instance returned with valid=%u.\n", valid);
 
    /* create event handler for LP events */
    SCIP_CALL( SCIPincludeEventhdlrBasic(subscip, &eventhdlr, EVENTHDLR_NAME, EVENTHDLR_DESC, eventExecCompletesol, NULL) );
@@ -783,21 +767,13 @@ SCIP_RETCODE setupAndSolve(
 
    /* map all variables */
    for( i = 0; i < nvars; i++ )
-   {
      subvars[i] = (SCIP_VAR*) SCIPhashmapGetImage(varmapf, vars[i]);
-     assert(subvars[i] != NULL);
-   }
 
    /* free hash map */
    SCIPhashmapFree(&varmapf);
 
    /* create a new problem, which fixes variables with same value in bestsol and LP relaxation */
-   SCIP_CALL( createSubproblem(scip, subscip, heurdata, subvars, partialsol, tightened, &success) );
-   if( !success )
-   {
-      SCIPdebugMsg(scip, "Error while creating completesol subproblem w.r.t. partial solution <%p>.\n", (void*)partialsol);
-      goto TERMINATE;
-   }
+   SCIP_CALL( createSubproblem(scip, subscip, heurdata, subvars, partialsol, tightened) );
    SCIPdebugMsg(scip, "Completesol subproblem: %d vars, %d cons\n", SCIPgetNVars(subscip), SCIPgetNConss(subscip));
 
    /* do not abort subproblem on CTRL-C */
@@ -926,7 +902,12 @@ SCIP_RETCODE setupAndSolve(
    success = FALSE;
    for( i = 0; i < nsubsols && (!success || heurdata->addallsols); i++ )
    {
-      SCIP_CALL( createNewSol(scip, subscip, subvars, heur, subsols[i], &success) );
+      SCIP_SOL* newsol;
+
+      /* create new solution, try to add to SCIP, and free it immediately */
+      SCIP_CALL( SCIPtranslateSubSol(scip, subscip, subsols[i], heur, subvars, &newsol) );
+      SCIP_CALL( SCIPtrySolFree(scip, &newsol, FALSE, FALSE, TRUE, TRUE, TRUE, &success) );
+
       if( success )
          *result = SCIP_FOUNDSOL;
    }
@@ -935,7 +916,29 @@ SCIP_RETCODE setupAndSolve(
       HEUR_NAME, 0.0, SCIPgetSolvingTime(subscip), SCIPgetNNodes(subscip), success ? SCIPgetPrimalbound(scip) : SCIPinfinity(scip),
       nsubsols > 0 ? SCIPsolGetNodenum(SCIPgetBestSol(subscip)) : -1 );
 
-  TERMINATE:
+   /* print message if the completion of a partial solution failed */
+   if( *result != SCIP_FOUNDSOL )
+   {
+      switch( SCIPgetStatus(subscip) )
+      {
+      case SCIP_STATUS_INFEASIBLE:
+         SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, "completion of a partial solution failed (subproblem is infeasible)\n");
+         break;
+      case SCIP_STATUS_NODELIMIT:
+         SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, "completion of a partial solution failed (node limit exceeded)\n");
+         break;
+      case SCIP_STATUS_TIMELIMIT:
+         SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, "completion of a partial solution failed (time limit exceeded)\n");
+         break;
+      case SCIP_STATUS_MEMLIMIT:
+         SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, "completion of a partial solution failed (memory limit exceeded)\n");
+         break;
+      default:
+         break;
+      } /*lint !e788*/
+   }
+
+TERMINATE:
    SCIPfreeBufferArray(scip, &subvars);
 
    return SCIP_OKAY;
@@ -955,6 +958,7 @@ SCIP_RETCODE applyCompletesol(
    SCIP* subscip;
    SCIP_VAR** vars;
    SCIP_Bool* tightened;
+   SCIP_Bool infeasible;
    SCIP_Bool success;
    SCIP_RETCODE retcode;
    int nvars;
@@ -986,10 +990,13 @@ SCIP_RETCODE applyCompletesol(
 
    SCIP_CALL( SCIPstartProbing(scip) );
 
-   SCIP_CALL( tightenVariables(scip, heurdata, vars, nvars, partialsol, tightened, &success) );
+   SCIP_CALL( tightenVariables(scip, heurdata, vars, nvars, partialsol, tightened, &infeasible) );
 
-   if( !success )
+   if( infeasible )
+   {
+      SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, "completion of a partial solution failed (subproblem is infeasible)\n");
       goto ENDPROBING;
+   }
 
    /* initialize the subproblem */
    SCIP_CALL( SCIPcreate(&subscip) );
@@ -1004,8 +1011,6 @@ SCIP_RETCODE applyCompletesol(
   ENDPROBING:
    SCIPfreeBufferArray(scip, &tightened);
    SCIP_CALL( SCIPendProbing(scip) );
-
-
 
    return SCIP_OKAY;
 }
@@ -1088,11 +1093,12 @@ SCIP_DECL_HEUREXEC(heurExecCompletesol)
       return SCIP_OKAY;
 
    /* check whether we want to run before presolving */
-   if( heurtiming == SCIP_HEURTIMING_BEFOREPRESOL && !heurdata->beforepresol )
+   if( (heurtiming & SCIP_HEURTIMING_BEFOREPRESOL) && !heurdata->beforepresol )
       return SCIP_OKAY;
 
    /* only run before root node */
-   if( heurtiming == SCIP_HEURTIMING_BEFORENODE && SCIPgetCurrentNode(scip) != SCIPgetRootNode(scip) )
+   if( (heurtiming & SCIP_HEURTIMING_BEFORENODE)
+      && (heurdata->beforepresol || SCIPgetCurrentNode(scip) != SCIPgetRootNode(scip)) )
       return SCIP_OKAY;
 
    /* get variable data and return of no variables are left in the problem */
@@ -1166,7 +1172,11 @@ SCIP_DECL_HEUREXEC(heurExecCompletesol)
 
       /* run the heuristic, if not too many unknown variables exist */
       if( unknownrate > heurdata->maxunknownrate )
+      {
+         SCIPwarningMessage(scip, "ignore partial solution (%d) because unknown rate is too large (%g > %g)\n", s,
+            unknownrate, heurdata->maxunknownrate);
          continue;
+      }
 
       /* all variables have a finite/known solution value all integer variables have an integral solution value,
        * and there are no continuous variables
@@ -1174,22 +1184,20 @@ SCIP_DECL_HEUREXEC(heurExecCompletesol)
        */
       if( nunknown == 0 && nfracints == 0 && SCIPgetNContVars(scip) == 0 && SCIPgetNImplVars(scip) == 0 )
       {
-         SCIP_VAR** origvars;
          SCIP_SOL* newsol;
          SCIP_Bool stored;
-         int norigvars;
 
-         origvars = SCIPgetOrigVars(scip);
-         norigvars = SCIPgetNOrigVars(scip);
+         assert(vars != NULL);
+         assert(nvars >= 0);
 
-         SCIP_CALL( SCIPcreateOrigSol(scip, &newsol, heur) );
+         SCIP_CALL( SCIPcreateSol(scip, &newsol, heur) );
 
-         for( v = 0; v < norigvars; v++ )
+         for( v = 0; v < nvars; v++ )
          {
-            solval = SCIPgetSolVal(scip, sol, origvars[v]);
+            solval = SCIPgetSolVal(scip, sol, vars[v]);
             assert(solval != SCIP_UNKNOWN); /*lint !e777*/
 
-            SCIP_CALL( SCIPsetSolVal(scip, newsol, origvars[v], solval) );
+            SCIP_CALL( SCIPsetSolVal(scip, newsol, vars[v], solval) );
          }
 
          SCIP_CALL( SCIPtrySolFree(scip, &newsol, FALSE, FALSE, TRUE, TRUE, TRUE, &stored) );
@@ -1299,7 +1307,6 @@ SCIP_RETCODE SCIPincludeHeurCompletesol(
    SCIP_CALL( SCIPaddIntParam(scip, "heuristics/" HEUR_NAME "/maxcontvars",
          "maximal number of continuous variables after presolving",
          &heurdata->maxcontvars, FALSE, DEFAULT_MAXCONTVARS, -1, INT_MAX, NULL, NULL) );
-
 
    return SCIP_OKAY;
 }

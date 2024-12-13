@@ -1,9 +1,9 @@
-// $Id$
-# ifndef CPPAD_SIGN_OP_HPP
-# define CPPAD_SIGN_OP_HPP
+// $Id: sign_op.hpp 3865 2017-01-19 01:57:55Z bradbell $
+# ifndef CPPAD_LOCAL_SIGN_OP_HPP
+# define CPPAD_LOCAL_SIGN_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,7 +14,7 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file sign_op.hpp
 Forward and reverse mode calculations for z = sign(x).
@@ -28,7 +28,7 @@ The C++ source code corresponding to this operation is
 	z = sign(x)
 \endverbatim
 
-\copydetails forward_unary1_op
+\copydetails CppAD::local::forward_unary1_op
 */
 template <class Base>
 inline void forward_sign_op(
@@ -64,7 +64,7 @@ The C++ source code corresponding to this operation is
 	z = sign(x)
 \endverbatim
 
-\copydetails forward_unary1_op_dir
+\copydetails CppAD::local::forward_unary1_op_dir
 */
 template <class Base>
 inline void forward_sign_op_dir(
@@ -98,7 +98,7 @@ The C++ source code corresponding to this operation is
 	z = sign(x)
 \endverbatim
 
-\copydetails forward_unary1_op_0
+\copydetails CppAD::local::forward_unary1_op_0
 */
 template <class Base>
 inline void forward_sign_op_0(
@@ -127,7 +127,7 @@ The C++ source code corresponding to this operation is
 	z = sign(x)
 \endverbatim
 
-\copydetails reverse_unary1_op
+\copydetails CppAD::local::reverse_unary1_op
 */
 
 template <class Base>
@@ -150,5 +150,5 @@ inline void reverse_sign_op(
 	return;
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

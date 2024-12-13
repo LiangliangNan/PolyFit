@@ -3,20 +3,29 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   syncstore.c
  * @ingroup PARALLEL
  * @brief  the function definitions of the synchronization store
- * @author Robert Lion Gottwald
+ * @author Leona Gottwald
  * @author Stephen J. Maher
  */
 
@@ -47,6 +56,7 @@ int getNSyncdata(
    )
 {
    int maxnsyncdelay;
+
    SCIP_CALL_ABORT( SCIPgetIntParam(scip, "concurrent/sync/maxnsyncdelay", &maxnsyncdelay) );
 
    return 2 * (maxnsyncdelay + 1);
@@ -179,8 +189,8 @@ SCIP_RETCODE SCIPsyncstoreInit(
       /* in deterministic mode use the number of non-zeros and the number of variables to get a good
        * syncdelay and maximum syncfreq
        */
-      syncstore->minsyncdelay *= 0.01 * (SCIPgetNNZs(scip) * SCIPgetNVars(scip));
-      syncstore->syncfreqmax *= 0.01 * (SCIPgetNNZs(scip) * SCIPgetNVars(scip));
+      syncstore->minsyncdelay *= 0.01 * (SCIPgetNNZs(scip) * SCIPgetNVars(scip)); /*lint !e790*/
+      syncstore->syncfreqmax *= 0.01 * (SCIPgetNNZs(scip) * SCIPgetNVars(scip));  /*lint !e790*/
    }
 
    return SCIP_OKAY;
@@ -334,7 +344,7 @@ SCIP_SYNCDATA* SCIPsyncstoreGetSyncdata(
    assert(syncstore != NULL);
    assert(syncstore->initialized);
 
-   j = syncnum % syncstore->nsyncdata;
+   j = (int) syncnum % syncstore->nsyncdata;
 
    /* check if requested syncnumber still exists if in debug mode */
    assert(syncstore->syncdata[j].syncnum == syncnum);
@@ -440,7 +450,7 @@ SCIP_RETCODE SCIPsyncstoreStartSync(
       return SCIP_OKAY;
    }
 
-   i = syncnum % syncstore->nsyncdata;
+   i = syncnum % syncstore->nsyncdata; /*lint !e712*/
    *syncdata = &syncstore->syncdata[i];
    assert(*syncdata != NULL);
 
@@ -546,7 +556,6 @@ int SCIPsyncstoreGetNSolvers(
    return syncstore->nsolvers;
 }
 
-
 /** read amount total memory used from synchronization data */
 SCIP_Longint SCIPsyncdataGetMemTotal(
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
@@ -644,7 +653,6 @@ void SCIPsyncdataSetStatus(
     */
    if( syncdata->status < SCIP_STATUS_OPTIMAL )
    {
-
       if( status > syncdata->status || (status == syncdata->status && solverid < syncdata->winner) )
       {
          syncdata->status = status;
@@ -706,8 +714,8 @@ void SCIPsyncdataGetSolutionBuffer(
                                               *   if the buffer is not NULL */
    )
 {
-   int                  pos;
-   int                  i;
+   int pos;
+   int i;
 
    assert(syncstore != NULL);
    assert(syncstore->initialized);

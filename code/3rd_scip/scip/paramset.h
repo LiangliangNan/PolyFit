@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -28,6 +37,7 @@
 
 #include "scip/def.h"
 #include "blockmemshell/memory.h"
+#include "scip/type_set.h"
 #include "scip/type_retcode.h"
 #include "scip/type_paramset.h"
 #include "scip/pub_paramset.h"
@@ -38,21 +48,18 @@ extern "C" {
 #endif
 
 /** creates parameter set */
-extern
 SCIP_RETCODE SCIPparamsetCreate(
    SCIP_PARAMSET**       paramset,           /**< pointer to store the parameter set */
    BMS_BLKMEM*           blkmem              /**< block memory */
    );
 
 /** frees parameter set */
-extern
 void SCIPparamsetFree(
    SCIP_PARAMSET**       paramset,           /**< pointer to the parameter set */
    BMS_BLKMEM*           blkmem              /**< block memory */
    );
 
 /** creates a bool parameter, sets it to its default value, and adds it to the parameter set */
-extern
 SCIP_RETCODE SCIPparamsetAddBool(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -67,7 +74,6 @@ SCIP_RETCODE SCIPparamsetAddBool(
    );
 
 /** creates a int parameter, sets it to its default value, and adds it to the parameter set */
-extern
 SCIP_RETCODE SCIPparamsetAddInt(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -84,7 +90,6 @@ SCIP_RETCODE SCIPparamsetAddInt(
    );
 
 /** creates a SCIP_Longint parameter, sets it to its default value, and adds it to the parameter set */
-extern
 SCIP_RETCODE SCIPparamsetAddLongint(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -101,7 +106,6 @@ SCIP_RETCODE SCIPparamsetAddLongint(
    );
 
 /** creates a SCIP_Real parameter, sets it to its default value, and adds it to the parameter set */
-extern
 SCIP_RETCODE SCIPparamsetAddReal(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -118,7 +122,6 @@ SCIP_RETCODE SCIPparamsetAddReal(
    );
 
 /** creates a char parameter, sets it to its default value, and adds it to the parameter set */
-extern
 SCIP_RETCODE SCIPparamsetAddChar(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -134,7 +137,6 @@ SCIP_RETCODE SCIPparamsetAddChar(
    );
 
 /** creates a string parameter, sets it to its default value, and adds it to the parameter set */
-extern
 SCIP_RETCODE SCIPparamsetAddString(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -149,21 +151,18 @@ SCIP_RETCODE SCIPparamsetAddString(
    );
 
 /** returns whether an existing parameter is fixed */
-extern
 SCIP_Bool SCIPparamsetIsFixed(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    const char*           name                /**< name of the parameter */
    );
 
 /** returns the pointer to an existing SCIP parameter */
-extern
 SCIP_PARAM* SCIPparamsetGetParam(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    const char*           name                /**< name of the parameter */
    );
 
 /** gets the value of an existing SCIP_Bool parameter */
-extern
 SCIP_RETCODE SCIPparamsetGetBool(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    const char*           name,               /**< name of the parameter */
@@ -171,7 +170,6 @@ SCIP_RETCODE SCIPparamsetGetBool(
    );
 
 /** gets the value of an existing int parameter */
-extern
 SCIP_RETCODE SCIPparamsetGetInt(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    const char*           name,               /**< name of the parameter */
@@ -179,7 +177,6 @@ SCIP_RETCODE SCIPparamsetGetInt(
    );
 
 /** gets the value of an existing SCIP_Longint parameter */
-extern
 SCIP_RETCODE SCIPparamsetGetLongint(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    const char*           name,               /**< name of the parameter */
@@ -187,7 +184,6 @@ SCIP_RETCODE SCIPparamsetGetLongint(
    );
 
 /** gets the value of an existing SCIP_Real parameter */
-extern
 SCIP_RETCODE SCIPparamsetGetReal(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    const char*           name,               /**< name of the parameter */
@@ -195,7 +191,6 @@ SCIP_RETCODE SCIPparamsetGetReal(
    );
 
 /** gets the value of an existing char parameter */
-extern
 SCIP_RETCODE SCIPparamsetGetChar(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    const char*           name,               /**< name of the parameter */
@@ -203,7 +198,6 @@ SCIP_RETCODE SCIPparamsetGetChar(
    );
 
 /** gets the value of an existing string parameter */
-extern
 SCIP_RETCODE SCIPparamsetGetString(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    const char*           name,               /**< name of the parameter */
@@ -217,18 +211,7 @@ SCIP_RETCODE SCIPparamsetFix(
    SCIP_Bool             fixed               /**< new fixing status of the parameter */
    );
 
-/** changes the value of an existing parameter */
-extern
-SCIP_RETCODE SCIPparamsetSet(
-   SCIP_PARAMSET*        paramset,           /**< parameter set */
-   SCIP_SET*             set,                /**< global SCIP settings */
-   SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
-   const char*           name,               /**< name of the parameter */
-   void*                 value               /**< new value of the parameter */
-   );
-
 /** changes the value of an existing SCIP_Bool parameter */
-extern
 SCIP_RETCODE SCIPparamsetSetBool(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -237,16 +220,7 @@ SCIP_RETCODE SCIPparamsetSetBool(
    SCIP_Bool             value               /**< new value of the parameter */
    );
 
-/** changes the default value of an existing SCIP_Bool parameter */
-extern
-SCIP_RETCODE SCIPparamsetSetDefaultBool(
-   SCIP_PARAMSET*        paramset,           /**< parameter set */
-   const char*           name,               /**< name of the parameter */
-   SCIP_Bool             defaultvalue        /**< new default value of the parameter */
-   );
-
 /** changes the value of an existing int parameter */
-extern
 SCIP_RETCODE SCIPparamsetSetInt(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -255,16 +229,7 @@ SCIP_RETCODE SCIPparamsetSetInt(
    int                   value               /**< new value of the parameter */
    );
 
-/** changes the default value of an existing int parameter */
-extern
-SCIP_RETCODE SCIPparamsetSetDefaultInt(
-   SCIP_PARAMSET*        paramset,           /**< parameter set */
-   const char*           name,               /**< name of the parameter */
-   int                   defaultvalue        /**< new default value of the parameter */
-   );
-
 /** changes the value of an existing SCIP_Longint parameter */
-extern
 SCIP_RETCODE SCIPparamsetSetLongint(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -274,7 +239,6 @@ SCIP_RETCODE SCIPparamsetSetLongint(
    );
 
 /** changes the value of an existing SCIP_Real parameter */
-extern
 SCIP_RETCODE SCIPparamsetSetReal(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -284,7 +248,6 @@ SCIP_RETCODE SCIPparamsetSetReal(
    );
 
 /** changes the value of an existing char parameter */
-extern
 SCIP_RETCODE SCIPparamsetSetChar(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -294,13 +257,54 @@ SCIP_RETCODE SCIPparamsetSetChar(
    );
 
 /** changes the value of an existing string parameter */
-extern
 SCIP_RETCODE SCIPparamsetSetString(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           name,               /**< name of the parameter */
    const char*           value               /**< new value of the parameter */
+   );
+
+/** changes the default value of an existing SCIP_Bool parameter */
+SCIP_RETCODE SCIPparamsetSetDefaultBool(
+   SCIP_PARAMSET*        paramset,           /**< parameter set */
+   const char*           name,               /**< name of the parameter */
+   SCIP_Bool             defaultvalue        /**< new default value of the parameter */
+   );
+
+/** changes the default value of an existing int parameter */
+SCIP_RETCODE SCIPparamsetSetDefaultInt(
+   SCIP_PARAMSET*        paramset,           /**< parameter set */
+   const char*           name,               /**< name of the parameter */
+   int                   defaultvalue        /**< new default value of the parameter */
+   );
+
+/** changes the default value of an existing SCIP_Longint parameter */
+SCIP_RETCODE SCIPparamsetSetDefaultLongint(
+   SCIP_PARAMSET*        paramset,           /**< parameter set */
+   const char*           name,               /**< name of the parameter */
+   SCIP_Longint          defaultvalue        /**< new default value of the parameter */
+   );
+
+/** changes the default value of an existing SCIP_Real parameter */
+SCIP_RETCODE SCIPparamsetSetDefaultReal(
+   SCIP_PARAMSET*        paramset,           /**< parameter set */
+   const char*           name,               /**< name of the parameter */
+   SCIP_Real             defaultvalue        /**< new default value of the parameter */
+   );
+
+/** changes the default value of an existing char parameter */
+SCIP_RETCODE SCIPparamsetSetDefaultChar(
+   SCIP_PARAMSET*        paramset,           /**< parameter set */
+   const char*           name,               /**< name of the parameter */
+   char                  defaultvalue        /**< new default value of the parameter */
+   );
+
+/** changes the default value of an existing string parameter */
+SCIP_RETCODE SCIPparamsetSetDefaultString(
+   SCIP_PARAMSET*        paramset,           /**< parameter set */
+   const char*           name,               /**< name of the parameter */
+   const char*           defaultvalue        /**< new default value of the parameter */
    );
 
 /** reads parameters from a file */
@@ -321,7 +325,6 @@ SCIP_RETCODE SCIPparamsetWrite(
    );
 
 /** installs default values for all parameters */
-extern
 SCIP_RETCODE SCIPparamsetSetToDefaults(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -329,7 +332,6 @@ SCIP_RETCODE SCIPparamsetSetToDefaults(
    );
 
 /** installs default value for a single parameter */
-extern
 SCIP_RETCODE SCIPparamsetSetToDefault(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -349,8 +351,8 @@ SCIP_RETCODE SCIPparamsetSetToDefault(
  *  - \ref SCIP_PARAMEMPHASIS_PHASEFEAS to find feasible solutions during a 3 phase solution process
  *  - \ref SCIP_PARAMEMPHASIS_PHASEIMPROVE to find improved solutions during a 3 phase solution process
  *  - \ref SCIP_PARAMEMPHASIS_PHASEPROOF to proof optimality during a 3 phase solution process
+ *  - \ref SCIP_PARAMEMPHASIS_NUMERICS to solve problems which cause numerical issues
  */
-extern
 SCIP_RETCODE SCIPparamsetSetEmphasis(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -362,7 +364,6 @@ SCIP_RETCODE SCIPparamsetSetEmphasis(
 /** sets parameters to deactivate separators and heuristics that use auxiliary SCIP instances; should be called for
  *  auxiliary SCIP instances to avoid recursion
  */
-extern
 SCIP_RETCODE SCIPparamsetSetToSubscipsOff(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -376,7 +377,6 @@ SCIP_RETCODE SCIPparamsetSetToSubscipsOff(
  *  - SCIP_PARAMSETTING_AGGRESSIVE such that the heuristic are called more aggregative
  *  - SCIP_PARAMSETTING_OFF which turn off all heuristics
  */
-extern
 SCIP_RETCODE SCIPparamsetSetHeuristics(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -391,7 +391,6 @@ SCIP_RETCODE SCIPparamsetSetHeuristics(
  *  - SCIP_PARAMSETTING_AGGRESSIVE such that the presolving is more aggregative
  *  - SCIP_PARAMSETTING_OFF which turn off all presolving
  */
-extern
 SCIP_RETCODE SCIPparamsetSetPresolving(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -406,7 +405,6 @@ SCIP_RETCODE SCIPparamsetSetPresolving(
  *  - SCIP_PARAMSETTING_AGGRESSIVE such that the separating is done more aggregative
  *  - SCIP_PARAMSETTING_OFF which turn off all separating
  */
-extern
 SCIP_RETCODE SCIPparamsetSetSeparating(
    SCIP_PARAMSET*        paramset,           /**< parameter set */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -416,19 +414,16 @@ SCIP_RETCODE SCIPparamsetSetSeparating(
    );
 
 /** returns the array of parameters */
-extern
 SCIP_PARAM** SCIPparamsetGetParams(
    SCIP_PARAMSET*        paramset            /**< parameter set */
    );
 
 /** returns the number of parameters in the parameter set */
-extern
 int SCIPparamsetGetNParams(
    SCIP_PARAMSET*        paramset            /**< parameter set */
    );
 
 /** copies all parameter values of the source parameter set to the corresponding parameters in the target set */
-extern
 SCIP_RETCODE SCIPparamsetCopyParams(
    SCIP_PARAMSET*        sourceparamset,     /**< source parameter set */
    SCIP_PARAMSET*        targetparamset,     /**< target parameter set */
@@ -437,49 +432,42 @@ SCIP_RETCODE SCIPparamsetCopyParams(
    );
 
 /** checks whether value of SCIP_Bool parameter is valid */
-extern
 SCIP_Bool SCIPparamIsValidBool(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_Bool             value               /**< value to check */
    );
 
 /** checks whether value of integer parameter is valid */
-extern
 SCIP_Bool SCIPparamIsValidInt(
    SCIP_PARAM*           param,              /**< parameter */
    int                   value               /**< value to check */
    );
 
 /** checks whether value of SCIP_Longint parameter is valid */
-extern
 SCIP_Bool SCIPparamIsValidLongint(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_Longint          value               /**< value to check */
    );
 
 /** checks whether value of SCIP_Real parameter is valid */
-extern
 SCIP_Bool SCIPparamIsValidReal(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_Real             value               /**< value to check */
    );
 
 /** checks whether value of char parameter is valid */
-extern
 SCIP_Bool SCIPparamIsValidChar(
    SCIP_PARAM*           param,              /**< parameter */
    const char            value               /**< value to check */
    );
 
 /** checks whether value of string parameter is valid */
-extern
 SCIP_Bool SCIPparamIsValidString(
    SCIP_PARAM*           param,              /**< parameter */
    const char*           value               /**< value to check */
    );
 
 /** sets value of SCIP_Bool parameter */
-extern
 SCIP_RETCODE SCIPparamSetBool(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_SET*             set,                /**< global SCIP settings, or NULL if param change method should not be called */
@@ -490,7 +478,6 @@ SCIP_RETCODE SCIPparamSetBool(
    );
 
 /** sets value of int parameter */
-extern
 SCIP_RETCODE SCIPparamSetInt(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_SET*             set,                /**< global SCIP settings, or NULL if param change method should not be called */
@@ -501,7 +488,6 @@ SCIP_RETCODE SCIPparamSetInt(
    );
 
 /** sets value of SCIP_Longint parameter */
-extern
 SCIP_RETCODE SCIPparamSetLongint(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_SET*             set,                /**< global SCIP settings, or NULL if param change method should not be called */
@@ -512,7 +498,6 @@ SCIP_RETCODE SCIPparamSetLongint(
    );
 
 /** sets value of SCIP_Real parameter */
-extern
 SCIP_RETCODE SCIPparamSetReal(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_SET*             set,                /**< global SCIP settings, or NULL if param change method should not be called */
@@ -523,7 +508,6 @@ SCIP_RETCODE SCIPparamSetReal(
    );
 
 /** sets value of char parameter */
-extern
 SCIP_RETCODE SCIPparamSetChar(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_SET*             set,                /**< global SCIP settings, or NULL if param change method should not be called */
@@ -534,7 +518,6 @@ SCIP_RETCODE SCIPparamSetChar(
    );
 
 /** sets value of string parameter */
-extern
 SCIP_RETCODE SCIPparamSetString(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_SET*             set,                /**< global SCIP settings, or NULL if param change method should not be called */
@@ -544,7 +527,6 @@ SCIP_RETCODE SCIPparamSetString(
    );
 
 /** sets default value of SCIP_Bool parameter */
-extern
 void SCIPparamSetDefaultBool(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_Bool             defaultvalue        /**< new default value */
@@ -556,8 +538,31 @@ void SCIPparamSetDefaultInt(
    int                   defaultvalue        /**< new default value */
    );
 
+/** sets default value of SCIP_Longint parameter */
+void SCIPparamSetDefaultLongint(
+   SCIP_PARAM*           param,              /**< parameter */
+   SCIP_Longint          defaultvalue        /**< new default value */
+   );
+
+/** sets default value of SCIP_Real parameter */
+void SCIPparamSetDefaultReal(
+   SCIP_PARAM*           param,              /**< parameter */
+   SCIP_Real             defaultvalue        /**< new default value */
+   );
+
+/** sets default value of char parameter */
+void SCIPparamSetDefaultChar(
+   SCIP_PARAM*           param,              /**< parameter */
+   char                  defaultvalue        /**< new default value */
+   );
+
+/** sets default value of string parameter */
+void SCIPparamSetDefaultString(
+   SCIP_PARAM*           param,              /**< parameter */
+   const char*           defaultvalue        /**< new default value */
+   );
+
 /** sets the parameter to its default setting */
-extern
 SCIP_RETCODE SCIPparamSetToDefault(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -565,7 +570,6 @@ SCIP_RETCODE SCIPparamSetToDefault(
    );
 
 /** writes a single parameter to a file */
-extern
 SCIP_RETCODE SCIPparamWrite(
    SCIP_PARAM*           param,              /**< parameter */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */

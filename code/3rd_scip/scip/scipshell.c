@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   scipshell.c
+ * @ingroup OTHER_CFILES
  * @brief  SCIP command line interface
  * @author Tobias Achterberg
  */
@@ -28,6 +38,7 @@
 #include "scip/scipdefplugins.h"
 #include "scip/scipshell.h"
 #include "scip/message_default.h"
+#include "scip/reader_nl.h"
 
 /*
  * Message Handler
@@ -70,7 +81,6 @@ SCIP_RETCODE fromCommandLine(
    SCIPinfoMessage(scip, NULL, "read problem <%s>\n", filename);
    SCIPinfoMessage(scip, NULL, "============\n");
    SCIPinfoMessage(scip, NULL, "\n");
-
 
    retcode = SCIPreadProb(scip, filename, NULL);
 
@@ -132,7 +142,6 @@ SCIP_RETCODE fromCommandLine(
       SCIP_CALL( SCIPprintBestSol(scip, NULL, FALSE) );
    }
 
-
    /**************
     * Statistics *
     **************/
@@ -143,6 +152,91 @@ SCIP_RETCODE fromCommandLine(
    SCIP_CALL( SCIPprintStatistics(scip, NULL) );
 
    return SCIP_OKAY;
+}
+
+/** runs SCIP as if it was called by AMPL */
+static
+SCIP_RETCODE fromAmpl(
+   SCIP*                 scip,               /**< SCIP data structure */
+   char*                 nlfilename,         /**< name of .nl file, without the .nl */
+   const char*           defaultsetname      /**< name of default settings file */
+   )
+{
+#ifdef SCIP_WITH_AMPL
+   char fullnlfilename[SCIP_MAXSTRLEN];
+   char* logfile;
+   SCIP_Bool printstat;
+   size_t nlfilenamelen;
+
+   SCIP_CALL( SCIPaddBoolParam(scip, "display/statistics",
+      "whether to print statistics on a solve",
+      &printstat, FALSE, FALSE, NULL, NULL) );
+
+   SCIP_CALL( SCIPaddStringParam(scip, "display/logfile",
+      "name of file to write SCIP log to (additionally to writing to stdout)",
+      NULL, FALSE, "", NULL, NULL) );
+
+   SCIPprintVersion(scip, NULL);
+   SCIPinfoMessage(scip, NULL, "\n");
+
+   SCIPprintExternalCodes(scip, NULL);
+   SCIPinfoMessage(scip, NULL, "\n");
+
+   if( defaultsetname != NULL )
+   {
+      if( SCIPfileExists(defaultsetname) )
+      {
+         SCIPinfoMessage(scip, NULL, "reading user parameter file <%s>\n", defaultsetname);
+         SCIPinfoMessage(scip, NULL, "===========================\n\n");
+         SCIP_CALL( SCIPreadParams(scip, defaultsetname) );
+         SCIP_CALL( SCIPwriteParams(scip, NULL, FALSE, TRUE) );
+         SCIPinfoMessage(scip, NULL, "\n");
+      }
+      else
+      {
+         SCIPinfoMessage(scip, NULL, "user parameter file <%s> not found - using default parameters\n", defaultsetname);
+      }
+   }
+
+   SCIP_CALL( SCIPgetStringParam(scip, "display/logfile", &logfile) );
+   if( *logfile )
+      SCIPsetMessagehdlrLogfile(scip, logfile);
+
+   /* AMPL calls solver with file without .nl extension, but others (Pyomo) may not
+    * so add .nl only if not already present
+    */
+   nlfilenamelen = strlen(nlfilename);
+   if( nlfilenamelen > 3 && strcmp(nlfilename + (nlfilenamelen-3), ".nl") == 0 )
+      (void) SCIPsnprintf(fullnlfilename, SCIP_MAXSTRLEN, "%s", nlfilename);
+   else
+      (void) SCIPsnprintf(fullnlfilename, SCIP_MAXSTRLEN, "%s.nl", nlfilename);
+   SCIPinfoMessage(scip, NULL, "read problem <%s>\n", fullnlfilename);
+   SCIPinfoMessage(scip, NULL, "============\n\n");
+
+   SCIP_CALL( SCIPreadProb(scip, fullnlfilename, "nl") );
+
+   SCIPinfoMessage(scip, NULL, "\nsolve problem\n");
+   SCIPinfoMessage(scip, NULL, "=============\n\n");
+
+   SCIP_CALL( SCIPsolve(scip) );
+
+   SCIP_CALL( SCIPgetBoolParam(scip, "display/statistics", &printstat) );
+   if( printstat )
+   {
+      SCIPinfoMessage(scip, NULL, "\nStatistics\n");
+      SCIPinfoMessage(scip, NULL, "==========\n\n");
+
+      SCIP_CALL( SCIPprintStatistics(scip, NULL) );
+   }
+
+   SCIP_CALL( SCIPwriteSolutionNl(scip) );
+
+   return SCIP_OKAY;
+
+#else /* SCIP_WITH_AMPL */
+   SCIPerrorMessage("SCIP has been compiled without AMPL support.\n");
+   return SCIP_PLUGINNOTFOUND;
+#endif
 }
 
 /** evaluates command line parameters and runs SCIP appropriately in the given SCIP instance */
@@ -171,6 +265,14 @@ SCIP_RETCODE SCIPprocessShellArguments(
    /********************
     * Parse parameters *
     ********************/
+
+   /* recognize and handle case where we were called from AMPL first */
+   if( argc >= 3 && strcmp(argv[2], "-AMPL") == 0 )
+   {
+      SCIP_CALL( fromAmpl(scip, argv[1], defaultsetname) );
+
+      return SCIP_OKAY;
+   }
 
    quiet = FALSE;
    paramerror = FALSE;
@@ -415,8 +517,12 @@ SCIP_RETCODE SCIPprocessShellArguments(
          "  -b <batchfile>: load and execute dialog command batch file (can be used multiple times)\n"
          "  -r <randseed> : nonnegative integer to be used as random seed. "
          "Has priority over random seed specified through parameter settings (.set) file\n"
-         "  -c \"command\"  : execute single line of dialog commands (can be used multiple times)\n\n",
+         "  -c \"command\"  : execute single line of dialog commands (can be used multiple times)\n",
          argv[0]);
+#ifdef SCIP_WITH_AMPL
+      printf("\nas AMPL solver: %s <.nl-file without the .nl> -AMPL\n", argv[0]);
+#endif
+      printf("\n");
    }
 
    return SCIP_OKAY;
@@ -432,7 +538,7 @@ SCIP_RETCODE SCIPrunShell(
    )
 {
    SCIP* scip = NULL;
-   SCIP_RETCODE retcode = SCIP_OKAY;
+
    /*********
     * Setup *
     *********/
@@ -444,22 +550,20 @@ SCIP_RETCODE SCIPrunShell(
    SCIPenableDebugSol(scip);
 
    /* include default SCIP plugins */
-   SCIP_CALL_TERMINATE( retcode, SCIPincludeDefaultPlugins(scip), TERMINATE );
+   SCIP_CALL( SCIPincludeDefaultPlugins(scip) );
 
    /**********************************
     * Process command line arguments *
     **********************************/
 
-   SCIP_CALL_TERMINATE( retcode, SCIPprocessShellArguments(scip, argc, argv, defaultsetname), TERMINATE );
-
+   SCIP_CALL( SCIPprocessShellArguments(scip, argc, argv, defaultsetname) );
 
    /********************
     * Deinitialization *
     ********************/
-TERMINATE:
    SCIP_CALL( SCIPfree(&scip) );
 
    BMScheckEmptyMemory();
 
-   return retcode;
+   return SCIP_OKAY;
 }

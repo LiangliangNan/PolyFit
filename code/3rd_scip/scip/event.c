@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   event.c
+ * @ingroup OTHER_CFILES
  * @brief  methods and datastructures for managing events
  * @author Tobias Achterberg
  */
@@ -23,15 +33,20 @@
 #include <assert.h>
 #include <string.h>
 
-#include "scip/def.h"
-#include "scip/set.h"
+#include "scip/branch.h"
 #include "scip/clock.h"
 #include "scip/event.h"
 #include "scip/lp.h"
-#include "scip/var.h"
 #include "scip/primal.h"
-#include "scip/branch.h"
+#include "scip/pub_event.h"
 #include "scip/pub_message.h"
+#include "scip/pub_var.h"
+#include "scip/set.h"
+#include "scip/struct_event.h"
+#include "scip/struct_lp.h"
+#include "scip/struct_set.h"
+#include "scip/struct_var.h"
+#include "scip/var.h"
 
 /* timing the execution methods for event handling takes a lot of time, so it is disabled */
 /* #define TIMEEVENTEXEC */
@@ -60,8 +75,9 @@ SCIP_RETCODE SCIPeventhdlrCopyInclude(
    return SCIP_OKAY;
 }
 
-/** creates an event handler */
-SCIP_RETCODE SCIPeventhdlrCreate(
+/** internal method for creating an event handler */
+static
+SCIP_RETCODE doEventhdlrCreate(
    SCIP_EVENTHDLR**      eventhdlr,          /**< pointer to event handler data structure */
    const char*           name,               /**< name of event handler */
    const char*           desc,               /**< description of event handler */
@@ -82,6 +98,7 @@ SCIP_RETCODE SCIPeventhdlrCreate(
    assert(eventexec != NULL);
 
    SCIP_ALLOC( BMSallocMemory(eventhdlr) );
+   BMSclearMemory(*eventhdlr);
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*eventhdlr)->name, name, strlen(name)+1) );
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*eventhdlr)->desc, desc, strlen(desc)+1) );
    (*eventhdlr)->eventcopy = eventcopy;
@@ -102,6 +119,32 @@ SCIP_RETCODE SCIPeventhdlrCreate(
    return SCIP_OKAY;
 }
 
+/** creates an event handler */
+SCIP_RETCODE SCIPeventhdlrCreate(
+   SCIP_EVENTHDLR**      eventhdlr,          /**< pointer to event handler data structure */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   const char*           name,               /**< name of event handler */
+   const char*           desc,               /**< description of event handler */
+   SCIP_DECL_EVENTCOPY   ((*eventcopy)),     /**< copy method of event handler or NULL if you don't want to copy your plugin into sub-SCIPs */
+   SCIP_DECL_EVENTFREE   ((*eventfree)),     /**< destructor of event handler */
+   SCIP_DECL_EVENTINIT   ((*eventinit)),     /**< initialize event handler */
+   SCIP_DECL_EVENTEXIT   ((*eventexit)),     /**< deinitialize event handler */
+   SCIP_DECL_EVENTINITSOL((*eventinitsol)),  /**< solving process initialization method of event handler */
+   SCIP_DECL_EVENTEXITSOL((*eventexitsol)),  /**< solving process deinitialization method of event handler */
+   SCIP_DECL_EVENTDELETE ((*eventdelete)),   /**< free specific event data */
+   SCIP_DECL_EVENTEXEC   ((*eventexec)),     /**< execute event handler */
+   SCIP_EVENTHDLRDATA*   eventhdlrdata       /**< event handler data */
+   )
+{
+   assert(eventhdlr != NULL);
+   assert(set != NULL);
+
+   SCIP_CALL_FINALLY( doEventhdlrCreate(eventhdlr, name, desc, eventcopy, eventfree, eventinit, eventexit,
+      eventinitsol, eventexitsol, eventdelete, eventexec, eventhdlrdata), (void) SCIPeventhdlrFree(eventhdlr, set) );
+
+   return SCIP_OKAY;
+}
+
 /** calls destructor and frees memory of event handler */
 SCIP_RETCODE SCIPeventhdlrFree(
    SCIP_EVENTHDLR**      eventhdlr,          /**< pointer to event handler data structure */
@@ -109,9 +152,12 @@ SCIP_RETCODE SCIPeventhdlrFree(
    )
 {
    assert(eventhdlr != NULL);
-   assert(*eventhdlr != NULL);
-   assert(!(*eventhdlr)->initialized);
    assert(set != NULL);
+
+   if( *eventhdlr == NULL )
+      return SCIP_OKAY;
+
+   assert(!(*eventhdlr)->initialized);
 
    /* call destructor of event handler */
    if( (*eventhdlr)->eventfree != NULL )
@@ -123,8 +169,8 @@ SCIP_RETCODE SCIPeventhdlrFree(
    SCIPclockFree(&(*eventhdlr)->eventtime);
    SCIPclockFree(&(*eventhdlr)->setuptime);
 
-   BMSfreeMemoryArray(&(*eventhdlr)->name);
-   BMSfreeMemoryArray(&(*eventhdlr)->desc);
+   BMSfreeMemoryArrayNull(&(*eventhdlr)->name);
+   BMSfreeMemoryArrayNull(&(*eventhdlr)->desc);
    BMSfreeMemory(eventhdlr);
 
    return SCIP_OKAY;
@@ -461,6 +507,8 @@ SCIP_RETCODE SCIPeventCreateSync(
 #undef SCIPeventGetType
 #undef SCIPeventGetOldobj
 #undef SCIPeventGetNewobj
+#undef SCIPeventGetOldtype
+#undef SCIPeventGetNewtype
 #undef SCIPeventGetOldbound
 #undef SCIPeventGetNewbound
 #undef SCIPeventGetNode
@@ -781,6 +829,29 @@ SCIP_RETCODE SCIPeventCreateImplAdded(
    return SCIP_OKAY;
 }
 
+/** creates an event for a changeing the type of a variable */
+SCIP_RETCODE SCIPeventCreateTypeChanged(
+   SCIP_EVENT**          event,              /**< pointer to store the event */
+   BMS_BLKMEM*           blkmem,             /**< block memory */
+   SCIP_VAR*             var,                /**< variable whose objective value changed */
+   SCIP_VARTYPE          oldtype,            /**< old variable type */
+   SCIP_VARTYPE          newtype             /**< new variable type */
+   )
+{
+   assert(event != NULL);
+   assert(blkmem != NULL);
+   assert(oldtype != newtype);
+
+   /* create event data */
+   SCIP_ALLOC( BMSallocBlockMemory(blkmem, event) );
+   (*event)->eventtype = SCIP_EVENTTYPE_TYPECHANGED;
+   (*event)->data.eventtypechg.var = var;
+   (*event)->data.eventtypechg.oldtype = oldtype;
+   (*event)->data.eventtypechg.newtype = newtype;
+
+   return SCIP_OKAY;
+}
+
 /** creates an event for the addition of a linear row to the separation storage */
 SCIP_RETCODE SCIPeventCreateRowAddedSepa(
    SCIP_EVENT**          event,              /**< pointer to store the event */
@@ -1027,6 +1098,10 @@ SCIP_VAR* SCIPeventGetVar(
       assert(event->data.eventimpladd.var != NULL);
       return event->data.eventimpladd.var;
 
+   case SCIP_EVENTTYPE_TYPECHANGED:
+      assert(event->data.eventtypechg.var != NULL);
+      return event->data.eventtypechg.var;
+
    default:
       SCIPerrorMessage("event does not belong to a variable\n");
       SCIPABORT();
@@ -1090,6 +1165,11 @@ SCIP_RETCODE SCIPeventChgVar(
    case SCIP_EVENTTYPE_IMPLADDED:
       assert(event->data.eventimpladd.var != NULL);
       event->data.eventimpladd.var = var;
+      break;
+
+   case SCIP_EVENTTYPE_TYPECHANGED:
+      assert(event->data.eventtypechg.var != NULL);
+      event->data.eventtypechg.var = var;
       break;
 
    default:
@@ -1182,6 +1262,40 @@ SCIP_Real SCIPeventGetNewbound(
    }  /*lint !e788*/
 }
 
+/** gets old variable type for a variable type change event */
+SCIP_VARTYPE SCIPeventGetOldtype(
+   SCIP_EVENT*           event               /**< event */
+   )
+{
+   assert(event != NULL);
+
+   if( event->eventtype != SCIP_EVENTTYPE_TYPECHANGED )
+   {
+      SCIPerrorMessage("event is not an variable type change event\n");
+      SCIPABORT();
+      return SCIP_VARTYPE_CONTINUOUS;  /*lint !e527*/
+   }
+
+   return event->data.eventtypechg.oldtype;
+}
+
+/** gets new variable type for a variable type change event */
+SCIP_VARTYPE SCIPeventGetNewtype(
+   SCIP_EVENT*           event               /**< event */
+   )
+{
+   assert(event != NULL);
+
+   if( event->eventtype != SCIP_EVENTTYPE_TYPECHANGED )
+   {
+      SCIPerrorMessage("event is not an variable type change event\n");
+      SCIPABORT();
+      return SCIP_VARTYPE_CONTINUOUS;  /*lint !e527*/
+   }
+
+   return event->data.eventtypechg.newtype;
+}
+
 /** gets node for a node or LP event */
 SCIP_NODE* SCIPeventGetNode(
    SCIP_EVENT*           event               /**< event */
@@ -1189,7 +1303,7 @@ SCIP_NODE* SCIPeventGetNode(
 {
    assert(event != NULL);
 
-   if( (event->eventtype & (SCIP_EVENTTYPE_NODEEVENT | SCIP_EVENTTYPE_LPEVENT)) == 0 )
+   if( (event->eventtype & (SCIP_EVENTTYPE_NODEEVENT | SCIP_EVENTTYPE_NODEDELETE | SCIP_EVENTTYPE_LPEVENT)) == 0 )
    {
       SCIPerrorMessage("event is neither node nor LP event\n");
       SCIPABORT();
@@ -1207,7 +1321,7 @@ SCIP_RETCODE SCIPeventChgNode(
 {
    assert(event != NULL);
 
-   if( (event->eventtype & (SCIP_EVENTTYPE_NODEEVENT | SCIP_EVENTTYPE_LPEVENT)) == 0 )
+   if( (event->eventtype & (SCIP_EVENTTYPE_NODEEVENT |  SCIP_EVENTTYPE_NODEDELETE | SCIP_EVENTTYPE_LPEVENT)) == 0 )
    {
       SCIPerrorMessage("event is neither node nor LP event\n");
       SCIPABORT();
@@ -1309,9 +1423,9 @@ SCIP_ROW* SCIPeventGetRow(
          return event->data.eventrowdeletedlp.row;
       case SCIP_EVENTTYPE_ROWCOEFCHANGED:
          return event->data.eventrowcoefchanged.row;
-      case SCIP_EVENTTYPE_ROWCONSTCHANGED:
+      case SCIP_EVENTTYPE_ROWCONSTCHANGED: /*lint !e30 !e142*/
          return event->data.eventrowconstchanged.row;
-      case SCIP_EVENTTYPE_ROWSIDECHANGED:
+      case SCIP_EVENTTYPE_ROWSIDECHANGED: /*lint !e30 !e142*/
          return event->data.eventrowsidechanged.row;
       default:
          SCIPerrorMessage("event does not belong to a row\n");
@@ -1378,7 +1492,7 @@ SCIP_Real SCIPeventGetRowOldConstVal(
 {
    assert(event != NULL);
 
-   if( (event->eventtype & SCIP_EVENTTYPE_ROWCONSTCHANGED) == 0 )
+   if( !(event->eventtype & SCIP_EVENTTYPE_ROWCONSTCHANGED) )
    {
       SCIPerrorMessage("event is not a row coefficient changed event\n");
       SCIPABORT();
@@ -1395,7 +1509,7 @@ SCIP_Real SCIPeventGetRowNewConstVal(
 {
    assert(event != NULL);
 
-   if( (event->eventtype & SCIP_EVENTTYPE_ROWCONSTCHANGED) == 0 )
+   if( !(event->eventtype & SCIP_EVENTTYPE_ROWCONSTCHANGED) )
    {
       SCIPerrorMessage("event is not a row coefficient changed event\n");
       SCIPABORT();
@@ -1412,7 +1526,7 @@ SCIP_SIDETYPE SCIPeventGetRowSide(
 {
    assert(event != NULL);
 
-   if( (event->eventtype & SCIP_EVENTTYPE_ROWSIDECHANGED) == 0 )
+   if( !(event->eventtype & SCIP_EVENTTYPE_ROWSIDECHANGED) )
    {
       SCIPerrorMessage("event is not a row side changed event\n");
       SCIPABORT();
@@ -1429,7 +1543,7 @@ SCIP_Real SCIPeventGetRowOldSideVal(
 {
    assert(event != NULL);
 
-   if( (event->eventtype & SCIP_EVENTTYPE_ROWSIDECHANGED) == 0 )
+   if( !(event->eventtype & SCIP_EVENTTYPE_ROWSIDECHANGED) )
    {
       SCIPerrorMessage("event is not a row side changed event\n");
       SCIPABORT();
@@ -1446,7 +1560,7 @@ SCIP_Real SCIPeventGetRowNewSideVal(
 {
    assert(event != NULL);
 
-   if( (event->eventtype & SCIP_EVENTTYPE_ROWSIDECHANGED) == 0 )
+   if( !(event->eventtype & SCIP_EVENTTYPE_ROWSIDECHANGED) )
    {
       SCIPerrorMessage("event is not a row side changed event\n");
       SCIPABORT();
@@ -1480,13 +1594,13 @@ SCIP_RETCODE SCIPeventProcess(
    case SCIP_EVENTTYPE_DISABLED:
       break;
 
-   case SCIP_EVENTTYPE_SYNC: /*lint !e30 !e142*/
    case SCIP_EVENTTYPE_VARADDED:
    case SCIP_EVENTTYPE_PRESOLVEROUND:
    case SCIP_EVENTTYPE_NODEFOCUSED:
    case SCIP_EVENTTYPE_NODEFEASIBLE:
    case SCIP_EVENTTYPE_NODEINFEASIBLE:
    case SCIP_EVENTTYPE_NODEBRANCHED:
+   case SCIP_EVENTTYPE_NODEDELETE:
    case SCIP_EVENTTYPE_FIRSTLPSOLVED:
    case SCIP_EVENTTYPE_LPSOLVED:
    case SCIP_EVENTTYPE_POORSOLFOUND:
@@ -1496,8 +1610,9 @@ SCIP_RETCODE SCIPeventProcess(
    case SCIP_EVENTTYPE_ROWADDEDLP:
    case SCIP_EVENTTYPE_ROWDELETEDLP:
    case SCIP_EVENTTYPE_ROWCOEFCHANGED:
-   case SCIP_EVENTTYPE_ROWCONSTCHANGED:
-   case SCIP_EVENTTYPE_ROWSIDECHANGED:
+   case SCIP_EVENTTYPE_ROWCONSTCHANGED: /*lint !e30 !e142*/
+   case SCIP_EVENTTYPE_ROWSIDECHANGED: /*lint !e30 !e142*/
+   case SCIP_EVENTTYPE_SYNC: /*lint !e30 !e142*/
       SCIP_CALL( SCIPeventfilterProcess(eventfilter, set, event) );
       break;
 
@@ -1651,8 +1766,16 @@ SCIP_RETCODE SCIPeventProcess(
       SCIP_CALL( SCIPeventfilterProcess(var->eventfilter, set, event) );
       break;
 
+   case SCIP_EVENTTYPE_TYPECHANGED:
+      var = event->data.eventtypechg.var;
+      assert(var != NULL);
+
+      /* process variable's event filter */
+      SCIP_CALL( SCIPeventfilterProcess(var->eventfilter, set, event) );
+      break;
+
    default:
-      SCIPerrorMessage("unknown event type <%d>\n", event->eventtype);
+      SCIPerrorMessage("unknown event type <%" SCIP_EVENTTYPE_FORMAT ">\n", event->eventtype);
       return SCIP_INVALIDDATA;
    }
 
@@ -1875,8 +1998,8 @@ SCIP_RETCODE SCIPeventfilterDel(
       filterpos = eventfilterSearch(eventfilter, eventtype, eventhdlr, eventdata);
    if( filterpos == -1 )
    {
-      SCIPerrorMessage("no event for event handler %p with data %p and event mask 0x%x found in event filter %p\n",
-         eventhdlr, eventdata, eventtype, eventfilter);
+      SCIPerrorMessage("no event for event handler %p with data %p and event mask %" SCIP_EVENTTYPE_FORMAT " found in event filter %p\n",
+         (void*)eventhdlr, (void*)eventdata, eventtype, (void*)eventfilter);
       return SCIP_INVALIDDATA;
    }
    assert(0 <= filterpos && filterpos < eventfilter->len);
@@ -2138,9 +2261,13 @@ SCIP_RETCODE SCIPeventqueueAdd(
 
    if( !eventqueue->delayevents )
    {
+      SCIP_CALL( SCIPeventqueueDelay(eventqueue) );
+
       /* immediately process event */
       SCIP_CALL( SCIPeventProcess(*event, set, primal, lp, branchcand, eventfilter) );
       SCIP_CALL( SCIPeventFree(event, blkmem) );
+
+      SCIP_CALL( SCIPeventqueueProcess(eventqueue, blkmem, set, primal, lp, branchcand, eventfilter) );
    }
    else
    {
@@ -2153,7 +2280,6 @@ SCIP_RETCODE SCIPeventqueueAdd(
          SCIPerrorMessage("cannot add a disabled event to the event queue\n");
          return SCIP_INVALIDDATA;
 
-      case SCIP_EVENTTYPE_SYNC: /*lint !e30 !e142*/
       case SCIP_EVENTTYPE_VARADDED:
       case SCIP_EVENTTYPE_VARDELETED:
       case SCIP_EVENTTYPE_VARFIXED:
@@ -2165,6 +2291,7 @@ SCIP_RETCODE SCIPeventqueueAdd(
       case SCIP_EVENTTYPE_NODEFEASIBLE:
       case SCIP_EVENTTYPE_NODEINFEASIBLE:
       case SCIP_EVENTTYPE_NODEBRANCHED:
+      case SCIP_EVENTTYPE_NODEDELETE:
       case SCIP_EVENTTYPE_FIRSTLPSOLVED:
       case SCIP_EVENTTYPE_LPSOLVED:
       case SCIP_EVENTTYPE_POORSOLFOUND:
@@ -2178,8 +2305,9 @@ SCIP_RETCODE SCIPeventqueueAdd(
       case SCIP_EVENTTYPE_ROWADDEDLP: /* @todo remove previous DELETEDLP event */
       case SCIP_EVENTTYPE_ROWDELETEDLP: /* @todo remove previous ADDEDLP event */
       case SCIP_EVENTTYPE_ROWCOEFCHANGED: /* @todo merge? */
-      case SCIP_EVENTTYPE_ROWCONSTCHANGED: /* @todo merge with previous constchanged event */
-      case SCIP_EVENTTYPE_ROWSIDECHANGED: /* @todo merge with previous sidechanged event */
+      case SCIP_EVENTTYPE_ROWCONSTCHANGED: /* @todo merge with previous constchanged event */ /*lint !e30 !e142*/
+      case SCIP_EVENTTYPE_ROWSIDECHANGED: /* @todo merge with previous sidechanged event */ /*lint !e30 !e142*/
+      case SCIP_EVENTTYPE_SYNC: /*lint !e30 !e142*/
          /* these events cannot (or need not) be merged; just add them to the queue */
          SCIP_CALL( eventqueueAppend(eventqueue, set, event) );
          break;
@@ -2339,7 +2467,7 @@ SCIP_RETCODE SCIPeventqueueAdd(
          break;
 
       default:
-         SCIPerrorMessage("unknown event type <%d>\n", (*event)->eventtype);
+         SCIPerrorMessage("unknown event type <%" SCIP_EVENTTYPE_FORMAT ">\n", (*event)->eventtype);
          return SCIP_INVALIDDATA;
       }
    }

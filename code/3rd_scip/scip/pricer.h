@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -42,7 +51,6 @@ extern "C" {
 
 
 /** copies the given pricer to a new scip */
-extern
 SCIP_RETCODE SCIPpricerCopyInclude(
    SCIP_PRICER*          pricer,             /**< pricer */
    SCIP_SET*             set,                /**< SCIP_SET of SCIP to copy to */
@@ -50,7 +58,6 @@ SCIP_RETCODE SCIPpricerCopyInclude(
    );
 
 /** creates a variable pricer */
-extern
 SCIP_RETCODE SCIPpricerCreate(
    SCIP_PRICER**         pricer,             /**< pointer to variable pricer data structure */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -73,63 +80,54 @@ SCIP_RETCODE SCIPpricerCreate(
    );
 
 /** calls destructor and frees memory of variable pricer */
-extern
 SCIP_RETCODE SCIPpricerFree(
    SCIP_PRICER**         pricer,             /**< pointer to variable pricer data structure */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** initializes variable pricer */
-extern
 SCIP_RETCODE SCIPpricerInit(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** calls exit method of variable pricer */
-extern
 SCIP_RETCODE SCIPpricerExit(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs variable pricer that the branch and bound process is being started */
-extern
 SCIP_RETCODE SCIPpricerInitsol(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs variable pricer that the branch and bound process data is being freed */
-extern
 SCIP_RETCODE SCIPpricerExitsol(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** activates pricer such that it is called in LP solving loop */
-extern
 SCIP_RETCODE SCIPpricerActivate(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** deactivates pricer such that it is no longer called in LP solving loop */
-extern
 SCIP_RETCODE SCIPpricerDeactivate(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** enables or disables all clocks of \p pricer, depending on the value of the flag */
-extern
 void SCIPpricerEnableOrDisableClocks(
    SCIP_PRICER*          pricer,             /**< the pricer for which all clocks should be enabled or disabled */
    SCIP_Bool             enable              /**< should the clocks of the pricer be enabled? */
    );
 
 /** calls reduced cost pricing method of variable pricer */
-extern
 SCIP_RETCODE SCIPpricerRedcost(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -140,7 +138,6 @@ SCIP_RETCODE SCIPpricerRedcost(
    );
 
 /** calls Farkas pricing method of variable pricer */
-extern
 SCIP_RETCODE SCIPpricerFarkas(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -149,7 +146,6 @@ SCIP_RETCODE SCIPpricerFarkas(
    );
 
 /** depending on the LP's solution status, calls reduced cost or Farkas pricing method of variable pricer */
-extern
 SCIP_RETCODE SCIPpricerExec(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -162,7 +158,6 @@ SCIP_RETCODE SCIPpricerExec(
    );
 
 /** sets priority of variable pricer */
-extern
 void SCIPpricerSetPriority(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -170,42 +165,36 @@ void SCIPpricerSetPriority(
    );
 
 /** sets copy callback of pricer */
-extern
 void SCIPpricerSetCopy(
    SCIP_PRICER*          pricer,             /**< variable pricer */
    SCIP_DECL_PRICERCOPY  ((*pricercopy))     /**< copy callback of pricer */
    );
 
 /** sets destructor callback of pricer */
-extern
 void SCIPpricerSetFree(
    SCIP_PRICER*          pricer,             /**< pricer */
    SCIP_DECL_PRICERFREE  ((*pricerfree))     /**< destructor of pricer */
    );
 
 /** sets initialization callback of pricer */
-extern
 void SCIPpricerSetInit(
    SCIP_PRICER*          pricer,             /**< pricer */
    SCIP_DECL_PRICERINIT ((*pricerinit))      /**< initialize pricer */
    );
 
 /** sets deinitialization callback of pricer */
-extern
 void SCIPpricerSetExit(
    SCIP_PRICER*          pricer,             /**< pricer */
    SCIP_DECL_PRICEREXIT ((*pricerexit))      /**< deinitialize pricer */
    );
 
 /** sets solving process initialization callback of pricer */
-extern
 void SCIPpricerSetInitsol(
    SCIP_PRICER*          pricer,             /**< pricer */
    SCIP_DECL_PRICERINITSOL ((*pricerinitsol))/**< solving process initialization callback of pricer */
    );
 
 /** sets solving process deinitialization callback of pricer */
-extern
 void SCIPpricerSetExitsol(
    SCIP_PRICER*          pricer,             /**< pricer */
    SCIP_DECL_PRICEREXITSOL ((*pricerexitsol))/**< solving process deinitialization callback of pricer */

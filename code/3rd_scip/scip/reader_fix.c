@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   reader_fix.c
+ * @ingroup DEFPLUGINS_READER
  * @brief  file reader for variable fixings
  * @author Tobias Achterberg
  *
@@ -31,14 +41,25 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
+#include "scip/pub_fileio.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_reader.h"
+#include "scip/pub_var.h"
+#include "scip/reader_fix.h"
+#include "scip/scip_general.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_reader.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_var.h"
 #include <string.h>
-#if defined(_WIN32) || defined(_WIN64)
-#else
+
+#if !defined(_WIN32) && !defined(_WIN64)
 #include <strings.h> /*lint --e{766}*/ /* needed for strncasecmp() */
 #endif
 
-#include "scip/reader_fix.h"
 
 
 #define READER_NAME             "fixreader"
@@ -57,6 +78,7 @@ SCIP_RETCODE readSol(
    const char*           filename            /**< name of the input file */
    )
 {
+   SCIP_RETCODE retcode;
    SCIP_FILE* file;
    SCIP_Bool error;
    SCIP_Bool unknownvariablemessage;
@@ -134,6 +156,7 @@ SCIP_RETCODE readSol(
          value = -SCIPinfinity(scip);
       else
       {
+         /* coverity[secure_coding] */
          nread = sscanf(valuestring, "%lf", &value);
          if( nread != 1 )
          {
@@ -145,7 +168,14 @@ SCIP_RETCODE readSol(
       }
 
       /* fix the variable */
-      SCIP_CALL( SCIPfixVar(scip, var, value, &infeasible, &fixed) );
+      retcode = SCIPfixVar(scip, var, value, &infeasible, &fixed);
+      if( retcode != SCIP_OKAY )
+      {
+         SCIPerrorMessage("Error fixing variable <%s> to value %.15g in line %d of bounds file <%s>\n",
+            varname, value, lineno, filename);
+         error = TRUE;
+         break;
+      }
       if( infeasible )
       {
          SCIPerrorMessage("infeasible solution value of <%s>[%.15g,%.15g] to %.15g in line %d of solution file <%s>\n",

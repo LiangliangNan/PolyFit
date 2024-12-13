@@ -1,8 +1,7 @@
-// $Id$
 # ifndef CPPAD_UTILITY_HPP
 # define CPPAD_UTILITY_HPP
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -32,10 +31,14 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 # include <cppad/utility/romberg_one.hpp>
 # include <cppad/utility/rosen_34.hpp>
 # include <cppad/utility/runge_45.hpp>
+# include <cppad/utility/test_boolofvoid.hpp>
+# include <cppad/utility/set_union.hpp>
 # include <cppad/utility/speed_test.hpp>
 # include <cppad/utility/thread_alloc.hpp>
 # include <cppad/utility/time_test.hpp>
 # include <cppad/utility/to_string.hpp>
 # include <cppad/utility/track_new_del.hpp>
 # include <cppad/utility/vector.hpp>
+# include <cppad/utility/sparse_rc.hpp>
+# include <cppad/utility/sparse_rcv.hpp>
 # endif

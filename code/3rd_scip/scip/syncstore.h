@@ -3,20 +3,29 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   syncstore.h
  * @ingroup PARALLEL
  * @brief  the function declarations for the synchronization store
- * @author Robert Lion Gottwald
+ * @author Leona Gottwald
  * @author Stephen J. Maher
  */
 
@@ -31,37 +40,37 @@
 #include "scip/type_retcode.h"
 
 /** creates and captures a new synchronization store */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncstoreCreate(
    SCIP_SYNCSTORE**      syncstore           /**< pointer to return the created synchronization store */
    );
 
 /** releases a synchronization store */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncstoreRelease(
    SCIP_SYNCSTORE**      syncstore           /**< pointer to the synchronization store */
    );
 
 /** captures a synchronization store */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncstoreCapture(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** initialize the syncstore for the given SCIP instance */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncstoreInit(
    SCIP*                 scip                /**< SCIP main datastructure */
    );
 
 /** deinitializes the synchronization store */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncstoreExit(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** checks whether the solve-is-stopped flag in the syncstore has been set by any thread */
-EXTERN
+SCIP_EXPORT
 SCIP_Bool SCIPsyncstoreSolveIsStopped(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
@@ -69,51 +78,51 @@ SCIP_Bool SCIPsyncstoreSolveIsStopped(
 /** sets the solve-is-stopped flag in the syncstore so that subsequent calls to
  *  SCIPsyncstoreSolveIsStopped will return the given value in any thread
  */
-EXTERN
+SCIP_EXPORT
 void SCIPsyncstoreSetSolveIsStopped(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_Bool             stopped             /**< flag if the solve is stopped */
    );
 
 /** gets the upperbound from the last synchronization */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPsyncstoreGetLastUpperbound(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** gets the lowerbound from the last synchronization */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPsyncstoreGetLastLowerbound(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** gets the number of solutions from the last synchronization */
-EXTERN
+SCIP_EXPORT
 int SCIPsyncstoreGetLastNSols(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** gets the number of boundchanges from the last synchronization */
-EXTERN
+SCIP_EXPORT
 int SCIPsyncstoreGetLastNBounds(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** gets total memory used by all solvers from the last synchronization */
-EXTERN
+SCIP_EXPORT
 SCIP_Longint SCIPsyncstoreGetLastMemTotal(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** gets the synchronization frequency from the last synchronization */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPsyncstoreGetLastSyncfreq(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** get synchronization data with given number. It is the responsibility of the caller
  *  to only ask for a synchronization number that still exists. */
-EXTERN
+SCIP_EXPORT
 SCIP_SYNCDATA* SCIPsyncstoreGetSyncdata(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_Longint          syncnum             /**< the number of the synchronization to start, which
@@ -122,7 +131,7 @@ SCIP_SYNCDATA* SCIPsyncstoreGetSyncdata(
 
 /** get the next synchronization data that should be read and
  *  adjust the delay. Returns NULL if no more data should be read due to minimum delay */
-EXTERN
+SCIP_EXPORT
 SCIP_SYNCDATA* SCIPsyncstoreGetNextSyncdata(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data */
@@ -133,7 +142,7 @@ SCIP_SYNCDATA* SCIPsyncstoreGetNextSyncdata(
 
 /** ensures that the given synchronization data has been written by
  *  all solvers upon return of this function and blocks the caller if necessary. */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncstoreEnsureAllSynced(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
@@ -143,7 +152,7 @@ SCIP_RETCODE SCIPsyncstoreEnsureAllSynced(
  *  Needs to be followed by a call to SCIPsyncstoreFinishSync if
  *  the syncdata that is returned is not NULL
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncstoreStartSync(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_Longint          syncnum,            /**< the number of the synchronization to start, which
@@ -152,62 +161,62 @@ SCIP_RETCODE SCIPsyncstoreStartSync(
    );
 
 /** finishes synchronization for the synchronization data */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncstoreFinishSync(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_SYNCDATA**       syncdata            /**< the synchronization data */
    );
 
 /** gets status in synchronization data */
-EXTERN
+SCIP_EXPORT
 SCIP_STATUS SCIPsyncdataGetStatus(
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
    );
 
 /** gets the solver that had the best status, or -1 if solve is not stopped yet */
-EXTERN
+SCIP_EXPORT
 int SCIPsyncstoreGetWinner(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** how many solvers have already finished synchronizing on this sychronization data */
-EXTERN
+SCIP_EXPORT
 int SCIPsyncdataGetNSynced(
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
    );
 
 /** how many solvers have are running concurrently */
-EXTERN
+SCIP_EXPORT
 int SCIPsyncstoreGetNSolvers(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** read amount of memory used from synchronization data */
-EXTERN
+SCIP_EXPORT
 SCIP_Longint SCIPsyncdataGetMemTotal(
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
    );
 
 /** read the synchronization frequency from a synchronization data */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPsyncdataGetSyncFreq(
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
    );
 
 /** read the upperbound stored in a synchronization data */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPsyncdataGetUpperbound(
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
    );
 
 /** read the lowerbound stored in a synchronization data */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPsyncdataGetLowerbound(
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
    );
 
 /** read the solutions stored in a synchronization data */
-EXTERN
+SCIP_EXPORT
 void SCIPsyncdataGetSolutions(
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data */
    SCIP_Real***          solvalues,          /**< pointer to return array of buffers containing the solution values */
@@ -216,13 +225,13 @@ void SCIPsyncdataGetSolutions(
    );
 
 /** read bound changes stored in the synchronization data */
-EXTERN
+SCIP_EXPORT
 SCIP_BOUNDSTORE* SCIPsyncdataGetBoundChgs(
    SCIP_SYNCDATA*        syncdata            /**< the synchronization data */
    );
 
 /** write the synchronization frequency to a synchronization data */
-EXTERN
+SCIP_EXPORT
 void SCIPsyncdataSetSyncFreq(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data */
@@ -230,7 +239,7 @@ void SCIPsyncdataSetSyncFreq(
    );
 
 /** set status in the synchronization data */
-EXTERN
+SCIP_EXPORT
 void SCIPsyncdataSetStatus(
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data the upperbound should be added to */
    SCIP_STATUS           status,             /**< the status */
@@ -238,21 +247,21 @@ void SCIPsyncdataSetStatus(
    );
 
 /** adds memory used to the synchronization data */
-EXTERN
+SCIP_EXPORT
 void SCIPsyncdataAddMemTotal(
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data the solution should be added to */
    SCIP_Longint          memtotal            /**< the number of bytes used */
    );
 
 /** set upperbound to the synchronization data */
-EXTERN
+SCIP_EXPORT
 void SCIPsyncdataSetUpperbound(
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data the upperbound should be added to */
    SCIP_Real             upperbound          /**< the upperbound */
    );
 
 /** set lowerbound to the synchronization data */
-EXTERN
+SCIP_EXPORT
 void SCIPsyncdataSetLowerbound(
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data the lowerbound should be added to */
    SCIP_Real             lowerbound          /**< the lowerbound */
@@ -261,7 +270,7 @@ void SCIPsyncdataSetLowerbound(
 /** gives a buffer to store the solution values, or NULL if solution should not be stored
  *  because there are already better solutions stored.
  */
-EXTERN
+SCIP_EXPORT
 void SCIPsyncdataGetSolutionBuffer(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data the solution should be added to */
@@ -272,7 +281,7 @@ void SCIPsyncdataGetSolutionBuffer(
    );
 
 /** adds bound changes to the synchronization data */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPsyncdataAddBoundChanges(
    SCIP_SYNCSTORE*       syncstore,          /**< the synchronization store */
    SCIP_SYNCDATA*        syncdata,           /**< the synchronization data */
@@ -280,16 +289,15 @@ SCIP_RETCODE SCIPsyncdataAddBoundChanges(
    );
 
 /** is synchronization store initialized */
-EXTERN
+SCIP_EXPORT
 SCIP_Bool SCIPsyncstoreIsInitialized(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
 /** returns the mode of the synchronization store */
-EXTERN
+SCIP_EXPORT
 SCIP_PARALLELMODE SCIPsyncstoreGetMode(
    SCIP_SYNCSTORE*       syncstore           /**< the synchronization store */
    );
 
-/**@} */
 #endif

@@ -3,28 +3,46 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   cons_integral.c
+ * @ingroup DEFPLUGINS_CONS
  * @brief  constraint handler for the integrality constraint
  * @author Tobias Achterberg
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-#include <limits.h>
-
 #include "scip/cons_integral.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_message.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_sol.h"
+#include <string.h>
 
 
 #define CONSHDLR_NAME          "integral"
@@ -179,45 +197,42 @@ SCIP_DECL_CONSCHECK(consCheckIntegral)
 
    *result = SCIP_FEASIBLE;
 
+   if( !checkintegrality )
+      return SCIP_OKAY;
+
    ninteger = nbin + nint;
 
-   if( checkintegrality )
+   for( v = 0; v < ninteger; ++v )
    {
-      for( v = 0; v < ninteger; ++v )
+      solval = SCIPgetSolVal(scip, sol, vars[v]);
+
+      if( sol != NULL )
+         SCIPupdateSolIntegralityViolation(scip, sol, EPSFRAC(solval, SCIPfeastol(scip)));
+
+      if( !SCIPisFeasIntegral(scip, solval) )
       {
-         solval = SCIPgetSolVal(scip, sol, vars[v]);
+         *result = SCIP_INFEASIBLE;
 
-         if( sol != NULL )
-            SCIPupdateSolIntegralityViolation(scip, sol, EPSFRAC(solval, SCIPfeastol(scip)));
-
-         if( !SCIPisFeasIntegral(scip, solval) )
+         if( printreason )
          {
-            *result = SCIP_INFEASIBLE;
-
-            if( printreason )
-            {
-               SCIPinfoMessage(scip, NULL, "violation: integrality condition of variable <%s> = %.15g\n", 
-                  SCIPvarGetName(vars[v]), solval);
-            }
-            if( !completely )
-               break;
+            SCIPinfoMessage(scip, NULL, "violation: integrality condition of variable <%s> = %.15g\n",
+               SCIPvarGetName(vars[v]), solval);
          }
+         if( !completely )
+            break;
       }
    }
-#ifndef NDEBUG
-   else
-   {
-      for( v = 0; v < ninteger; ++v )
-      {
-         solval = SCIPgetSolVal(scip, sol, vars[v]);
-         assert(SCIPisFeasIntegral(scip, solval));
-      }
-   }
-#endif
 
    nallinteger = ninteger + nimpl;
    for( v = ninteger; v < nallinteger; ++v )
    {
+      /* if a variable has been added for relaxation purposes, i.e., to formulate an (implicit) extended formulation,
+       * then there is no constraint that ensures that it will take an integer value
+       * since such variables have no counterpart in the original problem, it is ok if they violate an implicit integrality flag
+       */
+      if( SCIPvarIsRelaxationOnly(vars[v]) )
+         continue;
+
       solval = SCIPgetSolVal(scip, sol, vars[v]);
       if( !SCIPisFeasIntegral(scip, solval) )
       {
@@ -251,7 +266,7 @@ SCIP_DECL_CONSGETDIVEBDCHGS(consGetDiveBdChgsIntegral)
    SCIP_Real solval;
    SCIP_Real score;
    SCIP_Real bestscore;
-   SCIP_Bool roundup;
+   SCIP_Bool bestroundup;
    int ninteger;
    int nbin;
    int nint;
@@ -275,7 +290,7 @@ SCIP_DECL_CONSGETDIVEBDCHGS(consGetDiveBdChgsIntegral)
    bestscore = SCIP_REAL_MIN;
    bestcandidx = -1;
    *success = FALSE;
-   roundup = FALSE; /* only for lint */
+   bestroundup = FALSE; /* only for lint */
 
    /* loop over solution values and get score of fractional variables */
    for( v = 0; v < ninteger; ++v )
@@ -285,6 +300,8 @@ SCIP_DECL_CONSGETDIVEBDCHGS(consGetDiveBdChgsIntegral)
       /* skip variable if solution value disagrees with the local bounds */
       if( ! SCIPisFeasIntegral(scip, solval) && SCIPisGE(scip, solval, SCIPvarGetLbLocal(vars[v])) && SCIPisLE(scip, solval, SCIPvarGetUbLocal(vars[v])) )
       {
+         SCIP_Bool roundup;
+
          SCIP_CALL( SCIPgetDivesetScore(scip, diveset, SCIP_DIVETYPE_INTEGRALITY, vars[v], solval,
                solval - SCIPfloor(scip, solval), &score, &roundup) );
 
@@ -293,6 +310,7 @@ SCIP_DECL_CONSGETDIVEBDCHGS(consGetDiveBdChgsIntegral)
          {
             bestcandidx = v;
             bestscore = score;
+            bestroundup = roundup;
             *success = TRUE;
          }
       }
@@ -306,13 +324,12 @@ SCIP_DECL_CONSGETDIVEBDCHGS(consGetDiveBdChgsIntegral)
 
       /* if we want to round up the best candidate, it is added as the preferred bound change */
       SCIP_CALL( SCIPaddDiveBoundChange(scip, vars[bestcandidx], SCIP_BRANCHDIR_UPWARDS,
-            SCIPceil(scip, solval), roundup) );
+            SCIPceil(scip, solval), bestroundup) );
       SCIP_CALL( SCIPaddDiveBoundChange(scip, vars[bestcandidx], SCIP_BRANCHDIR_DOWNWARDS,
-            SCIPfloor(scip, solval), ! roundup) );
+            SCIPfloor(scip, solval), ! bestroundup) );
    }
 
    return SCIP_OKAY;
-
 }
 
 /*

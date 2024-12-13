@@ -1,15 +1,24 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
-/*                        This file is part of the program                   */
-/*                    TCLIQUE --- Algorithm for Maximum Cliques              */
+/*                  This file is part of the program                         */
+/*              TCLIQUE --- Algorithm for Maximum Cliques                    */
 /*                                                                           */
-/*    Copyright (C) 1996-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 1996-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  TCLIQUE is distributed under the terms of the ZIB Academic License.      */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with TCLIQUE; see the file COPYING.                                */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with TCLIQUE; see the file LICENSE.                                */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -128,20 +137,20 @@ typedef enum TCLIQUE_Status TCLIQUE_STATUS;
  */
 
 /** gets number of nodes in the graph */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_GETNNODES(tcliqueGetNNodes);
 
 /** gets weight of nodes in the graph */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_GETWEIGHTS(tcliqueGetWeights);
 
 /** returns, whether the edge (node1, node2) is in the graph */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_ISEDGE(tcliqueIsEdge);
 
 /** selects all nodes from a given set of nodes which are adjacent to a given node
  *  and returns the number of selected nodes */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_SELECTADJNODES(tcliqueSelectAdjnodes);
 
 
@@ -152,19 +161,19 @@ TCLIQUE_SELECTADJNODES(tcliqueSelectAdjnodes);
  */
 
 /** creates graph data structure */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_Bool tcliqueCreate(
    TCLIQUE_GRAPH**       tcliquegraph        /**< pointer to store graph data structure */
    );
 
 /** frees graph data structure */
-EXTERN
+SCIP_EXPORT
 void tcliqueFree(
    TCLIQUE_GRAPH**       tcliquegraph        /**< pointer to graph data structure */
    );
 
 /** adds nodes up to the given node number to graph data structure (intermediate nodes have weight 0) */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_Bool tcliqueAddNode(
    TCLIQUE_GRAPH*        tcliquegraph,       /**< graph data structure */
    int                   node,               /**< node number to add */
@@ -172,7 +181,7 @@ TCLIQUE_Bool tcliqueAddNode(
    );
 
 /** changes weight of node in graph data structure */
-EXTERN
+SCIP_EXPORT
 void tcliqueChangeWeight(
    TCLIQUE_GRAPH*        tcliquegraph,       /**< graph data structure */
    int                   node,               /**< node to set new weight */
@@ -185,7 +194,7 @@ void tcliqueChangeWeight(
  *  New edges are cached, s.t. the graph data structures are not correct until a call to tcliqueFlush();
  *  you have to make sure, that no double edges are inserted.
  */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_Bool tcliqueAddEdge(
    TCLIQUE_GRAPH*        tcliquegraph,       /**< graph data structure */
    int                   node1,              /**< start node of edge to add */
@@ -193,13 +202,13 @@ TCLIQUE_Bool tcliqueAddEdge(
    );
 
 /** inserts all cached edges into the data structures */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_Bool tcliqueFlush(
    TCLIQUE_GRAPH*        tcliquegraph        /**< graph data structure */
    );
 
 /** loads graph data structure from file */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_Bool tcliqueLoadFile(
    TCLIQUE_GRAPH**       tcliquegraph,       /**< pointer to store graph data structure */
    const char*           filename,           /**< name of file with graph data */
@@ -209,7 +218,7 @@ TCLIQUE_Bool tcliqueLoadFile(
    );
 
 /** saves graph data structure to file */
-EXTERN
+SCIP_EXPORT
 TCLIQUE_Bool tcliqueSaveFile(
    TCLIQUE_GRAPH*        tcliquegraph,       /**< graph data structure */
    const char*           filename,           /**< name of file to create */
@@ -218,39 +227,39 @@ TCLIQUE_Bool tcliqueSaveFile(
    );
 
 /** gets number of edges in the graph */
-EXTERN
+SCIP_EXPORT
 int tcliqueGetNEdges(
    TCLIQUE_GRAPH*        tcliquegraph        /**< pointer to graph data structure */
    );
 
 /** gets degree of nodes in graph */
-EXTERN
+SCIP_EXPORT
 int* tcliqueGetDegrees(
    TCLIQUE_GRAPH*        tcliquegraph        /**< pointer to graph data structure */
    );
 
 /** gets adjacent nodes of edges in graph */
-EXTERN
+SCIP_EXPORT
 int* tcliqueGetAdjnodes(
    TCLIQUE_GRAPH*        tcliquegraph        /**< pointer to graph data structure */
    );
 
 /** gets pointer to first adjacent edge of given node in graph */
-EXTERN
+SCIP_EXPORT
 int* tcliqueGetFirstAdjedge(
    TCLIQUE_GRAPH*        tcliquegraph,       /**< pointer to graph data structure */
    int                   node                /**< given node */
    );
 
 /** gets pointer to last adjacent edge of given node in graph */
-EXTERN
+SCIP_EXPORT
 int* tcliqueGetLastAdjedge(
    TCLIQUE_GRAPH*        tcliquegraph,       /**< pointer to graph data structure */
    int                   node                /**< given node */
    );
 
 /** prints graph data structure */
-EXTERN
+SCIP_EXPORT
 void tcliquePrintGraph(
    TCLIQUE_GRAPH*        tcliquegraph        /**< pointer to graph data structure */
    );
@@ -263,7 +272,7 @@ void tcliquePrintGraph(
  */
 
 /** finds maximum weight clique */
-EXTERN
+SCIP_EXPORT
 void tcliqueMaxClique(
    TCLIQUE_GETNNODES((*getnnodes)),          /**< user function to get the number of nodes */
    TCLIQUE_GETWEIGHTS((*getweights)),        /**< user function to get the node weights */

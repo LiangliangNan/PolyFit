@@ -1,10 +1,9 @@
-// $Id$
-# ifndef CPPAD_LOG1P_OP_HPP
-# define CPPAD_LOG1P_OP_HPP
+# ifndef CPPAD_LOCAL_LOG1P_OP_HPP
+# define CPPAD_LOCAL_LOG1P_OP_HPP
 # if CPPAD_USE_CPLUSPLUS_2011
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,7 +13,7 @@ A copy of this license is included in the COPYING file of this distribution.
 Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file log1p_op.hpp
 Forward and reverse mode calculations for z = log1p(x).
@@ -28,7 +27,7 @@ The C++ source code corresponding to this operation is
 	z = log1p(x)
 \endverbatim
 
-\copydetails forward_unary1_op
+\copydetails CppAD::local::forward_unary1_op
 */
 template <class Base>
 inline void forward_log1p_op(
@@ -58,17 +57,17 @@ inline void forward_log1p_op(
 			return;
 	}
 	if ( p == 1 )
-	{	z[1] = x[1] / (Base(1) + x[0]);
+	{	z[1] = x[1] / (Base(1.0) + x[0]);
 		p++;
 	}
 	for(size_t j = p; j <= q; j++)
 	{
 		z[j] = -z[1] * x[j-1];
 		for(k = 2; k < j; k++)
-			z[j] -= Base(k) * z[k] * x[j-k];
-		z[j] /= Base(j);
+			z[j] -= Base(double(k)) * z[k] * x[j-k];
+		z[j] /= Base(double(j));
 		z[j] += x[j];
-		z[j] /= (Base(1) + x[0]);
+		z[j] /= (Base(1.0) + x[0]);
 	}
 }
 
@@ -80,7 +79,7 @@ The C++ source code corresponding to this operation is
 	z = log1p(x)
 \endverbatim
 
-\copydetails forward_unary1_op_dir
+\copydetails CppAD::local::forward_unary1_op_dir
 */
 template <class Base>
 inline void forward_log1p_op_dir(
@@ -105,10 +104,10 @@ inline void forward_log1p_op_dir(
 
 	size_t m = (q-1) * r + 1;
 	for(size_t ell = 0; ell < r; ell++)
-	{	z[m+ell] = Base(q) * x[m+ell];
+	{	z[m+ell] = Base(double(q)) * x[m+ell];
 		for(size_t k = 1; k < q; k++)
-			z[m+ell] -= Base(k) * z[(k-1)*r+1+ell] * x[(q-k-1)*r+1+ell];
-		z[m+ell] /= (Base(q) + Base(q) * x[0]);
+			z[m+ell] -= Base(double(k)) * z[(k-1)*r+1+ell] * x[(q-k-1)*r+1+ell];
+		z[m+ell] /= (Base(double(q)) + Base(q) * x[0]);
 	}
 }
 
@@ -120,7 +119,7 @@ The C++ source code corresponding to this operation is
 	z = log1p(x)
 \endverbatim
 
-\copydetails forward_unary1_op_0
+\copydetails CppAD::local::forward_unary1_op_0
 */
 template <class Base>
 inline void forward_log1p_op_0(
@@ -150,7 +149,7 @@ The C++ source code corresponding to this operation is
 	z = log1p(x)
 \endverbatim
 
-\copydetails reverse_unary1_op
+\copydetails CppAD::local::reverse_unary1_op
 */
 
 template <class Base>
@@ -178,7 +177,7 @@ inline void reverse_log1p_op(
 	const Base* z  = taylor  + i_z * cap_order;
 	Base* pz       = partial + i_z * nc_partial;
 
-	Base inv_1px0 = Base(1) / (Base(1) + x[0]);
+	Base inv_1px0 = Base(1.0) / (Base(1) + x[0]);
 
 	j = d;
 	while(j)
@@ -189,17 +188,17 @@ inline void reverse_log1p_op(
 		px[j]   += pz[j];
 
 		// further scale partial w.r.t. z[j]
-		pz[j]   /= Base(j);
+		pz[j]   /= Base(double(j));
 
 		for(k = 1; k < j; k++)
-		{	pz[k]   -= Base(k) * azmul(pz[j], x[j-k]);
-			px[j-k] -= Base(k) * azmul(pz[j], z[k]);
+		{	pz[k]   -= Base(double(k)) * azmul(pz[j], x[j-k]);
+			px[j-k] -= Base(double(k)) * azmul(pz[j], z[k]);
 		}
 		--j;
 	}
 	px[0] += azmul(pz[0], inv_1px0);
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif
 # endif

@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   sepa_disjunctive.c
+ * @ingroup DEFPLUGINS_SEPA
  * @brief  disjunctive cut separator
  * @author Tobias Fischer
  * @author Marc Pfetsch
@@ -31,11 +41,29 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-#include <ctype.h>
-#include "scip/sepa_disjunctive.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_sos1.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_sepa.h"
+#include "scip/pub_var.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_cut.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_sepa.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include "scip/sepa_disjunctive.h"
+#include <string.h>
 
 
 #define SEPA_NAME              "disjunctive"
@@ -183,11 +211,12 @@ SCIP_RETCODE getSimplexCoefficients(
 }
 
 
-/** computes a disjunctive cut inequality based on two simplex taubleau rows */
+/** computes a disjunctive cut inequality based on two simplex tableau rows */
 static
 SCIP_RETCODE generateDisjCutSOS1(
    SCIP*                 scip,               /**< SCIP pointer */
    SCIP_SEPA*            sepa,               /**< separator */
+   int                   depth,              /**< current depth */
    SCIP_ROW**            rows,               /**< LP rows */
    int                   nrows,              /**< number of LP rows */
    SCIP_COL**            cols,               /**< LP columns */
@@ -363,11 +392,10 @@ SCIP_RETCODE generateDisjCutSOS1(
    }
 
    /* create cut */
-   (void) SCIPsnprintf(cutname, SCIP_MAXSTRLEN, "%s_%d_%d", SCIPsepaGetName(sepa), SCIPgetNLPs(scip), ndisjcuts);
-   if ( SCIPgetDepth(scip) == 0 )
-      SCIP_CALL( SCIPcreateEmptyRowSepa(scip, row, sepa, cutname, cutlhs, SCIPinfinity(scip), FALSE, FALSE, TRUE) );
-   else
-      SCIP_CALL( SCIPcreateEmptyRowSepa(scip, row, sepa, cutname, cutlhs, SCIPinfinity(scip), TRUE, FALSE, TRUE) );
+   (void) SCIPsnprintf(cutname, SCIP_MAXSTRLEN, "%s_%" SCIP_LONGINT_FORMAT "_%d", SCIPsepaGetName(sepa), SCIPgetNLPs(scip), ndisjcuts);
+
+   /* we create the cut as locally valid, SCIP will make it globally valid if we are at the root node */
+   SCIP_CALL( SCIPcreateEmptyRowSepa(scip, row, sepa, cutname, cutlhs, SCIPinfinity(scip), TRUE, FALSE, TRUE) );
 
    SCIP_CALL( SCIPcacheRowExtensions(scip, *row) );
    for (c = 0; c < ncols; ++c)
@@ -389,16 +417,16 @@ SCIP_RETCODE generateDisjCutSOS1(
       SCIP_Longint maxdnom;
       SCIP_Real maxscale;
 
-      assert( SCIPgetDepth(scip) >= 0 );
-      if( SCIPgetDepth(scip) == 0 )
+      assert( depth >= 0 );
+      if( depth == 0 )
       {
-	 maxdnom = 100;
-	 maxscale = 100.0;
+         maxdnom = 100;
+	      maxscale = 100.0;
       }
       else
       {
-	 maxdnom = 10;
-	 maxscale = 10.0;
+         maxdnom = 10;
+         maxscale = 10.0;
       }
 
       SCIP_CALL( SCIPmakeRowIntegral(scip, *row, -SCIPepsilon(scip), SCIPsumepsilon(scip), maxdnom, maxscale, TRUE, madeintegral) );
@@ -491,7 +519,6 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpDisjunctive)
    int nconss;
    int maxcuts;
    int ncalls;
-   int depth;
    int ncols;
    int nrows;
    int ind;
@@ -546,7 +573,6 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpDisjunctive)
       return SCIP_OKAY;
 
    /* check for maxdepth < depth, maxinvcutsroot = 0 and maxinvcuts = 0 */
-   depth = SCIPgetDepth(scip);
    if ( ( sepadata->maxdepth >= 0 && sepadata->maxdepth < depth )
       || ( depth == 0 && sepadata->maxinvcutsroot == 0 )
       || ( depth > 0 && sepadata->maxinvcuts == 0 ) )
@@ -560,6 +586,9 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpDisjunctive)
 
    /* get conflict graph and number of conflict graph edges (note that the digraph arcs were added in both directions) */
    conflictgraph = SCIPgetConflictgraphSOS1(conshdlr);
+   if( conflictgraph == NULL )
+      return SCIP_OKAY;
+
    nedges = (int)SCIPceil(scip, (SCIP_Real)SCIPdigraphGetNArcs(conflictgraph)/2);
 
    /* if too many conflict graph edges, the separator can be slow: delay it until no other cuts have been found */
@@ -655,7 +684,7 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpDisjunctive)
    SCIPfreeBufferArrayNull(scip, &violationarray);
 
    /* compute maximal number of cuts */
-   if ( SCIPgetDepth(scip) == 0 )
+   if ( depth == 0 )
       maxcuts = MIN(sepadata->maxinvcutsroot, nrelevantedges);
    else
       maxcuts = MIN(sepadata->maxinvcuts, nrelevantedges);
@@ -765,7 +794,6 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpDisjunctive)
       else
          bound1 = SCIPcolGetLb(col);
 
-
       /* determine second simplex row */
       var = SCIPnodeGetVarSOS1(conflictgraph, fixings2[edgenumber]);
       col = SCIPvarGetCol(var);
@@ -793,7 +821,7 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpDisjunctive)
          bound2 = SCIPcolGetLb(col);
 
       /* add coefficients to cut */
-      SCIP_CALL( generateDisjCutSOS1(scip, sepa, rows, nrows, cols, ncols, ndisjcuts, MAKECONTINTEGRAL, sepadata->strengthen, cutlhs1, cutlhs2, bound1, bound2, simplexcoefs1, simplexcoefs2, cutcoefs, &row, &madeintegral) );
+      SCIP_CALL( generateDisjCutSOS1(scip, sepa, depth, rows, nrows, cols, ncols, ndisjcuts, MAKECONTINTEGRAL, sepadata->strengthen, cutlhs1, cutlhs2, bound1, bound2, simplexcoefs1, simplexcoefs2, cutcoefs, &row, &madeintegral) );
       if ( row == NULL )
          continue;
 
@@ -850,11 +878,11 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpDisjunctive)
    SCIPfreeBufferArrayNull(scip, &coef);
    SCIPfreeBufferArrayNull(scip, &binvrow);
    SCIPfreeBufferArrayNull(scip, &basisrow);
+   SCIPfreeBufferArrayNull(scip, &rowsmaxval);
+   SCIPfreeBufferArrayNull(scip, &varrank);
    SCIPfreeBufferArrayNull(scip, &fixings2);
    SCIPfreeBufferArrayNull(scip, &fixings1);
    SCIPfreeBufferArrayNull(scip, &edgearray);
-   SCIPfreeBufferArrayNull(scip, &rowsmaxval);
-   SCIPfreeBufferArrayNull(scip, &varrank);
 
    return SCIP_OKAY;
 }

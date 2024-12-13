@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   prop_pseudoobj.c
+ * @ingroup DEFPLUGINS_PROP
  * @brief  Pseudo objective propagator
  * @author Tobias Achterberg
  * @author Stefan Heinz
@@ -28,11 +38,32 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/prop_pseudoobj.h"
-
+#include "scip/pub_event.h"
+#include "scip/pub_implics.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_prop.h"
+#include "scip/pub_var.h"
+#include "scip/scip_conflict.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_pricer.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_prop.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include "scip/dbldblarith.h"
+#include <string.h>
 
 #define PROP_NAME              "pseudoobj"
 #define PROP_DESC              "pseudo objective function propagator"
@@ -182,7 +213,6 @@ void checkImplicsApplied(
 /** check if the global fixed indices are correct */
 static
 void checkGlbfirstnonfixed(
-   SCIP*                 scip,               /**< SCIP data structure */
    SCIP_PROPDATA*        propdata            /**< propagator data */
    )
 {
@@ -260,14 +290,14 @@ SCIP_DECL_SORTPTRCOMP(varCompObj)
 
    /* second criteria the locks which indicate most effect */
    if( SCIPvarGetObj(var1) > 0.0 )
-      locks1 = SCIPvarGetNLocksDown(var1);
+      locks1 = SCIPvarGetNLocksDownType(var1, SCIP_LOCKTYPE_MODEL);
    else
-      locks1 = SCIPvarGetNLocksUp(var1);
+      locks1 = SCIPvarGetNLocksUpType(var1, SCIP_LOCKTYPE_MODEL);
 
    if( SCIPvarGetObj(var2) > 0.0 )
-      locks2 = SCIPvarGetNLocksDown(var2);
+      locks2 = SCIPvarGetNLocksDownType(var2, SCIP_LOCKTYPE_MODEL);
    else
-      locks2 = SCIPvarGetNLocksUp(var2);
+      locks2 = SCIPvarGetNLocksUpType(var2, SCIP_LOCKTYPE_MODEL);
 
    if( locks1 < locks2 )
       return -1;
@@ -276,14 +306,14 @@ SCIP_DECL_SORTPTRCOMP(varCompObj)
 
    /* third criteria the other locks */
    if( SCIPvarGetObj(var1) > 0.0 )
-      locks1 = SCIPvarGetNLocksUp(var1);
+      locks1 = SCIPvarGetNLocksUpType(var1, SCIP_LOCKTYPE_MODEL);
    else
-      locks1 = SCIPvarGetNLocksDown(var1);
+      locks1 = SCIPvarGetNLocksDownType(var1, SCIP_LOCKTYPE_MODEL);
 
    if( SCIPvarGetObj(var2) >  0.0 )
-      locks2 = SCIPvarGetNLocksUp(var2);
+      locks2 = SCIPvarGetNLocksUpType(var2, SCIP_LOCKTYPE_MODEL);
    else
-      locks2 = SCIPvarGetNLocksDown(var2);
+      locks2 = SCIPvarGetNLocksDownType(var2, SCIP_LOCKTYPE_MODEL);
 
    if( locks1 < locks2 )
       return -1;
@@ -381,7 +411,7 @@ SCIP_RETCODE objimplicsCreate(
          assert(!SCIPisZero(scip, SCIPvarGetObj(var)));
 
          assert(SCIPhashmapExists(binobjvarmap, var));
-         pos = (int)(size_t)SCIPhashmapGetImage(binobjvarmap, (void*)var);
+         pos = SCIPhashmapGetImageInt(binobjvarmap, (void*)var);
          assert(pos > 0);
          assert(collectedlbvars[pos]);
 
@@ -423,7 +453,7 @@ SCIP_RETCODE objimplicsCreate(
          assert(!SCIPisZero(scip, SCIPvarGetObj(var)));
 
          assert(SCIPhashmapExists(binobjvarmap, var));
-         pos = (int)(size_t)SCIPhashmapGetImage(binobjvarmap, (void*)var);
+         pos = SCIPhashmapGetImageInt(binobjvarmap, (void*)var);
          assert(pos > 0);
          assert(collectedubvars[pos]);
 
@@ -664,7 +694,6 @@ SCIP_RETCODE dropVarEvents(
 /** reset propagatore data structure */
 static
 void propdataReset(
-   SCIP*                 scip,               /**< SCIP data structure */
    SCIP_PROPDATA*        propdata            /**< propagator data */
    )
 {
@@ -725,7 +754,7 @@ SCIP_RETCODE propdataExit(
    SCIPfreeBlockMemoryArrayNull(scip, &propdata->objintvars, propdata->objintvarssize);
 
    /* reset propagator data structure */
-   propdataReset(scip, propdata);
+   propdataReset(propdata);
 
    return SCIP_OKAY;
 }
@@ -739,8 +768,8 @@ SCIP_Real getVarObjchg(
    )
 {
    assert(SCIPvarIsBinary(var));
-   assert((int)SCIP_BOUNDTYPE_LOWER == 0);
-   assert((int)SCIP_BOUNDTYPE_UPPER == 1);
+   assert((int)SCIP_BOUNDTYPE_LOWER == 0); /*lint !e506*/
+   assert((int)SCIP_BOUNDTYPE_UPPER == 1); /*lint !e506*/
 
    /* collect contribution of variable itself */
    return (SCIP_Real)((int)bound - (int)(boundtype == SCIP_BOUNDTYPE_UPPER)) * SCIPvarGetObj(var);
@@ -782,7 +811,7 @@ SCIP_Real collectMinactImplicVar(
       return 0.0;
 
    assert(SCIPhashmapExists(binobjvarmap, var));
-   pos = (int)(size_t)SCIPhashmapGetImage(binobjvarmap, var);
+   pos = SCIPhashmapGetImageInt(binobjvarmap, var);
    assert(pos > 0);
 
    /* check if the variables was already collected through other cliques */
@@ -851,8 +880,8 @@ SCIP_RETCODE collectMinactImplicVars(
    assert(ncontributors != NULL);
    assert(*ncontributors == 0);
 
-   assert((SCIP_Bool)SCIP_BOUNDTYPE_LOWER == FALSE);
-   assert((SCIP_Bool)SCIP_BOUNDTYPE_UPPER == TRUE);
+   assert((SCIP_Bool)SCIP_BOUNDTYPE_LOWER == FALSE); /*lint !e506*/
+   assert((SCIP_Bool)SCIP_BOUNDTYPE_UPPER == TRUE);  /*lint !e506*/
    varfixing = (SCIP_Bool)bound;
 
    cliques = SCIPvarGetCliques(var, varfixing);
@@ -1118,8 +1147,8 @@ SCIP_RETCODE getMaxactImplicObjchg(
    assert(objchg != NULL);
 
    varfixing = (SCIP_Bool)bound;
-   assert((SCIP_Bool)SCIP_BOUNDTYPE_LOWER == FALSE);
-   assert((SCIP_Bool)SCIP_BOUNDTYPE_UPPER == TRUE);
+   assert((SCIP_Bool)SCIP_BOUNDTYPE_LOWER == FALSE); /*lint !e506*/
+   assert((SCIP_Bool)SCIP_BOUNDTYPE_UPPER == TRUE);  /*lint !e506*/
 
    *objchg = 0.0;
    ncliques = SCIPvarGetNCliques(var, varfixing);
@@ -1335,7 +1364,7 @@ void resetContributors(
       assert(var != NULL);
 
       assert(SCIPhashmapExists(binobjvarmap, var));
-      pos = (int)(size_t)SCIPhashmapGetImage(binobjvarmap, var);
+      pos = SCIPhashmapGetImageInt(binobjvarmap, var);
       assert(pos > 0);
       collectedvars[pos] = FALSE;
    }
@@ -1382,8 +1411,8 @@ SCIP_RETCODE collectMinactVar(
       int nlbcontributors;
       int nubcontributors;
 
-      assert((SCIP_Bool)SCIP_BOUNDTYPE_LOWER == FALSE);
-      assert((SCIP_Bool)SCIP_BOUNDTYPE_UPPER == TRUE);
+      assert((SCIP_Bool)SCIP_BOUNDTYPE_LOWER == FALSE); /*lint !e506*/
+      assert((SCIP_Bool)SCIP_BOUNDTYPE_UPPER == TRUE);  /*lint !e506*/
 
       /* get contribution of variable by fixing it to its lower bound w.r.t. minimum activity of the objective function */
       SCIP_CALL( collectMinactObjchg(scip, var, SCIP_BOUNDTYPE_LOWER, binobjvarmap, collectedlbvars, nbinobjvars,
@@ -1541,7 +1570,7 @@ SCIP_RETCODE propdataInit(
 
          if( SCIPvarIsBinary(var) )
          {
-            SCIP_CALL( SCIPhashmapInsert(binobjvarmap, (void*)var, (void*)(size_t)(nbinobjvars + 1)) );
+            SCIP_CALL( SCIPhashmapInsertInt(binobjvarmap, (void*)var, nbinobjvars + 1) );
             nbinobjvars++;
          }
       }
@@ -1802,7 +1831,6 @@ SCIP_RETCODE propdataInit(
    else
       propdata->addedvars = NULL;
 
-
    return SCIP_OKAY;
 }
 
@@ -1946,6 +1974,7 @@ SCIP_RETCODE addConflictBinvar(
    {
       if( respropuseimplics )
       {
+         assert(objimplics != NULL);
          SCIP_CALL( getConflictImplics(scip, objimplics->objvars, objimplics->nlbimpls, objimplics->nlbimpls + objimplics->nubimpls,
                bdchgidx, addedvars, reqpseudoobjval, &foundimplics) );
       }
@@ -1971,6 +2000,7 @@ SCIP_RETCODE addConflictBinvar(
    {
       if( respropuseimplics )
       {
+         assert(objimplics != NULL);
          SCIP_CALL( getConflictImplics(scip, objimplics->objvars, 0, objimplics->nlbimpls,
                bdchgidx, addedvars, reqpseudoobjval, &foundimplics) );
       }
@@ -2015,7 +2045,6 @@ SCIP_RETCODE adjustCutoffbound(
    if( inferinfo != -1 )
    {
       SCIP_OBJIMPLICS* objimplics;
-      SCIP_Bool foundimplics;
       int start;
       int end;
 
@@ -2025,15 +2054,14 @@ SCIP_RETCODE adjustCutoffbound(
       assert(SCIPisEQ(scip, SCIPgetVarLbAtIndex(scip, var, bdchgidx, TRUE), SCIPgetVarUbAtIndex(scip, var, bdchgidx, TRUE)));
       assert(inferinfo >= 0);
       assert(inferinfo < propdata->nminactvars);
-      assert((SCIP_Bool)SCIP_BOUNDTYPE_LOWER == FALSE);
-      assert((SCIP_Bool)SCIP_BOUNDTYPE_UPPER == TRUE);
+      assert((SCIP_Bool)SCIP_BOUNDTYPE_LOWER == FALSE); /*lint !e506*/
+      assert((SCIP_Bool)SCIP_BOUNDTYPE_UPPER == TRUE);  /*lint !e506*/
 
       objimplics = propdata->minactimpls[inferinfo];
       assert(objimplics != NULL);
 
       /* get the objective contribution if we would fix the binary inference variable to its other bound */
       (*cutoffbound) -= getVarObjchg(var, SCIPvarGetBestBoundType(var), boundtype);
-      foundimplics = FALSE;
 
       if( boundtype == SCIP_BOUNDTYPE_LOWER )
       {
@@ -2048,8 +2076,9 @@ SCIP_RETCODE adjustCutoffbound(
 
       if( addedvars != NULL )
       {
+         SCIP_Bool foundimplics = FALSE;
          SCIP_CALL( getConflictImplics(scip, objimplics->objvars, start, end, bdchgidx, addedvars, cutoffbound, &foundimplics) );
-      }
+      } /*lint !e438*/
    }
    else
    {
@@ -2178,7 +2207,7 @@ SCIP_RETCODE resolvePropagation(
       assert(minactimpls != NULL);
 
 #ifndef NDEBUG
-      checkGlbfirstnonfixed(scip, propdata);
+      checkGlbfirstnonfixed(propdata);
 #endif
 
       if( infinity )
@@ -2288,7 +2317,13 @@ SCIP_RETCODE propagateCutoffboundVar(
    /* depending on the objective contribution we can try to tighten the lower or upper bound of the variable */
    if( objchg > 0.0 )
    {
-      newbd = lb + (cutoffbound - pseudoobjval) / objchg;
+      SCIP_Real QUAD(newbdq);
+
+      /* the new variable bound is lb + (cutoffbound - pseudoobjval) / objchg */
+      SCIPquadprecSumDD(newbdq, cutoffbound, -pseudoobjval);
+      SCIPquadprecDivQD(newbdq, newbdq, objchg);
+      SCIPquadprecSumQD(newbdq, newbdq, lb);
+      newbd = QUAD_TO_DBL(newbdq);
 
       if( local )
       {
@@ -2315,7 +2350,13 @@ SCIP_RETCODE propagateCutoffboundVar(
    }
    else
    {
-      newbd = ub + (cutoffbound - pseudoobjval) / objchg;
+      SCIP_Real QUAD(newbdq);
+
+      /* the new variable bound is ub + (cutoffbound - pseudoobjval) / objchg */
+      SCIPquadprecSumDD(newbdq, cutoffbound, -pseudoobjval);
+      SCIPquadprecDivQD(newbdq, newbdq, objchg);
+      SCIPquadprecSumQD(newbdq, newbdq, ub);
+      newbd = QUAD_TO_DBL(newbdq);
 
       if( local )
       {
@@ -2478,7 +2519,7 @@ SCIP_RETCODE propagateCutoffboundGlobally(
    nobjintvars = propdata->nobjintvars;
 
 #ifndef NDEBUG
-   checkGlbfirstnonfixed(scip, propdata);
+   checkGlbfirstnonfixed(propdata);
 #endif
 
    *cutoff = FALSE;
@@ -2616,7 +2657,7 @@ SCIP_RETCODE propagateCutoffboundBinvars(
 
 #ifndef NDEBUG
    /* check that the variables before glbfirstnonfixed are globally fixed */
-   checkGlbfirstnonfixed(scip, propdata);
+   checkGlbfirstnonfixed(propdata);
 
    /* check that the variables before firstnonfixed are locally fixed */
    for( v = propdata->glbfirstnonfixed; v < propdata->firstnonfixed; ++v )
@@ -3232,7 +3273,7 @@ SCIP_RETCODE propagateLowerbound(
 
 #ifndef NDEBUG
    /* check that the global indices are correct */
-   checkGlbfirstnonfixed(scip, propdata);
+   checkGlbfirstnonfixed(propdata);
 #endif
 
    /* if the maximum pseudo objective activity is smaller than the lower bound the problem is infeasible */
@@ -3464,7 +3505,6 @@ SCIP_DECL_PROPEXITSOL(propExitsolPseudoobj)
 static
 SCIP_DECL_PROPPRESOL(propPresolPseudoobj)
 {  /*lint --e{715}*/
-
    SCIP_PROPDATA* propdata;
    SCIP_VAR** vars;
    SCIP_Real cutoffbound;
@@ -3485,7 +3525,7 @@ SCIP_DECL_PROPPRESOL(propPresolPseudoobj)
       return SCIP_OKAY;
 
    /* do nothing if objective propagation is not allowed */
-   if( !SCIPallowObjProp(scip) )
+   if( !SCIPallowWeakDualReds(scip) )
       return SCIP_OKAY;
 
    pseudoobjval = SCIPgetGlobalPseudoObjval(scip);
@@ -3566,7 +3606,7 @@ SCIP_DECL_PROPEXEC(propExecPseudoobj)
       return SCIP_OKAY;
 
    /* do not run if propagation w.r.t. objective is not allowed */
-   if( !SCIPallowObjProp(scip) )
+   if( !SCIPallowWeakDualReds(scip) )
       return SCIP_OKAY;
 
    /* check if enough new variable are added (due to column generation to reinitialized the propagator data) */
@@ -3684,12 +3724,11 @@ SCIP_RETCODE SCIPincludePropPseudoobj(
    SCIP_PROPDATA* propdata;
    SCIP_PROP* prop;
 
-
    /* create pseudoobj propagator data */
    SCIP_CALL( SCIPallocBlockMemory(scip, &propdata) );
 
    /* reset propagator data structure */
-   propdataReset(scip, propdata);
+   propdataReset(propdata);
 
    propdata->eventhdlr = NULL;
    /* include event handler for gloabl bound change events and variable added event (in case of pricing) */
@@ -3719,7 +3758,7 @@ SCIP_RETCODE SCIPincludePropPseudoobj(
    /* add pseudoobj propagator parameters */
    SCIP_CALL( SCIPaddIntParam(scip,
          "propagating/" PROP_NAME "/minuseless",
-         "minimal number of successive non-binary variable propagator whithout a bound reduction before aborted",
+         "minimal number of successive non-binary variable propagations without a bound reduction before aborted",
          &propdata->minuseless, TRUE, DEFAULT_MINUSELESS, 0, INT_MAX, NULL, NULL) );
 
    SCIP_CALL( SCIPaddRealParam(scip,
@@ -3729,7 +3768,7 @@ SCIP_RETCODE SCIPincludePropPseudoobj(
 
    SCIP_CALL( SCIPaddBoolParam(scip,
          "propagating/" PROP_NAME "/propfullinroot",
-         "do we want to propagate all non-binary variables if we are propagating the root node",
+         "whether to propagate all non-binary variables when we are propagating the root node",
          &propdata->propfullinroot, TRUE, DEFAULT_PROPFULLINROOT, NULL, NULL) );
 
    SCIP_CALL( SCIPaddBoolParam(scip,
@@ -3744,7 +3783,7 @@ SCIP_RETCODE SCIPincludePropPseudoobj(
 
    SCIP_CALL( SCIPaddIntParam(scip,
          "propagating/" PROP_NAME "/maxnewvars",
-         "number of variable added after the propgatore is reinitialized?",
+         "number of variables added after the propagator is reinitialized?",
          &propdata->maxnewvars, TRUE, DEFAULT_MAXNEWVARS, 0, INT_MAX, NULL, NULL) );
 
    SCIP_CALL( SCIPaddBoolParam(scip,

@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -30,7 +39,12 @@
 #define __SCIP_CONS_VARBOUND_H__
 
 
-#include "scip/scip.h"
+#include "scip/def.h"
+#include "scip/type_cons.h"
+#include "scip/type_lp.h"
+#include "scip/type_retcode.h"
+#include "scip/type_scip.h"
+#include "scip/type_var.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,8 +53,8 @@ extern "C" {
 /** creates the handler for variable bound constraints and includes it in SCIP
  *
  * @ingroup ConshdlrIncludes
- * */
-EXTERN
+ */
+SCIP_EXPORT
 SCIP_RETCODE SCIPincludeConshdlrVarbound(
    SCIP*                 scip                /**< SCIP data structure */
    );
@@ -66,7 +80,7 @@ SCIP_RETCODE SCIPincludeConshdlrVarbound(
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -109,7 +123,7 @@ SCIP_RETCODE SCIPcreateConsVarbound(
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsBasicVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -122,49 +136,49 @@ SCIP_RETCODE SCIPcreateConsBasicVarbound(
    );
 
 /** gets left hand side of variable bound constraint lhs <= x + c*y <= rhs */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPgetLhsVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets right hand side of variable bound constraint lhs <= x + c*y <= rhs */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPgetRhsVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets bounded variable x of variable bound constraint lhs <= x + c*y <= rhs */
-EXTERN
+SCIP_EXPORT
 SCIP_VAR* SCIPgetVarVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets bounding variable y of variable bound constraint lhs <= x + c*y <= rhs */
-EXTERN
+SCIP_EXPORT
 SCIP_VAR* SCIPgetVbdvarVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets bound coefficient c of variable bound constraint lhs <= x + c*y <= rhs */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPgetVbdcoefVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets the dual solution of the variable bound constraint in the current LP */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPgetDualsolVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets the dual Farkas value of the variable bound constraint in the current infeasible LP */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPgetDualfarkasVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
@@ -173,15 +187,26 @@ SCIP_Real SCIPgetDualfarkasVarbound(
 /** returns the linear relaxation of the given variable bound constraint; may return NULL if no LP row was yet created;
  *  the user must not modify the row!
  */
-EXTERN
+SCIP_EXPORT
 SCIP_ROW* SCIPgetRowVarbound(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
-/* @} */
+/** cleans up (multi-)aggregations and fixings from varbound constraints */
+SCIP_EXPORT
+SCIP_RETCODE SCIPcleanupConssVarbound(
+   SCIP*                 scip,               /**< SCIP data structure */
+   SCIP_Bool             onlychecked,        /**< should only checked constraints be cleaned up? */
+   SCIP_Bool*            infeasible,         /**< pointer to return whether the problem was detected to be infeasible */
+   int*                  naddconss,          /**< pointer to count number of added (linear) constraints */
+   int*                  ndelconss,          /**< pointer to count number of deleted (varbound) constraints */
+   int*                  nchgbds             /**< pointer to count number of bound changes */
+   );
 
-/* @} */
+/** @} */
+
+/** @} */
 
 #ifdef __cplusplus
 }

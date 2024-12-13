@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   presol_boundshift.c
+ * @ingroup DEFPLUGINS_PRESOL
  * @brief  presolver that converts variables with domain [a,b] to variables with domain [0,b-a]
  * @author Stefan Heinz
  * @author Michael Winkler
@@ -23,11 +33,21 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/presol_boundshift.h"
-
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_presol.h"
+#include "scip/pub_var.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_presol.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_var.h"
+#include "scip/debug.h"
+#include <string.h>
 
 #define PRESOL_NAME            "boundshift"
 #define PRESOL_DESC            "converts variables with domain [a,b] to variables with domain [0,b-a]"
@@ -61,19 +81,6 @@ struct SCIP_PresolData
 /*
  * Local methods
  */
-
-/** initializes the presolver data */
-static
-void initPresoldata(
-   SCIP_PRESOLDATA*      presoldata          /**< presolver data */
-   )
-{
-   assert(presoldata != NULL);
-
-   presoldata->maxshift = DEFAULT_MAXSHIFT;
-   presoldata->flipping = DEFAULT_FLIPPING;
-   presoldata->integer = DEFAULT_INTEGER;
-}
 
 /*
  * Callback methods of presolver
@@ -131,6 +138,9 @@ SCIP_DECL_PRESOLEXEC(presolExecBoundshift)
 
    *result = SCIP_DIDNOTRUN;
 
+   if( SCIPdoNotAggr(scip) )
+      return SCIP_OKAY;
+
    /* get presolver data */
    presoldata = SCIPpresolGetData(presol);
    assert(presoldata != NULL);
@@ -143,12 +153,9 @@ SCIP_DECL_PRESOLEXEC(presolExecBoundshift)
    if( nvars == 0 )
       return SCIP_OKAY;
 
-   if( SCIPdoNotAggr(scip) )
-      return SCIP_OKAY;
-
    *result = SCIP_DIDNOTFIND;
 
-   /* copy the integer variables into an own array, since adding new integer variables affects the left-most slots in
+   /* copy the integer/continuous variables into an own array, since adding new variables affects the left-most slots in
     * the array and thereby interferes with our search loop
     */
    SCIP_CALL( SCIPduplicateBufferArray(scip, &vars, &scipvars[nbinvars], nvars) );
@@ -161,6 +168,10 @@ SCIP_DECL_PRESOLEXEC(presolExecBoundshift)
       SCIP_Real ub;
 
       assert(SCIPvarGetType(var) != SCIP_VARTYPE_BINARY);
+
+      /* do not shift non-active (fixed or (multi-)aggregated) variables */
+      if( !SCIPvarIsActive(var) )
+         continue;
 
       /* get current variable's bounds */
       lb = SCIPvarGetLbGlobal(var);
@@ -189,9 +200,6 @@ SCIP_DECL_PRESOLEXEC(presolExecBoundshift)
       if( !SCIPisEQ(scip, lb, 0.0) &&                           /* lower bound != 0.0 */
          SCIPisLT(scip, ub, SCIPinfinity(scip)) &&              /* upper bound != infinity */
          SCIPisGT(scip, lb, -SCIPinfinity(scip)) &&             /* lower bound != -infinity */
-#if 0
-         SCIPisLT(scip, ub - lb, SCIPinfinity(scip)) &&         /* interval length less than SCIPinfinity(scip) */
-#endif
          SCIPisLT(scip, ub - lb, (SCIP_Real) presoldata->maxshift) &&      /* less than max shifting */
          SCIPisLE(scip, REALABS(lb), MAXABSBOUND) &&            /* ensures a small constant in aggregation */
          SCIPisLE(scip, REALABS(ub), MAXABSBOUND) )             /* ensures a small constant in aggregation */
@@ -210,6 +218,32 @@ SCIP_DECL_PRESOLEXEC(presolExecBoundshift)
                SCIPvarIsInitial(var), SCIPvarIsRemovable(var), NULL, NULL, NULL, NULL, NULL) );
          SCIP_CALL( SCIPaddVar(scip, newvar) );
 
+#ifdef WITH_DEBUG_SOLUTION
+         if( SCIPdebugIsMainscip(scip) )
+         {
+            /* calculate and store debug solution value of shift variable */
+            SCIP_Real val;
+
+            SCIP_CALL( SCIPdebugGetSolVal(scip, var, &val) );
+            SCIPdebugMsg(scip, "debug solution value: <%s> = %g", SCIPvarGetName(var), val);
+
+            if( presoldata->flipping )
+            {
+               if( REALABS(ub) < REALABS(lb) )
+                  val = ub - val;
+               else
+                  val = val - lb;
+            }
+            else
+            {
+               val = val - lb;
+            }
+            SCIPdebugMsgPrint(scip, " -> <%s> = %g\n", SCIPvarGetName(newvar), val);
+
+            SCIP_CALL( SCIPdebugAddSolVal(scip, newvar, val) );
+         }
+#endif
+
          /* aggregate old variable with new variable */
          if( presoldata->flipping )
          {
@@ -227,18 +261,22 @@ SCIP_DECL_PRESOLEXEC(presolExecBoundshift)
             SCIP_CALL( SCIPaggregateVars(scip, var, newvar, 1.0, -1.0, lb, &infeasible, &redundant, &aggregated) );
          }
 
-         assert(!infeasible);
-         assert(redundant);
-         assert(aggregated);
-         SCIPdebugMsg(scip, "var <%s> with bounds [%f,%f] has obj %f\n",
-            SCIPvarGetName(newvar),SCIPvarGetLbGlobal(newvar),SCIPvarGetUbGlobal(newvar),SCIPvarGetObj(newvar));
+         if( infeasible )
+            *result = SCIP_CUTOFF;
+         else
+         {
+            assert(redundant);
+            assert(aggregated);
+            SCIPdebugMsg(scip, "var <%s> with bounds [%f,%f] has obj %f\n",
+               SCIPvarGetName(newvar), SCIPvarGetLbGlobal(newvar), SCIPvarGetUbGlobal(newvar), SCIPvarGetObj(newvar));
+
+            /* take care of statistics */
+            (*naggrvars)++;
+            *result = SCIP_SUCCESS;
+         }
 
          /* release variable */
          SCIP_CALL( SCIPreleaseVar(scip, &newvar) );
-
-         /* take care of statistic */
-         (*naggrvars)++;
-         *result = SCIP_SUCCESS;
       }
    }
 
@@ -263,7 +301,6 @@ SCIP_RETCODE SCIPincludePresolBoundshift(
 
    /* create boundshift presolver data */
    SCIP_CALL( SCIPallocBlockMemory(scip, &presoldata) );
-   initPresoldata(presoldata);
 
    /* include presolver */
    SCIP_CALL( SCIPincludePresolBasic(scip, &presolptr, PRESOL_NAME, PRESOL_DESC, PRESOL_PRIORITY, PRESOL_MAXROUNDS, PRESOL_TIMING,
@@ -277,15 +314,17 @@ SCIP_RETCODE SCIPincludePresolBoundshift(
 
    /* add probing presolver parameters */
    SCIP_CALL( SCIPaddLongintParam(scip,
-         "presolving/boundshift/maxshift", 
+         "presolving/boundshift/maxshift",
          "absolute value of maximum shift",
          &presoldata->maxshift, TRUE, DEFAULT_MAXSHIFT, 0LL, SCIP_LONGINT_MAX, NULL, NULL) );
+
    SCIP_CALL( SCIPaddBoolParam(scip,
-         "presolving/boundshift/flipping", 
+         "presolving/boundshift/flipping",
          "is flipping allowed (multiplying with -1)?",
          &presoldata->flipping, TRUE, DEFAULT_FLIPPING, NULL, NULL) );
+
    SCIP_CALL( SCIPaddBoolParam(scip,
-         "presolving/boundshift/integer", 
+         "presolving/boundshift/integer",
          "shift only integer ranges?",
          &presoldata->integer, TRUE, DEFAULT_INTEGER, NULL, NULL) );
 

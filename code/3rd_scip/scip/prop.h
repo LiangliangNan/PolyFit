@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -41,14 +50,12 @@ extern "C" {
 #endif
 
 /** copies the given propagator to a new scip */
-extern
 SCIP_RETCODE SCIPpropCopyInclude(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set                 /**< SCIP_SET of SCIP to copy to */
    );
 
 /** creates a propagator */
-extern
 SCIP_RETCODE SCIPpropCreate(
    SCIP_PROP**           prop,               /**< pointer to propagator data structure */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -78,49 +85,42 @@ SCIP_RETCODE SCIPpropCreate(
    );
 
 /** calls destructor and frees memory of propagator */
-extern
 SCIP_RETCODE SCIPpropFree(
    SCIP_PROP**           prop,               /**< pointer to propagator data structure */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** initializes propagator */
-extern
 SCIP_RETCODE SCIPpropInit(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** calls exit method of propagator */
-extern
 SCIP_RETCODE SCIPpropExit(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs propagator that the presolving process is being started */
-extern
 SCIP_RETCODE SCIPpropInitpre(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs propagator that the presolving is finished */
-extern
 SCIP_RETCODE SCIPpropExitpre(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs propagator that the branch and bound process is being started */
-extern
 SCIP_RETCODE SCIPpropInitsol(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs propagator that the branch and bound process data is being freed */
-extern
 SCIP_RETCODE SCIPpropExitsol(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -128,7 +128,6 @@ SCIP_RETCODE SCIPpropExitsol(
    );
 
 /** executes presolving method of propagator */
-extern
 SCIP_RETCODE SCIPpropPresol(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -148,7 +147,6 @@ SCIP_RETCODE SCIPpropPresol(
    );
 
 /** calls execution method of propagator */
-extern
 SCIP_RETCODE SCIPpropExec(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -166,7 +164,6 @@ SCIP_RETCODE SCIPpropExec(
  *
  *  @note it is sufficient to explain the relaxed bound change
  */
-extern
 SCIP_RETCODE SCIPpropResolvePropagation(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -179,7 +176,6 @@ SCIP_RETCODE SCIPpropResolvePropagation(
    );
 
 /** sets priority of propagator */
-extern
 void SCIPpropSetPriority(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -187,7 +183,6 @@ void SCIPpropSetPriority(
    );
 
 /** sets presolving priority of propagator */
-extern
 void SCIPpropSetPresolPriority(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -195,63 +190,54 @@ void SCIPpropSetPresolPriority(
    );
 
 /** sets copy method of propagator */
-extern
 void SCIPpropSetCopy(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPCOPY    ((*propcopy))       /**< copy method of propagator or NULL if you don't want to copy your plugin into sub-SCIPs */
    );
 
 /** sets destructor method of propagator */
-extern
 void SCIPpropSetFree(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPFREE    ((*propfree))       /**< destructor of propagator */
    );
 
 /** sets initialization method of propagator */
-extern
 void SCIPpropSetInit(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPINIT    ((*propinit))       /**< initialize propagator */
    );
 
 /** sets deinitialization method of propagator */
-extern
 void SCIPpropSetExit(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPEXIT    ((*propexit))       /**< deinitialize propagator */
    );
 
 /** sets solving process initialization method of propagator */
-extern
 void SCIPpropSetInitsol(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPINITSOL((*propinitsol))     /**< solving process initialization method of propagator */
    );
 
 /** sets solving process deinitialization method of propagator */
-extern
 void SCIPpropSetExitsol(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPEXITSOL ((*propexitsol))    /**< solving process deinitialization method of propagator */
    );
 
 /** sets preprocessing initialization method of propagator */
-extern
 void SCIPpropSetInitpre(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPINITPRE((*propinitpre))     /**< preprocessing initialization method of propagator */
    );
 
 /** sets preprocessing deinitialization method of propagator */
-extern
 void SCIPpropSetExitpre(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPEXITPRE((*propexitpre))     /**< preprocessing deinitialization method of propagator */
    );
 
 /** sets presolving method of propagator */
-extern
 SCIP_RETCODE SCIPpropSetPresol(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPPRESOL  ((*proppresol)),    /**< presolving method */
@@ -261,14 +247,12 @@ SCIP_RETCODE SCIPpropSetPresol(
    );
 
 /** sets propagation conflict resolving callback of propagator */
-extern
 void SCIPpropSetResprop(
    SCIP_PROP*            prop,               /**< propagator */
    SCIP_DECL_PROPRESPROP ((*propresprop))    /**< propagation conflict resolving callback */
    );
 
 /** enables or disables all clocks of \p prop, depending on the value of the flag */
-extern
 void SCIPpropEnableOrDisableClocks(
    SCIP_PROP*            prop,               /**< the propagator for which all clocks should be enabled or disabled */
    SCIP_Bool             enable              /**< should the clocks of the propagator be enabled? */

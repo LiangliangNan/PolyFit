@@ -3,30 +3,49 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   compr_largestrepr.c
+ * @ingroup OTHER_CFILES
  * @brief  largestrepr tree compression
  * @author Jakob Witzig
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/compr_largestrepr.h"
-#include "scip/compr.h"
+#include "scip/pub_compr.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
 #include "scip/pub_reopt.h"
-
+#include "scip/pub_var.h"
+#include "scip/scip_compr.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_reopt.h"
+#include <string.h>
 
 #define COMPR_NAME             "largestrepr"
 #define COMPR_DESC             "heuristic searching for large common representatives"
@@ -65,18 +84,18 @@ struct SCIP_ComprData
  * Local methods
  */
 
-/** calculate a signature of variables fixed to 0 and 1 by using binary shift
- *  and or operations. we calculate the signature on the basis of SCIPvarGetProbindex() % 64
+/** calculate a bit signature of variables fixed to 0 and 1 on the basis of SCIPvarGetProbindex()
  */
 static
 void calcSignature(
    SCIP_VAR**            vars,               /**< variable array */
    SCIP_Real*            vals,               /**< value array */
    int                   nvars,              /**< number of variables */
-   SCIP_Longint*         signature0,         /**< pointer to store the signatures of variables fixed to 0 */
-   SCIP_Longint*         signature1          /**< pointer to store the signatures of variables fixed to 1 */
+   uint64_t*             signature0,         /**< pointer to store the signatures of variables fixed to 0 */
+   uint64_t*             signature1          /**< pointer to store the signatures of variables fixed to 1 */
    )
 {
+   uint64_t varsignature;
    int v;
 
    (*signature0) = 0;
@@ -84,10 +103,11 @@ void calcSignature(
 
    for( v = nvars - 1; v >= 0; --v )
    {
-      if( vals[v] == 0 )
-         (*signature0) |= ((unsigned int)1 << ((unsigned int)SCIPvarGetProbindex(vars[v]) % 64)); /*lint !e647*/
+      varsignature = SCIPhashSignature64(SCIPvarGetProbindex(vars[v]));
+      if( vals[v] < 0.5 )
+         (*signature0) |= varsignature;
       else
-         (*signature1) |= ((unsigned int)1 << ((unsigned int)SCIPvarGetProbindex(vars[v]) % 64)); /*lint !e647*/
+         (*signature1) |= varsignature;
    }
 
    return;
@@ -122,8 +142,8 @@ SCIP_RETCODE constructCompression(
    const char** varnames;
    SCIP_Real score;
    int nreps;
-   SCIP_Longint* signature0;
-   SCIP_Longint* signature1;
+   uint64_t* signature0;
+   uint64_t* signature1;
    int* common_vars;
    unsigned int* leaveids;
    int* nvars;
@@ -427,7 +447,7 @@ SCIP_RETCODE constructCompression(
        * 2. check if we need to reallocate the memory
        * 3. set the new representation
        */
-      if( SCIPisSumGT(scip, score, comprdata->score) )
+      if( nreps > 0 && SCIPisSumGT(scip, score, comprdata->score) )
       {
          /* reset the current representation */
          SCIP_CALL( SCIPresetRepresentation(scip, comprdata->representatives, comprdata->nrepresentatives) );

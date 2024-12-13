@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_intshifting.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  LP rounding heuristic that tries to recover from intermediate infeasibilities, shifts integer variables, and
  *         solves a final LP to calculate feasible values for continuous variables
  * @author Tobias Achterberg
@@ -21,15 +31,29 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/heur_intshifting.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
 #include "scip/pub_misc.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_randnumgen.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include <string.h>
 
 #define HEUR_NAME             "intshifting"
 #define HEUR_DESC             "LP rounding heuristic with infeasibility recovering and final LP solving"
-#define HEUR_DISPCHAR         'i'
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_ROUNDING
 #define HEUR_PRIORITY         -10000
 #define HEUR_FREQ             10
 #define HEUR_FREQOFS          0
@@ -81,8 +105,31 @@ void updateViolations(
 
    lhs = SCIProwGetLhs(row);
    rhs = SCIProwGetRhs(row);
-   oldviol = (SCIPisFeasLT(scip, oldmaxactivity, lhs) || SCIPisFeasGT(scip, oldminactivity, rhs));
-   newviol = (SCIPisFeasLT(scip, newmaxactivity, lhs) || SCIPisFeasGT(scip, newminactivity, rhs));
+
+   /* SCIPisFeasLT cannot handle comparing different infinities. To prevent this, we make a case distinction. */
+   if( ! (SCIPisInfinity(scip, oldmaxactivity) || SCIPisInfinity(scip, -oldmaxactivity)
+       || SCIPisInfinity(scip, oldminactivity) || SCIPisInfinity(scip, -oldminactivity)) )
+   {
+      oldviol = (SCIPisFeasLT(scip, oldmaxactivity, lhs) || SCIPisFeasGT(scip, oldminactivity, rhs));
+   }
+   else
+   {
+      oldviol = (SCIPisInfinity(scip, -oldmaxactivity) && !SCIPisInfinity(scip, -lhs)) ||
+         (SCIPisInfinity(scip, oldminactivity) && !SCIPisInfinity(scip, rhs));
+   }
+
+   /* SCIPisFeasLT cannot handle comparing different infinities. To prevent this, we make a case distinction. */
+   if( ! (SCIPisInfinity(scip, newmaxactivity) || SCIPisInfinity(scip, -newmaxactivity)
+       || SCIPisInfinity(scip, newminactivity) || SCIPisInfinity(scip, -newminactivity)) )
+   {
+      newviol = (SCIPisFeasLT(scip, newmaxactivity, lhs) || SCIPisFeasGT(scip, newminactivity, rhs));
+   }
+   else
+   {
+      newviol = (SCIPisInfinity(scip, -newmaxactivity) && !SCIPisInfinity(scip, -lhs)) ||
+         (SCIPisInfinity(scip, newminactivity) && !SCIPisInfinity(scip, rhs));
+   }
+
    if( oldviol != newviol )
    {
       int rowpos;
@@ -317,8 +364,8 @@ SCIP_RETCODE selectShifting(
 
       /* calculate the score of the shifting (prefer smaller values) */
       if( isfrac )
-         shiftscore = increase ? -1.0 / (SCIPvarGetNLocksUp(var) + 1.0) :
-            -1.0 / (SCIPvarGetNLocksDown(var) + 1.0);
+         shiftscore = increase ? -1.0 / (SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL) + 1.0) :
+            -1.0 / (SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL) + 1.0);
       else
       {
          if( increase )
@@ -434,7 +481,7 @@ SCIP_RETCODE selectEssentialRounding(
          obj = SCIPvarGetObj(var);
 
          /* shifting down */
-         nlocks = SCIPvarGetNLocksUp(var);
+         nlocks = SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL);
          if( nlocks >= maxnlocks )
          {
             shiftval = SCIPfeasFloor(scip, solval);
@@ -450,7 +497,7 @@ SCIP_RETCODE selectEssentialRounding(
          }
 
          /* shifting up */
-         nlocks = SCIPvarGetNLocksDown(var);
+         nlocks = SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL);
          if( nlocks >= maxnlocks )
          {
             shiftval = SCIPfeasCeil(scip, solval);
@@ -531,7 +578,6 @@ void addFracCounter(
                violrows[theviolrowpos] = violrows[*nviolfracrows - 1];
                violrows[*nviolfracrows - 1] = row;
 
-
                violrowpos[SCIProwGetLPPos(violrows[theviolrowpos])] = theviolrowpos;
                violrowpos[rowlppos] = *nviolfracrows - 1;
             }
@@ -549,7 +595,6 @@ void addFracCounter(
             {
                violrows[theviolrowpos] = violrows[*nviolfracrows];
                violrows[*nviolfracrows] = row;
-
 
                violrowpos[SCIProwGetLPPos(violrows[theviolrowpos])] = theviolrowpos;
                violrowpos[rowlppos] = *nviolfracrows;
@@ -597,7 +642,7 @@ SCIP_DECL_HEURINIT(heurInitIntshifting) /*lint --e{715}*/
 
    /* create random number generator */
    SCIP_CALL( SCIPcreateRandom(scip, &heurdata->randnumgen,
-         DEFAULT_RANDSEED) );
+         DEFAULT_RANDSEED, TRUE) );
 
    return SCIP_OKAY;
 }
@@ -1131,7 +1176,5 @@ SCIP_RETCODE SCIPincludeHeurIntshifting(
    SCIP_CALL( SCIPsetHeurExit(scip, heur, heurExitIntshifting) );
    SCIP_CALL( SCIPsetHeurInitsol(scip, heur, heurInitsolIntshifting) );
 
-
    return SCIP_OKAY;
 }
-

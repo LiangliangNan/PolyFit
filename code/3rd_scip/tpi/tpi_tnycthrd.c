@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -17,7 +26,7 @@
  * @ingroup TASKINTERFACE
  * @brief  a TPI implementation using tinycthreads
  * @author Stephen J. Maher
- * @author Robert Lion Gottwald
+ * @author Leona Gottwald
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
@@ -35,7 +44,7 @@ struct SCIP_Job
    int                   jobid;              /**< id to identify jobs from a common process */
    struct                SCIP_Job* nextjob;  /**< pointer to the next job in the queue */
    SCIP_RETCODE          (*jobfunc)(void* args);/**< pointer to the job function */
-   void*                 args;               /**< pointer to the function arguements */
+   void*                 args;               /**< pointer to the function arguments */
    SCIP_RETCODE          retcode;            /**< return code of the job */
 };
 
@@ -58,15 +67,15 @@ struct SCIP_ThreadPool
    /* Current pool state */
    thrd_t*               threads;            /**< the threads included in the pool */
    SCIP_JOBQUEUE*        jobqueue;           /**< the job queue */
-   SCIP_JOBQUEUE*        currentjobs;        /**< the jobs currently being processed on a thread.
-                                                  Only a single job is allowed per thread. */
+   SCIP_JOBQUEUE*        currentjobs;        /**< the jobs currently being processed on a thread;
+                                              *   only a single job is allowed per thread. */
    SCIP_JOBQUEUE*        finishedjobs;       /**< finished jobs that are not yet collected */
    int                   currworkingthreads; /**< the threads currently processing jobs */
    SCIP_Bool             blockwhenfull;      /**< indicates that the queue can only be as large as nthreads */
    int                   currentid;          /**< current job id */
 
    /* Control indicators */
-   SCIP_Bool             shutdown;           /**< indicates whether the pool needs to be shutdown */
+   SCIP_Bool             shutdown;           /**< indicates whether the pool needs to be shut down */
    SCIP_Bool             queueopen;          /**< indicates whether the queue is open */
 
    /* mutex and locks for the thread pool */
@@ -105,7 +114,7 @@ SCIP_RETCODE threadPoolThreadRetcode(
          SCIP_CALL( SCIPtpiWaitCondition(&(_threadpool->queuenotempty), &(_threadpool->poollock)) );
       }
 
-      /* if the shutdown command has been given, the exit the thread */
+      /* if the shutdown command has been given, then exit the thread */
       if( _threadpool->shutdown )
       {
          /* Decrease the thread count when execution of job queue has completed */
@@ -255,7 +264,7 @@ SCIP_RETCODE createThreadPool(
    (*thrdpool)->finishedjobs->njobs = 0;
 
    /* initialising the mutex */
-   SCIP_CALL( SCIPtpiInitLock(&(*thrdpool)->poollock) );
+   SCIP_CALL( SCIPtpiInitLock(&(*thrdpool)->poollock) ); /*lint !e2482*/
 
    /* initialising the conditions */
    SCIP_CALL( SCIPtpiInitCondition(&(*thrdpool)->queuenotempty) );
@@ -286,12 +295,14 @@ SCIP_RETCODE createThreadPool(
 }
 
 /** adding a job to the job queue.
- * This gives some more flexibility in the handling of new jobs.
- * This function needs to be called from within a mutex. */
+ *
+ *  This gives some more flexibility in the handling of new jobs.
+ *  This function needs to be called from within a mutex.
+ */
 static
 void jobQueueAddJob(
-   SCIP_THREADPOOL*      threadpool,
-   SCIP_JOB*             newjob
+   SCIP_THREADPOOL*      threadpool,           /**< pointer to store threadpool */
+   SCIP_JOB*             newjob                /**< pointer to new job */
    )
 {
    /* @todo we want to work out what to do with a full job queue. Is there a problem if the limit is hit? */
@@ -312,9 +323,9 @@ void jobQueueAddJob(
       threadpool->jobqueue->lastjob = newjob;
    }
 
-   SCIP_CALL_ABORT( SCIPtpiSignalCondition(&(threadpool->queuenotempty)) );    /* signalling to all threads that the queue has jobs
-                                                                       * using the signal instead of broadcast because only one
-                                                                       * thread should be awakened */
+   /* signalling to all threads that the queue has jobs using the signal instead of broadcast because only one thread
+    * should be awakened */
+   SCIP_CALL_ABORT( SCIPtpiSignalCondition(&(threadpool->queuenotempty)) );
 
    threadpool->jobqueue->njobs++;
 }
@@ -339,15 +350,15 @@ SCIP_RETCODE threadPoolAddWork(
       return SCIP_OKAY;
    }
 
-   /* Wait until the job queue is not full. If the queue is closed or the thread pool is shutdown, then stop waiting */
+   /* Wait until the job queue is not full. If the queue is closed or the thread pool is shut down, then stop waiting. */
    /* @todo this needs to be checked. It is possible that a job can be submitted and then the queue is closed or the
-    * thread pool is shutdown. Need to work out the best way to handle this. */
+    * thread pool is shut down. Need to work out the best way to handle this. */
    while( _threadpool->jobqueue->njobs == _threadpool->queuesize && !(_threadpool->shutdown || !_threadpool->queueopen) )
    {
       SCIP_CALL( SCIPtpiWaitCondition(&(_threadpool->queuenotfull), &(_threadpool->poollock)) );
    }
 
-   /* if the thread pool is shutdown or the queue is closed, then we need to leave the job submission */
+   /* if the thread pool is shut down or the queue is closed, then we need to leave the job submission */
    if( !_threadpool->queueopen )
    {
       SCIP_CALL( SCIPtpiReleaseLock(&(_threadpool->poollock)) );
@@ -365,21 +376,21 @@ SCIP_RETCODE threadPoolAddWork(
    newjob->nextjob = NULL;
 
    /* adding the job to the queue */
-   /* this can only happen if the queue is not full
-    */
+   /* this can only happen if the queue is not full */
    assert(_threadpool->jobqueue->njobs != _threadpool->queuesize);
    jobQueueAddJob(_threadpool, newjob);
 
    SCIP_CALL( SCIPtpiReleaseLock(&(_threadpool->poollock)) );
 
    *status = SCIP_SUBMIT_SUCCESS;
+
    return SCIP_OKAY;
 }
 
 /** frees the jobqueue of the threadpool */
 static
 void freeJobQueue(
-   SCIP_THREADPOOL*      thrdpool
+   SCIP_THREADPOOL*      thrdpool            /**< pointer to thread pool */
    )
 {
    SCIP_JOB* currjob;
@@ -387,7 +398,7 @@ void freeJobQueue(
    assert(!thrdpool->queueopen);
    assert(thrdpool->shutdown);
 
-   /* iterating through all jobs until all have been freed. */
+   /* iterating through all jobs until all have been freed */
    while( thrdpool->jobqueue->firstjob != NULL )
    {
       currjob = thrdpool->jobqueue->firstjob->nextjob;
@@ -401,14 +412,12 @@ void freeJobQueue(
    BMSfreeMemory(&thrdpool->jobqueue);
 }
 
-
-
-
+/** free the thread pool */
 static
 SCIP_RETCODE freeThreadPool(
-   SCIP_THREADPOOL**     thrdpool,
-   SCIP_Bool             finishjobs,
-   SCIP_Bool             completequeue
+   SCIP_THREADPOOL**     thrdpool,           /**< pointer to thread pool */
+   SCIP_Bool             finishjobs,         /**< currently unused */
+   SCIP_Bool             completequeue       /**< Wait until the queue has complete? */
    )
 {
    int          i;
@@ -419,7 +428,7 @@ SCIP_RETCODE freeThreadPool(
 
    SCIP_CALL( SCIPtpiAcquireLock(&((*thrdpool)->poollock)) );
 
-   /* if the shutdown is already in progress, then we don't need to completed this function */
+   /* if the shutdown is already in progress, then we don't need to complete this function */
    if( !(*thrdpool)->queueopen || (*thrdpool)->shutdown )
    {
       SCIP_CALL( SCIPtpiReleaseLock(&((*thrdpool)->poollock)) );
@@ -444,7 +453,7 @@ SCIP_RETCODE freeThreadPool(
 
    SCIP_CALL( SCIPtpiReleaseLock(&((*thrdpool)->poollock)) );
 
-   /* waking up all threads so that they can check the shutdown condition
+   /* waking up all threads so that they can check the shutdown condition;
     * this requires that the conditions queuenotempty and queuenotfull is broadcast
     */
    SCIP_CALL( SCIPtpiBroadcastCondition(&((*thrdpool)->queuenotempty)) );
@@ -466,7 +475,7 @@ SCIP_RETCODE freeThreadPool(
    /* freeing memory and data structures */
    BMSfreeMemoryArray(&(*thrdpool)->threads);
 
-   /* freeing the current jobs list. This assumes that all jobs complete before the tpi is closed. */
+   /* Freeing the current jobs list. This assumes that all jobs complete before the tpi is closed. */
    assert((*thrdpool)->currentjobs->njobs == 0);
    BMSfreeMemory(&(*thrdpool)->currentjobs);
    assert((*thrdpool)->finishedjobs->njobs == 0);
@@ -492,8 +501,8 @@ SCIP_RETCODE freeThreadPool(
 /* checking a job queue */
 static
 SCIP_JOBSTATUS checkJobQueue(
-   SCIP_JOBQUEUE*        jobqueue,
-   int                   jobid
+   SCIP_JOBQUEUE*        jobqueue,           /**< pointer to the job queue */
+   int                   jobid               /**< id of job to check */
    )
 {
    SCIP_JOB* currjob = jobqueue->firstjob;
@@ -516,13 +525,11 @@ SCIP_JOBSTATUS checkJobQueue(
    return SCIP_JOB_DOESNOTEXIST;
 }
 
-
-
-/* returns whether the job id is running */
+/** returns whether the job id is running */
 static
 SCIP_Bool isJobRunning(
-   SCIP_JOBQUEUE*        currentjobs,
-   int                   jobid
+   SCIP_JOBQUEUE*        currentjobs,        /**< queue of current jobs */
+   int                   jobid               /**< id of job to check */
    )
 {
    if( checkJobQueue(currentjobs, jobid) == SCIP_JOB_INQUEUE )
@@ -541,9 +548,9 @@ int SCIPtpiGetNumThreads(
 
 /** initializes tpi */
 SCIP_RETCODE SCIPtpiInit(
-   int                   nthreads,
-   int                   queuesize,
-   SCIP_Bool             blockwhenfull
+   int                   nthreads,           /**< the number of threads to be used */
+   int                   queuesize,          /**< the size of the queue */
+   SCIP_Bool             blockwhenfull       /**< should the queue block when full */
    )
 {
    assert(_threadpool == NULL);
@@ -563,8 +570,7 @@ SCIP_RETCODE SCIPtpiExit(
    return SCIP_OKAY;
 }
 
-
-/** creates a job for parallel processing*/
+/** creates a job for parallel processing */
 SCIP_RETCODE SCIPtpiCreateJob(
    SCIP_JOB**            job,                /**< pointer to the job that will be created */
    int                   jobid,              /**< the id for the current job */
@@ -597,8 +603,7 @@ int SCIPtpiGetNewJobID(
    return id;
 }
 
-/** submit a job for parallel processing
- *  the return is a globally defined status */
+/** submit a job for parallel processing; the return value is a globally defined status */
 SCIP_RETCODE SCIPtpiSumbitJob(
    SCIP_JOB*             job,                /**< pointer to the job to be submitted */
    SCIP_SUBMITSTATUS*    status              /**< pointer to store the job's submit status */
@@ -606,14 +611,12 @@ SCIP_RETCODE SCIPtpiSumbitJob(
 {
    assert(job != NULL);
 
-   assert(job->jobid == _threadpool->currentid);    /* the job id must be set before submitting the job. The submitter controls
-                                                       whether a new id is required. */
-
+   /* the job id must be set before submitting the job. The submitter controls whether a new id is required. */
+   assert(job->jobid == _threadpool->currentid);
    SCIP_CALL( threadPoolAddWork(job, status) );
 
    return SCIP_OKAY;
 }
-
 
 /** blocks until all jobs of the given jobid have finished
  *  and then returns the smallest SCIP_RETCODE of all the jobs
@@ -628,8 +631,7 @@ SCIP_RETCODE SCIPtpiCollectJobs(
 
    SCIP_CALL( SCIPtpiAcquireLock(&(_threadpool->poollock)) );
 
-   while( isJobRunning(_threadpool->currentjobs, jobid) ||
-          isJobRunning(_threadpool->jobqueue, jobid) )
+   while( isJobRunning(_threadpool->currentjobs, jobid) || isJobRunning(_threadpool->jobqueue, jobid) )
    {
       SCIP_CALL( SCIPtpiWaitCondition(&_threadpool->jobfinished, &_threadpool->poollock) );
    }

@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License.             */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -53,6 +62,12 @@ public:
    {
    }
 
+   /** assignment of polymorphic classes causes slicing and is therefore disabled. */
+   ObjProbData& operator=(const ObjProbData& o) = delete;
+
+   /** assignment of polymorphic classes causes slicing and is therefore disabled. */
+   ObjProbData& operator=(ObjProbData&& o) = delete;
+
    /** destructor of user problem data to free original user data (called when original problem is freed)
     *
     *  If the "deleteobject" flag in the SCIPcreateObjProb() method was set to TRUE, this method is not needed,
@@ -60,7 +75,7 @@ public:
     *  data object. If the "deleteobject" flag was set to FALSE, and the user problem data object stays alive
     *  after the SCIP problem is freed, this method should delete all the problem specific data that is no
     *  longer needed.
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_delorig(
       SCIP*              scip                /**< SCIP data structure */
       )
@@ -80,7 +95,7 @@ public:
     *   2. Call the copy constructor of the problem data object and return the created copy as transformed problem
     *      data object. In this case, he probably wants to set *deleteobject to TRUE, thus letting SCIP call the
     *      destructor of the object if the transformed problem data is no longer needed.
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_trans(
       SCIP*              scip,               /**< SCIP data structure */
       ObjProbData**      objprobdata,        /**< pointer to store the transformed problem data object */
@@ -106,7 +121,7 @@ public:
     *  data object. If the "*deleteobject" flag was set to FALSE, and the user problem data object stays alive
     *  after the SCIP problem is freed, this method should delete all the problem specific data that is no
     *  longer needed.
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_deltrans(
       SCIP*              scip                /**< SCIP data structure */
       )
@@ -118,7 +133,7 @@ public:
     *
     *  This method is called before the branch and bound process begins and can be used to initialize user problem
     *  data that depends for example on the number of active problem variables, because these are now fixed.
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_initsol(
       SCIP*              scip                /**< SCIP data structure */
       )
@@ -131,7 +146,7 @@ public:
     *  This method is called before the branch and bound data is freed and should be used to free all data that
     *  was allocated in the solving process initialization method. The user has to make sure, that all LP rows associated
     *  to the transformed user problem data are released.
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_exitsol(
       SCIP*              scip,                /**< SCIP data structure */
       SCIP_Bool          restart              /**< was this exit solve call triggered by a restart? */
@@ -155,7 +170,7 @@ public:
     *  possible return values for *result:
     *  - SCIP_DIDNOTRUN  : the copying process was not performed 
     *  - SCIP_SUCCESS    : the copying process was successfully performed
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_copy(
       SCIP*              scip,               /**< SCIP data structure */
       SCIP*              sourcescip,         /**< source SCIP main data structure */
@@ -201,7 +216,7 @@ public:
  *       ...
  *       SCIP_CALL( SCIPfree(&scip) );  // problem is freed and destructor of MyProbData is called here
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateObjProb(
    SCIP*                 scip,               /**< SCIP data structure */
    const char*           name,               /**< problem name */
@@ -213,7 +228,7 @@ SCIP_RETCODE SCIPcreateObjProb(
  *  Warning! This method should only be called after a problem was created with SCIPcreateObjProb().
  *  Otherwise, a segmentation fault may arise, or an undefined pointer is returned.
  */
-EXTERN
+SCIP_EXPORT
 scip::ObjProbData* SCIPgetObjProbData(
    SCIP*                 scip                /**< SCIP data structure */
    );

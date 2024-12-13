@@ -3,20 +3,29 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   concurrent.c
  * @ingroup PARALLEL
  * @brief  helper functions for concurrent SCIP solvers
- * @author Robert Lion Gottwald
+ * @author Leona Gottwald
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
@@ -67,7 +76,7 @@ SCIP_RETCODE SCIPcreateConcurrent(
 
    scip->concurrent->concsolver = concsolver;
    scip->concurrent->mainscip = scip;
-   scip->concurrent->solidx = 0;
+   scip->concurrent->solidx = scip->stat->solindex;
    scip->stat->subscipdepth = 0;
 
    if( scip->set->parallel_mode == (int) SCIP_PARA_DETERMINISTIC )
@@ -651,9 +660,13 @@ SCIP_RETCODE SCIPcopyConcurrentSolvingStats(
       {
          sepas[i]->lastsepanode = sepa->lastsepanode;
          sepas[i]->ncalls += sepa->ncalls;
+         sepas[i]->nrootcalls += sepa->nrootcalls;
          sepas[i]->ncutoffs += sepa->ncutoffs;
          sepas[i]->ncutsfound += sepa->ncutsfound;
-         sepas[i]->ncutsapplied += sepa->ncutsapplied;
+         sepas[i]->ncutsaddedviapool += sepa->ncutsaddedviapool;
+         sepas[i]->ncutsaddeddirect += sepa->ncutsaddeddirect;
+         sepas[i]->ncutsappliedviapool += sepa->ncutsappliedviapool;
+         sepas[i]->ncutsapplieddirect += sepa->ncutsapplieddirect;
          sepas[i]->nconssfound += sepa->nconssfound;
          sepas[i]->ndomredsfound += sepa->ndomredsfound;
          sepas[i]->maxbounddist = MAX(sepas[i]->maxbounddist, sepa->maxbounddist);
@@ -751,8 +764,12 @@ SCIP_RETCODE SCIPcopyConcurrentSolvingStats(
    target->stat->mincopytime = MIN(source->stat->mincopytime, target->stat->mincopytime);
    target->stat->firstlptime = source->stat->firstlptime;
    target->stat->lastbranchvalue = source->stat->lastbranchvalue;
+   target->stat->dualrefintegral = source->stat->dualrefintegral;
+   target->stat->primalrefintegral = source->stat->primalrefintegral;
    target->stat->primaldualintegral = source->stat->primaldualintegral;
    target->stat->previousgap = source->stat->previousgap;
+   target->stat->previousdualrefgap = source->stat->previousdualrefgap;
+   target->stat->previousprimalrefgap = source->stat->previousprimalrefgap;
    target->stat->previntegralevaltime = source->stat->previntegralevaltime;
    target->stat->lastprimalbound = SCIPprobExternObjval(source->transprob, source->origprob, source->set, source->stat->lastprimalbound);
    target->stat->lastdualbound = SCIPprobExternObjval(source->transprob, source->origprob, source->set, source->stat->lastdualbound);

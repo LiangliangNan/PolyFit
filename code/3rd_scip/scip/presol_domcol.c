@@ -3,18 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file    presol_domcol.c
- * @ingroup PRESOLVERS
+ * @ingroup DEFPLUGINS_PRESOL
  * @brief   dominated column presolver
  * @author  Dieter Weninger
  * @author  Gerald Gamrath
@@ -31,17 +40,32 @@
  *       indicate in which constraint type (<=, >=, or ranged row / ==) they are existing. Then sort the variables (and
  *       corresponding data) after the ranged row/equation hashvalue and only try to derive dominance on variables with
  *       the same hashvalue on ranged row/equation and fitting hashvalues for the other constraint types.
+ * @todo run on incomplete matrices; in order to do so, check at the time when dominance is detected that the locks are
+ *       consistent; probably, it is sufficient to check one lock direction for each of the two variables
  *
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <stdio.h>
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
+#include "scip/presol_domcol.h"
 #include "scip/pub_matrix.h"
-#include "presol_domcol.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_presol.h"
+#include "scip/pub_var.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_nlp.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_presol.h"
+#include "scip/scip_pricer.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define PRESOL_NAME            "domcol"
 #define PRESOL_DESC            "dominated column presolver"
@@ -1987,17 +2011,39 @@ SCIP_DECL_PRESOLEXEC(presolExecDomcol)
    SCIP_MATRIX* matrix;
    SCIP_Bool initialized;
    SCIP_Bool complete;
+   SCIP_Bool infeasible;
+   int nfixings;
+   SCIP_Longint ndomrelations;
+   int v;
+   int r;
+   FIXINGDIRECTION* varstofix;
+   SCIP_Bool* varsprocessed;
+   int nrows;
+   int ncols;
+   int* rowidxsorted;
+   int* rowsparsity;
+   int varcount;
+   int* consearchcols;
+   int* intsearchcols;
+   int* binsearchcols;
+   int nconfill;
+   int nintfill;
+   int nbinfill;
+#ifdef SCIP_DEBUG
+   int nconvarsfixed = 0;
+   int nintvarsfixed = 0;
+   int nbinvarsfixed = 0;
+#endif
+   int* pclass;
+   int* colidx;
+   int pclassstart;
+   int pc;
+   SCIP_Bool* varineq;
 
    assert(result != NULL);
    *result = SCIP_DIDNOTRUN;
 
-   if( (SCIPgetStage(scip) != SCIP_STAGE_PRESOLVING) || SCIPinProbing(scip) || SCIPisNLPEnabled(scip) )
-      return SCIP_OKAY;
-
-   if( SCIPisStopped(scip) || SCIPgetNActivePricers(scip) > 0 )
-      return SCIP_OKAY;
-
-   if( !SCIPallowDualReds(scip) )
+   if( !SCIPallowStrongDualReds(scip) || SCIPisStopped(scip) )
       return SCIP_OKAY;
 
    presoldata = SCIPpresolGetData(presol);
@@ -2010,381 +2056,364 @@ SCIP_DECL_PRESOLEXEC(presolExecDomcol)
    *result = SCIP_DIDNOTFIND;
 
    matrix = NULL;
-   SCIP_CALL( SCIPmatrixCreate(scip, &matrix, &initialized, &complete) );
+   SCIP_CALL( SCIPmatrixCreate(scip, &matrix, TRUE, &initialized, &complete, &infeasible,
+      naddconss, ndelconss, nchgcoefs, nchgbds, nfixedvars) );
 
-   if( initialized && complete )
+   /* if infeasibility was detected during matrix creation, return here */
+   if( infeasible )
    {
-      int nfixings;
-      SCIP_Longint ndomrelations;
-      int v;
-      int r;
-      FIXINGDIRECTION* varstofix;
-      SCIP_Bool* varsprocessed;
-      int nrows;
-      int ncols;
-      int* rowidxsorted;
-      int* rowsparsity;
-      int varcount;
-      int* consearchcols;
-      int* intsearchcols;
-      int* binsearchcols;
-      int nconfill;
-      int nintfill;
-      int nbinfill;
-#ifdef SCIP_DEBUG
-      int nconvarsfixed = 0;
-      int nintvarsfixed = 0;
-      int nbinvarsfixed = 0;
-#endif
-      int* pclass;
-      int* colidx;
-      int pclassstart;
-      int pc;
-      SCIP_Bool* varineq;
+      if( initialized )
+         SCIPmatrixFree(scip, &matrix);
 
-      nfixings = 0;
-      ndomrelations = 0;
-      nrows = SCIPmatrixGetNRows(matrix);
-      ncols = SCIPmatrixGetNColumns(matrix);
-      assert(SCIPgetNVars(scip) == ncols);
+      *result = SCIP_CUTOFF;
+      return SCIP_OKAY;
+   }
 
-      SCIP_CALL( SCIPallocBufferArray(scip, &varstofix, ncols) );
-      BMSclearMemoryArray(varstofix, ncols);
+   if( !initialized )
+      return SCIP_OKAY;
 
-      SCIP_CALL( SCIPallocBufferArray(scip, &varsprocessed, ncols) );
-      BMSclearMemoryArray(varsprocessed, ncols);
+   nfixings = 0;
+   ndomrelations = 0;
+   nrows = SCIPmatrixGetNRows(matrix);
+   ncols = SCIPmatrixGetNColumns(matrix);
+   assert(SCIPgetNVars(scip) == ncols);
 
-      SCIP_CALL( SCIPallocBufferArray(scip, &consearchcols, ncols) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &intsearchcols, ncols) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &binsearchcols, ncols) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &varstofix, ncols) );
+   BMSclearMemoryArray(varstofix, ncols);
 
-      SCIP_CALL( SCIPallocBufferArray(scip, &rowidxsorted, nrows) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &rowsparsity, nrows) );
-      for( r = 0; r < nrows; ++r )
+   SCIP_CALL( SCIPallocBufferArray(scip, &varsprocessed, ncols) );
+
+   /* do not process columns that do not have all locks represented in the matrix */
+   for( v = 0; v < ncols; ++v )
+      varsprocessed[v] = SCIPmatrixUplockConflict(matrix, v) || SCIPmatrixDownlockConflict(matrix, v);
+
+   SCIP_CALL( SCIPallocBufferArray(scip, &consearchcols, ncols) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &intsearchcols, ncols) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &binsearchcols, ncols) );
+
+   SCIP_CALL( SCIPallocBufferArray(scip, &rowidxsorted, nrows) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &rowsparsity, nrows) );
+   for( r = 0; r < nrows; ++r )
+   {
+      rowidxsorted[r] = r;
+      rowsparsity[r] = SCIPmatrixGetRowNNonzs(matrix, r);
+   }
+
+   SCIP_CALL( SCIPallocBufferArray(scip, &pclass, ncols) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &colidx, ncols) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &varineq, ncols) );
+   for( v = 0; v < ncols; v++ )
+   {
+      colidx[v] = v;
+      varineq[v] = FALSE;
+   }
+
+   /* init pair comparision control */
+   presoldata->numcurrentpairs = presoldata->nummaxpairs;
+
+   varcount = 0;
+
+   /* 1.stage: search dominance relations of parallel columns
+      *          within equalities and ranged rows
+      */
+   if( (presoltiming & SCIP_PRESOLTIMING_EXHAUSTIVE) != 0 )
+   {
+      SCIP_CALL( detectParallelCols(scip, matrix, pclass, varineq) );
+      SCIPsortIntInt(pclass, colidx, ncols);
+
+      pc = 0;
+      while( pc < ncols )
       {
-         rowidxsorted[r] = r;
-         rowsparsity[r] = SCIPmatrixGetRowNNonzs(matrix, r);
-      }
+         int varidx;
 
-      SCIP_CALL( SCIPallocBufferArray(scip, &pclass, ncols) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &colidx, ncols) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &varineq, ncols) );
-      for( v = 0; v < ncols; v++ )
-      {
-         colidx[v] = v;
-         varineq[v] = FALSE;
-      }
+         varidx = 0;
+         nconfill = 0;
+         nintfill = 0;
+         nbinfill = 0;
 
-      /* init pair comparision control */
-      presoldata->numcurrentpairs = presoldata->nummaxpairs;
-
-      varcount = 0;
-
-      /* 1.stage: search dominance relations of parallel columns
-       *          within equalities and ranged rows
-       */
-      if( (presoltiming & SCIP_PRESOLTIMING_EXHAUSTIVE) != 0 )
-      {
-         SCIP_CALL( detectParallelCols(scip, matrix, pclass, varineq) );
-         SCIPsortIntInt(pclass, colidx, ncols);
-
-         pc = 0;
-         while( pc < ncols )
+         pclassstart = pclass[pc];
+         while( pc < ncols && pclassstart == pclass[pc] )
          {
-            int varidx;
-
-            varidx = 0;
-            nconfill = 0;
-            nintfill = 0;
-            nbinfill = 0;
-
-            pclassstart = pclass[pc];
-            while( pc < ncols && pclassstart == pclass[pc] )
-            {
-               SCIP_VAR* var;
-
-               varidx = colidx[pc];
-               var = SCIPmatrixGetVar(matrix, varidx);
-
-               /* we only regard variables which were not processed yet and
-                * are present within equalities or ranged rows
-                */
-               if( !varsprocessed[varidx] && varineq[varidx] )
-               {
-                  /* we search only for dominance relations between the same variable type */
-                  if( SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS )
-                  {
-                     consearchcols[nconfill++] = varidx;
-                  }
-                  else if( SCIPvarIsBinary(var) )
-                  {
-                     binsearchcols[nbinfill++] = varidx;
-                  }
-                  else
-                  {
-                     assert(SCIPvarGetType(var) == SCIP_VARTYPE_INTEGER || SCIPvarGetType(var) == SCIP_VARTYPE_IMPLINT);
-                     intsearchcols[nintfill++] = varidx;
-                  }
-               }
-               ++pc;
-            }
-
-            /* continuous variables */
-            if( nconfill > 1 && presoldata->continuousred )
-            {
-               SCIP_CALL( findDominancePairs(scip, matrix, presoldata, consearchcols, nconfill, FALSE,
-                     varstofix, &nfixings, &ndomrelations, nchgbds) );
-
-               for( v = 0; v < nconfill; ++v )
-                  varsprocessed[consearchcols[v]] = TRUE;
-
-               varcount += nconfill;
-            }
-            else if( nconfill == 1 )
-            {
-               if( varineq[varidx] )
-                  varsprocessed[consearchcols[0]] = TRUE;
-            }
-
-            /* integer and impl-integer variables */
-            if( nintfill > 1 )
-            {
-               SCIP_CALL( findDominancePairs(scip, matrix, presoldata, intsearchcols, nintfill, FALSE,
-                     varstofix, &nfixings, &ndomrelations, nchgbds) );
-
-               for( v = 0; v < nintfill; ++v )
-                  varsprocessed[intsearchcols[v]] = TRUE;
-
-               varcount += nintfill;
-            }
-            else if( nintfill == 1 )
-            {
-               if( varineq[varidx] )
-                  varsprocessed[intsearchcols[0]] = TRUE;
-            }
-
-            /* binary variables */
-            if( nbinfill > 1 )
-            {
-               SCIP_CALL( findDominancePairs(scip, matrix, presoldata, binsearchcols, nbinfill, TRUE,
-                     varstofix, &nfixings, &ndomrelations, nchgbds) );
-
-               for( v = 0; v < nbinfill; ++v )
-                  varsprocessed[binsearchcols[v]] = TRUE;
-
-               varcount += nbinfill;
-            }
-            else if( nbinfill == 1 )
-            {
-               if( varineq[varidx] )
-                  varsprocessed[binsearchcols[0]] = TRUE;
-            }
-
-            if( varcount >= ncols )
-               break;
-         }
-      }
-
-      /* 2.stage: search dominance relations for the remaining columns
-       *          by increasing row-sparsity
-       */
-      if( (presoltiming & SCIP_PRESOLTIMING_EXHAUSTIVE) != 0 )
-      {
-         SCIPsortIntInt(rowsparsity, rowidxsorted, nrows);
-
-         for( r = 0; r < nrows; ++r )
-         {
-            int rowidx;
-            int* rowpnt;
-            int* rowend;
-
-            /* break if the time limit was reached; since the check is expensive,
-             * we only check all 1000 constraints
-             */
-            if( (r % 1000 == 0) && SCIPisStopped(scip) )
-               break;
-
-            rowidx = rowidxsorted[r];
-            rowpnt = SCIPmatrixGetRowIdxPtr(matrix, rowidx);
-            rowend = rowpnt + SCIPmatrixGetRowNNonzs(matrix, rowidx);
-
-            if( SCIPmatrixGetRowNNonzs(matrix, rowidx) == 1 )
-               continue;
-
-            nconfill = 0;
-            nintfill = 0;
-            nbinfill = 0;
-
-            for( ; rowpnt < rowend; rowpnt++ )
-            {
-               if( !(varsprocessed[*rowpnt]) )
-               {
-                  int varidx;
-                  SCIP_VAR* var;
-
-                  varidx = *rowpnt;
-                  var = SCIPmatrixGetVar(matrix, varidx);
-
-                  /* we search only for dominance relations between the same variable type */
-                  if( SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS )
-                  {
-                     consearchcols[nconfill++] = varidx;
-                  }
-                  else if( SCIPvarIsBinary(var) )
-                  {
-                     binsearchcols[nbinfill++] = varidx;
-                  }
-                  else
-                  {
-                     assert(SCIPvarGetType(var) == SCIP_VARTYPE_INTEGER || SCIPvarGetType(var) == SCIP_VARTYPE_IMPLINT);
-                     intsearchcols[nintfill++] = varidx;
-                  }
-               }
-            }
-
-            /* continuous variables */
-            if( nconfill > 1 && presoldata->continuousred )
-            {
-               SCIP_CALL( findDominancePairs(scip, matrix, presoldata, consearchcols, nconfill, FALSE,
-                     varstofix, &nfixings, &ndomrelations, nchgbds) );
-
-               for( v = 0; v < nconfill; ++v )
-                  varsprocessed[consearchcols[v]] = TRUE;
-
-               varcount += nconfill;
-            }
-
-            /* integer and impl-integer variables */
-            if( nintfill > 1 )
-            {
-               SCIP_CALL( findDominancePairs(scip, matrix, presoldata, intsearchcols, nintfill, FALSE,
-                     varstofix, &nfixings, &ndomrelations, nchgbds) );
-
-               for( v = 0; v < nintfill; ++v )
-                  varsprocessed[intsearchcols[v]] = TRUE;
-
-               varcount += nintfill;
-            }
-
-            /* binary variables */
-            if( nbinfill > 1 )
-            {
-               SCIP_CALL( findDominancePairs(scip, matrix, presoldata, binsearchcols, nbinfill, TRUE,
-                     varstofix, &nfixings, &ndomrelations, nchgbds) );
-
-               for( v = 0; v < nbinfill; ++v )
-                  varsprocessed[binsearchcols[v]] = TRUE;
-
-               varcount += nbinfill;
-            }
-
-            if( varcount >= ncols )
-               break;
-         }
-      }
-
-      if( nfixings > 0 )
-      {
-         int oldnfixedvars;
-
-         oldnfixedvars = *nfixedvars;
-
-         for( v = ncols - 1; v >= 0; --v )
-         {
-            SCIP_Bool infeasible;
-            SCIP_Bool fixed;
             SCIP_VAR* var;
 
-            var = SCIPmatrixGetVar(matrix,v);
+            varidx = colidx[pc];
+            var = SCIPmatrixGetVar(matrix, varidx);
 
-            if( SCIPvarGetNLocksUp(var) != SCIPmatrixGetColNUplocks(matrix, v) ||
-               SCIPvarGetNLocksDown(var) != SCIPmatrixGetColNDownlocks(matrix, v) )
+            /* we only regard variables which were not processed yet and
+               * are present within equalities or ranged rows
+               */
+            if( !varsprocessed[varidx] && varineq[varidx] )
             {
-               /* no fixing, locks not consistent */
-               continue;
-            }
-
-            if( varstofix[v] == FIXATLB )
-            {
-               SCIP_Real lb;
-
-               lb = SCIPvarGetLbGlobal(var);
-               assert(SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS || SCIPisFeasIntegral(scip, lb));
-
-               /* fix at lower bound */
-               SCIP_CALL( SCIPfixVar(scip, var, lb, &infeasible, &fixed) );
-               if( infeasible )
-               {
-                  SCIPdebugMsg(scip, " -> infeasible fixing\n");
-                  *result = SCIP_CUTOFF;
-
-                  break;
-               }
-               assert(fixed);
-               (*nfixedvars)++;
-
-#ifdef SCIP_DEBUG
+               /* we search only for dominance relations between the same variable type */
                if( SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS )
-                  nconvarsfixed++;
-               else if( SCIPvarIsBinary(var) )
-                  nbinvarsfixed++;
-               else
-                  nintvarsfixed++;
-#endif
-            }
-            else if( varstofix[v] == FIXATUB )
-            {
-               SCIP_Real ub;
-
-               ub = SCIPvarGetUbGlobal(var);
-               assert(SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS || SCIPisFeasIntegral(scip, ub));
-
-               /* fix at upper bound */
-               SCIP_CALL( SCIPfixVar(scip, var, ub, &infeasible, &fixed) );
-               if( infeasible )
                {
-                  SCIPdebugMsg(scip, " -> infeasible fixing\n");
-                  *result = SCIP_CUTOFF;
-
-                  break;
+                  consearchcols[nconfill++] = varidx;
                }
-               assert(fixed);
-               (*nfixedvars)++;
-
-#ifdef SCIP_DEBUG
-               if( SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS )
-                  nconvarsfixed++;
                else if( SCIPvarIsBinary(var) )
-                  nbinvarsfixed++;
+               {
+                  binsearchcols[nbinfill++] = varidx;
+               }
                else
-                  nintvarsfixed++;
-#endif
+               {
+                  assert(SCIPvarGetType(var) == SCIP_VARTYPE_INTEGER || SCIPvarGetType(var) == SCIP_VARTYPE_IMPLINT);
+                  intsearchcols[nintfill++] = varidx;
+               }
+            }
+            ++pc;
+         }
+
+         /* continuous variables */
+         if( nconfill > 1 && presoldata->continuousred )
+         {
+            SCIP_CALL( findDominancePairs(scip, matrix, presoldata, consearchcols, nconfill, FALSE,
+                  varstofix, &nfixings, &ndomrelations, nchgbds) );
+
+            for( v = 0; v < nconfill; ++v )
+               varsprocessed[consearchcols[v]] = TRUE;
+
+            varcount += nconfill;
+         }
+         else if( nconfill == 1 )
+         {
+            if( varineq[varidx] )
+               varsprocessed[consearchcols[0]] = TRUE;
+         }
+
+         /* integer and impl-integer variables */
+         if( nintfill > 1 )
+         {
+            SCIP_CALL( findDominancePairs(scip, matrix, presoldata, intsearchcols, nintfill, FALSE,
+                  varstofix, &nfixings, &ndomrelations, nchgbds) );
+
+            for( v = 0; v < nintfill; ++v )
+               varsprocessed[intsearchcols[v]] = TRUE;
+
+            varcount += nintfill;
+         }
+         else if( nintfill == 1 )
+         {
+            if( varineq[varidx] )
+               varsprocessed[intsearchcols[0]] = TRUE;
+         }
+
+         /* binary variables */
+         if( nbinfill > 1 )
+         {
+            SCIP_CALL( findDominancePairs(scip, matrix, presoldata, binsearchcols, nbinfill, TRUE,
+                  varstofix, &nfixings, &ndomrelations, nchgbds) );
+
+            for( v = 0; v < nbinfill; ++v )
+               varsprocessed[binsearchcols[v]] = TRUE;
+
+            varcount += nbinfill;
+         }
+         else if( nbinfill == 1 )
+         {
+            if( varineq[varidx] )
+               varsprocessed[binsearchcols[0]] = TRUE;
+         }
+
+         if( varcount >= ncols )
+            break;
+      }
+   }
+
+   /* 2.stage: search dominance relations for the remaining columns
+      *          by increasing row-sparsity
+      */
+   if( (presoltiming & SCIP_PRESOLTIMING_EXHAUSTIVE) != 0 )
+   {
+      SCIPsortIntInt(rowsparsity, rowidxsorted, nrows);
+
+      for( r = 0; r < nrows; ++r )
+      {
+         int rowidx;
+         int* rowpnt;
+         int* rowend;
+
+         /* break if the time limit was reached; since the check is expensive,
+            * we only check all 1000 constraints
+            */
+         if( (r % 1000 == 0) && SCIPisStopped(scip) )
+            break;
+
+         rowidx = rowidxsorted[r];
+         rowpnt = SCIPmatrixGetRowIdxPtr(matrix, rowidx);
+         rowend = rowpnt + SCIPmatrixGetRowNNonzs(matrix, rowidx);
+
+         if( SCIPmatrixGetRowNNonzs(matrix, rowidx) == 1 )
+            continue;
+
+         nconfill = 0;
+         nintfill = 0;
+         nbinfill = 0;
+
+         for( ; rowpnt < rowend; rowpnt++ )
+         {
+            if( !(varsprocessed[*rowpnt]) )
+            {
+               int varidx;
+               SCIP_VAR* var;
+
+               varidx = *rowpnt;
+               var = SCIPmatrixGetVar(matrix, varidx);
+
+               /* we search only for dominance relations between the same variable type */
+               if( SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS )
+               {
+                  consearchcols[nconfill++] = varidx;
+               }
+               else if( SCIPvarIsBinary(var) )
+               {
+                  binsearchcols[nbinfill++] = varidx;
+               }
+               else
+               {
+                  assert(SCIPvarGetType(var) == SCIP_VARTYPE_INTEGER || SCIPvarGetType(var) == SCIP_VARTYPE_IMPLINT);
+                  intsearchcols[nintfill++] = varidx;
+               }
             }
          }
 
-         if( *result != SCIP_CUTOFF && *nfixedvars > oldnfixedvars )
-            *result = SCIP_SUCCESS;
-      }
+         /* continuous variables */
+         if( nconfill > 1 && presoldata->continuousred )
+         {
+            SCIP_CALL( findDominancePairs(scip, matrix, presoldata, consearchcols, nconfill, FALSE,
+                  varstofix, &nfixings, &ndomrelations, nchgbds) );
 
-      SCIPfreeBufferArray(scip, &varineq);
-      SCIPfreeBufferArray(scip, &colidx);
-      SCIPfreeBufferArray(scip, &pclass);
-      SCIPfreeBufferArray(scip, &rowsparsity);
-      SCIPfreeBufferArray(scip, &rowidxsorted);
-      SCIPfreeBufferArray(scip, &binsearchcols);
-      SCIPfreeBufferArray(scip, &intsearchcols);
-      SCIPfreeBufferArray(scip, &consearchcols);
-      SCIPfreeBufferArray(scip, &varsprocessed);
-      SCIPfreeBufferArray(scip, &varstofix);
+            for( v = 0; v < nconfill; ++v )
+               varsprocessed[consearchcols[v]] = TRUE;
+
+            varcount += nconfill;
+         }
+
+         /* integer and impl-integer variables */
+         if( nintfill > 1 )
+         {
+            SCIP_CALL( findDominancePairs(scip, matrix, presoldata, intsearchcols, nintfill, FALSE,
+                  varstofix, &nfixings, &ndomrelations, nchgbds) );
+
+            for( v = 0; v < nintfill; ++v )
+               varsprocessed[intsearchcols[v]] = TRUE;
+
+            varcount += nintfill;
+         }
+
+         /* binary variables */
+         if( nbinfill > 1 )
+         {
+            SCIP_CALL( findDominancePairs(scip, matrix, presoldata, binsearchcols, nbinfill, TRUE,
+                  varstofix, &nfixings, &ndomrelations, nchgbds) );
+
+            for( v = 0; v < nbinfill; ++v )
+               varsprocessed[binsearchcols[v]] = TRUE;
+
+            varcount += nbinfill;
+         }
+
+         if( varcount >= ncols )
+            break;
+      }
+   }
+
+   if( nfixings > 0 )
+   {
+      int oldnfixedvars;
+
+      oldnfixedvars = *nfixedvars;
+
+      for( v = ncols - 1; v >= 0; --v )
+      {
+         SCIP_Bool fixed;
+         SCIP_VAR* var;
+
+         var = SCIPmatrixGetVar(matrix,v);
+
+         /* there should be no fixings for variables with lock conflicts,
+            * since they where marked as processed and therefore should be skipped
+            */
+         assert(varstofix[v] == NOFIX || (!SCIPmatrixUplockConflict(matrix, v) && !SCIPmatrixDownlockConflict(matrix, v)) );
+
+         if( varstofix[v] == FIXATLB )
+         {
+            SCIP_Real lb;
+
+            lb = SCIPvarGetLbGlobal(var);
+            assert(SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS || SCIPisFeasIntegral(scip, lb));
+
+            /* fix at lower bound */
+            SCIP_CALL( SCIPfixVar(scip, var, lb, &infeasible, &fixed) );
+            if( infeasible )
+            {
+               SCIPdebugMsg(scip, " -> infeasible fixing\n");
+               *result = SCIP_CUTOFF;
+
+               break;
+            }
+            assert(fixed);
+            (*nfixedvars)++;
 
 #ifdef SCIP_DEBUG
-      if( (nconvarsfixed + nintvarsfixed + nbinvarsfixed) > 0 )
-      {
-         SCIPdebugMsg(scip, "### %d vars [%" SCIP_LONGINT_FORMAT " dom] => fixed [cont: %d, int: %d, bin: %d], %scutoff detected\n",
-            ncols, ndomrelations, nconvarsfixed, nintvarsfixed, nbinvarsfixed, (*result != SCIP_CUTOFF) ? "no " : "");
-      }
+            if( SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS )
+               nconvarsfixed++;
+            else if( SCIPvarIsBinary(var) )
+               nbinvarsfixed++;
+            else
+               nintvarsfixed++;
 #endif
+         }
+         else if( varstofix[v] == FIXATUB )
+         {
+            SCIP_Real ub;
+
+            ub = SCIPvarGetUbGlobal(var);
+            assert(SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS || SCIPisFeasIntegral(scip, ub));
+
+            /* fix at upper bound */
+            SCIP_CALL( SCIPfixVar(scip, var, ub, &infeasible, &fixed) );
+            if( infeasible )
+            {
+               SCIPdebugMsg(scip, " -> infeasible fixing\n");
+               *result = SCIP_CUTOFF;
+
+               break;
+            }
+            assert(fixed);
+            (*nfixedvars)++;
+
+#ifdef SCIP_DEBUG
+            if( SCIPvarGetType(var) == SCIP_VARTYPE_CONTINUOUS )
+               nconvarsfixed++;
+            else if( SCIPvarIsBinary(var) )
+               nbinvarsfixed++;
+            else
+               nintvarsfixed++;
+#endif
+         }
+      }
+
+      if( *result != SCIP_CUTOFF && *nfixedvars > oldnfixedvars )
+         *result = SCIP_SUCCESS;
    }
+
+   SCIPfreeBufferArray(scip, &varineq);
+   SCIPfreeBufferArray(scip, &colidx);
+   SCIPfreeBufferArray(scip, &pclass);
+   SCIPfreeBufferArray(scip, &rowsparsity);
+   SCIPfreeBufferArray(scip, &rowidxsorted);
+   SCIPfreeBufferArray(scip, &binsearchcols);
+   SCIPfreeBufferArray(scip, &intsearchcols);
+   SCIPfreeBufferArray(scip, &consearchcols);
+   SCIPfreeBufferArray(scip, &varsprocessed);
+   SCIPfreeBufferArray(scip, &varstofix);
+
+#ifdef SCIP_DEBUG
+   if( (nconvarsfixed + nintvarsfixed + nbinvarsfixed) > 0 )
+   {
+      SCIPdebugMsg(scip, "### %d vars [%" SCIP_LONGINT_FORMAT " dom] => fixed [cont: %d, int: %d, bin: %d], %scutoff detected\n",
+         ncols, ndomrelations, nconvarsfixed, nintvarsfixed, nbinvarsfixed, (*result != SCIP_CUTOFF) ? "no " : "");
+   }
+#endif
 
    SCIPmatrixFree(scip, &matrix);
 

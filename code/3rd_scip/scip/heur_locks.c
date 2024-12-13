@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_locks.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  rounding locks primal heuristic
  * @author Michael Winkler
  * @author Gerald Gamrath
@@ -21,37 +31,61 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/heur_locks.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_randnumgen.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include "scip/scip_tree.h"
+#include <string.h>
 
 #define HEUR_NAME             "locks"
 #define HEUR_DESC             "heuristic that fixes variables based on their rounding locks"
-#define HEUR_DISPCHAR         'k'
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_PROP
 #define HEUR_PRIORITY         3000
 #define HEUR_FREQ             0
 #define HEUR_FREQOFS          0
 #define HEUR_MAXDEPTH         -1
 #define HEUR_TIMING           SCIP_HEURTIMING_BEFORENODE
-#define HEUR_USESSUBSCIP      TRUE                       /**< does the heuristic use a secondary SCIP instance? */
+#define HEUR_USESSUBSCIP      TRUE           /**< does the heuristic use a secondary SCIP instance? */
 
-#define DEFAULT_MAXNODES      5000LL                     /**< maximum number of nodes to regard in the subproblem */
-#define DEFAULT_ROUNDUPPROBABILITY 0.67                  /**< probability for rounding a variable up in case of ties */
-#define DEFAULT_MINFIXINGRATE 0.65                       /**< minimum percentage of variables that have to be fixed */
-#define DEFAULT_MINIMPROVE    0.01                       /**< factor by which locks heuristic should at least improve the
-                                                          *   incumbent
-                                                          */
-#define DEFAULT_MINNODES      500LL                      /**< minimum number of nodes to regard in the subproblem */
-#define DEFAULT_NODESOFS      500LL                      /**< number of nodes added to the contingent of the total nodes */
-#define DEFAULT_NODESQUOT     0.1                        /**< subproblem nodes in relation to nodes of the original problem */
-#define DEFAULT_MAXPROPROUNDS 2                          /**< maximum number of propagation rounds during probing */
-#define DEFAULT_UPDATELOCKS   TRUE                       /**< should the locks be updated based on LP rows? */
-#define DEFAULT_COPYCUTS      TRUE                       /**< should all active cuts from the cutpool of the
-                                                          *   original scip be copied to constraints of the subscip? */
-#define DEFAULT_USEFINALSUBMIP TRUE                      /**< should a final sub-MIP be solved to construct a feasible
-                                                          *   solution if the LP was not roundable? */
-#define DEFAULT_RANDSEED      73                         /**< initial random seed */
+#define DEFAULT_MAXNODES      5000LL         /**< maximum number of nodes to regard in the subproblem */
+#define DEFAULT_ROUNDUPPROBABILITY 0.67      /**< probability for rounding a variable up in case of ties */
+#define DEFAULT_MINFIXINGRATE 0.65           /**< minimum percentage of variables that have to be fixed */
+#define DEFAULT_MINIMPROVE    0.01           /**< factor by which locks heuristic should at least improve the
+                                              *   incumbent */
+#define DEFAULT_MINNODES      500LL          /**< minimum number of nodes to regard in the subproblem */
+#define DEFAULT_NODESOFS      500LL          /**< number of nodes added to the contingent of the total nodes */
+#define DEFAULT_NODESQUOT     0.1            /**< subproblem nodes in relation to nodes of the original problem */
+#define DEFAULT_MAXPROPROUNDS 2              /**< maximum number of propagation rounds during probing */
+#define DEFAULT_UPDATELOCKS   TRUE           /**< should the locks be updated based on LP rows? */
+#define DEFAULT_COPYCUTS      TRUE           /**< should all active cuts from the cutpool of the
+                                              *   original scip be copied to constraints of the subscip? */
+#define DEFAULT_USEFINALSUBMIP TRUE          /**< should a final sub-MIP be solved to construct a feasible
+                                              *   solution if the LP was not roundable? */
+#define DEFAULT_RANDSEED      73             /**< initial random seed */
+#define DEFAULT_MINFIXINGRATELP 0.0          /**< minimum fixing rate over all variables (including continuous)
+                                              *   to solve LP */
 
 /** primal heuristic data */
 struct SCIP_HeurData
@@ -63,6 +97,7 @@ struct SCIP_HeurData
    SCIP_Longint          usednodes;          /**< nodes already used by locks heuristic in earlier calls */
    SCIP_Real             roundupprobability; /**< probability for rounding a variable up in case of ties */
    SCIP_Real             minfixingrate;      /**< minimum percentage of variables that have to be fixed */
+   SCIP_Real             minfixingratelp;    /**< minimum fixing rate over all variables (including continuous) to solve LP */
    SCIP_Real             minimprove;         /**< factor by which locks heuristic should at least improve the incumbent */
    SCIP_Real             nodesquot;          /**< subproblem nodes in relation to nodes of the original problem */
    int                   maxproprounds;      /**< maximum number of propagation rounds during probing */
@@ -76,50 +111,6 @@ struct SCIP_HeurData
 /*
  * Local methods
  */
-
-/** creates a new solution for the original problem by copying the solution of the subproblem */
-static
-SCIP_RETCODE createNewSol(
-   SCIP*                 scip,               /**< original SCIP data structure */
-   SCIP*                 subscip,            /**< SCIP structure of the subproblem */
-   SCIP_VAR**            subvars,            /**< the variables of the subproblem */
-   SCIP_SOL*             newsol,             /**< working solution */
-   SCIP_SOL*             subsol,             /**< solution of the subproblem */
-   SCIP_Bool*            success             /**< used to store whether new solution was found or not */
-   )
-{
-   SCIP_VAR** vars;                          /* the original problem's variables */
-   int nvars;
-   SCIP_Real* subsolvals;                    /* solution values of the subproblem */
-
-   assert(scip != NULL);
-   assert(subscip != NULL);
-   assert(subvars != NULL);
-   assert(subsol != NULL);
-   assert(success != NULL);
-
-   /* get variables' data */
-   SCIP_CALL( SCIPgetVarsData(scip, &vars, &nvars, NULL, NULL, NULL, NULL) );
-
-   /* sub-SCIP may have more variables than the number of active (transformed) variables in the main SCIP
-    * since constraint copying may have required the copy of variables that are fixed in the main SCIP
-    */
-   assert(nvars <= SCIPgetNOrigVars(subscip));
-
-   SCIP_CALL( SCIPallocBufferArray(scip, &subsolvals, nvars) );
-
-   /* copy the solution */
-   SCIP_CALL( SCIPgetSolVals(subscip, subsol, nvars, subvars, subsolvals) );
-
-   SCIP_CALL( SCIPsetSolVals(scip, newsol, nvars, vars, subsolvals) );
-
-   /* try to add new solution to scip and free it immediately */
-   SCIP_CALL( SCIPtrySol(scip, newsol, FALSE, FALSE, TRUE, TRUE, TRUE, success) );
-
-   SCIPfreeBufferArray(scip, &subsolvals);
-
-   return SCIP_OKAY;
-}
 
 /** copy method for primal heuristic plugins (called when SCIP copies plugins) */
 static
@@ -168,7 +159,7 @@ SCIP_DECL_HEURINIT(heurInitLocks) /*lint --e{715}*/
 
    /* create random number generator */
    SCIP_CALL( SCIPcreateRandom(scip, &heurdata->randnumgen,
-         DEFAULT_RANDSEED) );
+         DEFAULT_RANDSEED, TRUE) );
 
    return SCIP_OKAY;
 }
@@ -268,10 +259,9 @@ SCIP_RETCODE SCIPapplyLockFixings(
 
    roundupprobability = heurdata->roundupprobability;
 
-
    updatelocks = heurdata->updatelocks && (SCIPgetNCheckConss(scip) == SCIPgetNLPRows(scip));
 
-   SCIPdebugMsg(scip, "%d constraints: %d logicor, updatelocks=%d\n", SCIPgetNConss(scip), SCIPconshdlrGetNCheckConss(SCIPfindConshdlr(scip, "logicor")), updatelocks);
+   SCIPdebugMsg(scip, "%d constraints: %d logicor, updatelocks=%u\n", SCIPgetNConss(scip), SCIPconshdlrGetNCheckConss(SCIPfindConshdlr(scip, "logicor")), updatelocks);
 
    SCIP_CALL( SCIPgetVarsData(scip, &vars, &nvars, &nbinvars, NULL, NULL, NULL) );
    assert(vars != NULL);
@@ -295,8 +285,8 @@ SCIP_RETCODE SCIPapplyLockFixings(
    for( v = 0; v < nbinvars; ++v )
    {
       var = sortvars[v];
-      nuplocks[v] = SCIPvarGetNLocksUp(var);
-      ndownlocks[v] = SCIPvarGetNLocksDown(var);
+      nuplocks[v] = SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL);
+      ndownlocks[v] = SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL);
    }
 
    /* get activities of rows */
@@ -666,7 +656,6 @@ static
 SCIP_DECL_HEUREXEC(heurExecLocks)
 {  /*lint --e{715}*/
    SCIP_HEURDATA* heurdata;
-   SCIP_SOL* sol;
    SCIP_VAR** vars;
    SCIP_LPSOLSTAT lpstatus = SCIP_LPSOLSTAT_ERROR;
    SCIP_Real lowerbound;
@@ -728,9 +717,6 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
    }
 #endif
 
-   /* create solution */
-   SCIP_CALL( SCIPcreateSol(scip, &sol, heur) );
-
    lowerbound = SCIPgetLowerbound(scip);
    oldnpscands = SCIPgetNPseudoBranchCands(scip);
 
@@ -763,12 +749,55 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
    }
    else
    {
-      SCIPdebugMsg(scip, "starting solving locks-lp at time %g\n", SCIPgetSolvingTime(scip));
+      char strbuf[SCIP_MAXSTRLEN];
+      int ncols;
+
+      if( SCIPgetNContVars(scip) > 0 )
+      {
+         int nminfixings;
+         int nfixedvars = 0;
+
+         nvars = SCIPgetNVars(scip);
+         vars = SCIPgetVars(scip);
+         nminfixings = (int)(SCIPceil(scip, heurdata->minfixingratelp * nvars));
+
+         /* count fixed variables */
+         for( i = 0; i < nvars && nfixedvars < nminfixings; ++i )
+         {
+            if( SCIPisEQ(scip, SCIPvarGetLbLocal(vars[i]), SCIPvarGetUbLocal(vars[i])) )
+               ++nfixedvars;
+         }
+
+         SCIPdebugMsg(scip, "Fixed %d of %d (%.1f %%) variables after probing -> %s\n",
+            nfixedvars, nvars, (100.0 * nfixedvars / (SCIP_Real)nvars),
+         nfixedvars >= nminfixings ? "continue and solve LP for remaining variables" : "terminate without LP");
+
+         if( nfixedvars < nminfixings )
+            goto TERMINATE;
+      }
+
+      /* print message if relatively large LP is solved from scratch, since this could lead to a longer period during
+       * which the user sees no output; more detailed probing stats only in debug mode */
+      ncols = SCIPgetNLPCols(scip);
+      if( !SCIPisLPSolBasic(scip) && ncols > 1000 )
+      {
+         int nunfixedcols = SCIPgetNUnfixedLPCols(scip);
+
+         if( nunfixedcols > 0.5 * ncols )
+         {
+            SCIPverbMessage(scip, SCIP_VERBLEVEL_FULL, NULL,
+               "Heuristic " HEUR_NAME " solving LP from scratch with %.1f %% unfixed columns (%d of %d) ...\n",
+               100.0 * (nunfixedcols / (SCIP_Real)ncols), nunfixedcols, ncols);
+         }
+      }
+      SCIPdebugMsg(scip, "Heuristic " HEUR_NAME " probing LP: %s\n",
+         SCIPsnprintfProbingStats(scip, strbuf, SCIP_MAXSTRLEN));
 
       /* solve LP;
        * errors in the LP solver should not kill the overall solving process, if the LP is just needed for a heuristic.
        * hence in optimized mode, the return code is caught and a warning is printed, only in debug mode, SCIP will stop.
        */
+      SCIPdebugMsg(scip, "starting solving locks-lp at time %g\n", SCIPgetSolvingTime(scip));
 #ifdef NDEBUG
       {
          SCIP_Bool retstat;
@@ -792,11 +821,13 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
       /* check if this is a feasible solution */
       if( !lperror && lpstatus == SCIP_LPSOLSTAT_OPTIMAL )
       {
+         SCIP_SOL* sol;
          SCIP_Bool success;
 
          lowerbound = SCIPgetLPObjval(scip);
 
-         /* copy the current LP solution to the working solution */
+         /* create a copy of the current LP solution */
+         SCIP_CALL( SCIPcreateSol(scip, &sol, heur) );
          SCIP_CALL( SCIPlinkLPSol(scip, sol) );
 
          SCIP_CALL( SCIProundSol(scip, sol, &success) );
@@ -824,9 +855,13 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
                *result = SCIP_FOUNDSOL;
             }
 
+            SCIP_CALL( SCIPfreeSol(scip, &sol) );
+
             /* we found a solution, so we are done */
             goto TERMINATE;
          }
+
+         SCIP_CALL( SCIPfreeSol(scip, &sol) );
       }
    }
 
@@ -875,7 +910,7 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
       /* create the variable mapping hash map */
       SCIP_CALL( SCIPhashmapCreate(&varmap, SCIPblkmem(subscip), nvars) );
 
-      SCIP_CALL( SCIPcopy(scip, subscip, varmap, NULL, "_locks", FALSE, FALSE, TRUE, &valid) );
+      SCIP_CALL( SCIPcopy(scip, subscip, varmap, NULL, "_locks", FALSE, FALSE, FALSE, TRUE, &valid) );
 
       if( heurdata->copycuts )
       {
@@ -924,17 +959,6 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
 
       /* speed up sub-SCIP by not checking dual LP feasibility */
       SCIP_CALL( SCIPsetBoolParam(subscip, "lp/checkdualfeas", FALSE) );
-
-      /* employ a limit on the number of enforcement rounds in the quadratic constraint handler; this fixes the issue that
-       * sometimes the quadratic constraint handler needs hundreds or thousands of enforcement rounds to determine the
-       * feasibility status of a single node without fractional branching candidates by separation (namely for uflquad
-       * instances); however, the solution status of the sub-SCIP might get corrupted by this; hence no deductions shall be
-       * made for the original SCIP
-       */
-      if( SCIPfindConshdlr(subscip, "quadratic") != NULL && !SCIPisParamFixed(subscip, "constraints/quadratic/enfolplimit") )
-      {
-         SCIP_CALL( SCIPsetIntParam(subscip, "constraints/quadratic/enfolplimit", 10) );
-      }
 
       /* if there is already a solution, add an objective cutoff */
       if( SCIPgetNSols(scip) > 0 )
@@ -992,9 +1016,7 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
        */
       if( ((nvars - SCIPgetNVars(subscip)) / (SCIP_Real)nvars) >= heurdata->minfixingrate )
       {
-         SCIP_SOL** subsols;
          SCIP_Bool success;
-         int nsubsols;
 
          SCIPdebugMsg(scip, "solving subproblem: nstallnodes=%" SCIP_LONGINT_FORMAT ", maxnodes=%" SCIP_LONGINT_FORMAT "\n", nstallnodes, heurdata->maxnodes);
 
@@ -1017,14 +1039,7 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
          /* check, whether a solution was found; due to numerics, it might happen that not all solutions are feasible ->
           * try all solutions until one was accepted
           */
-         nsubsols = SCIPgetNSols(subscip);
-         subsols = SCIPgetSols(subscip);
-         success = FALSE;
-
-         for( i = 0; i < nsubsols && !success; ++i )
-         {
-            SCIP_CALL( createNewSol(scip, subscip, subvars, sol, subsols[i], &success) );
-         }
+         SCIP_CALL( SCIPtranslateSubSols(scip, subscip, heur, subvars, &success, NULL) );
          if( success )
             *result = SCIP_FOUNDSOL;
       }
@@ -1042,7 +1057,6 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
       SCIP_CALL( SCIPfree(&subscip) );
    }
 
-
  TERMINATE:
    /* exit probing mode */
    SCIP_CALL( SCIPendProbing(scip) );
@@ -1054,9 +1068,6 @@ SCIP_DECL_HEUREXEC(heurExecLocks)
       SCIP_CALL( SCIPsetBoolParam(scip, "conflict/enable", enabledconflicts) );
    }
 #endif
-
-   /* free all allocated memory */
-   SCIP_CALL( SCIPfreeSol(scip, &sol) );
 
    return SCIP_OKAY;
 }
@@ -1127,6 +1138,10 @@ SCIP_RETCODE SCIPincludeHeurLocks(
    SCIP_CALL( SCIPaddBoolParam(scip, "heuristics/" HEUR_NAME "/updatelocks",
          "should the locks be updated based on LP rows?",
          &heurdata->updatelocks, TRUE, DEFAULT_UPDATELOCKS, NULL, NULL) );
+
+   SCIP_CALL( SCIPaddRealParam(scip, "heuristics/" HEUR_NAME "/minfixingratelp",
+         "minimum fixing rate over all variables (including continuous) to solve LP",
+         &heurdata->minfixingratelp, TRUE, DEFAULT_MINFIXINGRATELP, 0.0, 1.0, NULL, NULL) );
 
    return SCIP_OKAY;
 }

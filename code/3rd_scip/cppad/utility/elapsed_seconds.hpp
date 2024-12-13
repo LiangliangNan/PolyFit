@@ -1,9 +1,9 @@
-// $Id$
-# ifndef CPPAD_ELAPSED_SECONDS_HPP
-# define CPPAD_ELAPSED_SECONDS_HPP
+// $Id: elapsed_seconds.hpp 3845 2016-11-19 01:50:47Z bradbell $
+# ifndef CPPAD_UTILITY_ELAPSED_SECONDS_HPP
+# define CPPAD_UTILITY_ELAPSED_SECONDS_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-16 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -37,7 +37,7 @@ This routine is accurate to within .02 seconds
 (see $cref elapsed_seconds.cpp$$).
 It does not necessary work for time intervals that are greater than a day.
 $list number$$
-If the C++11 $code std::chrono::high_resolution_clock$$ is available,
+If the C++11 $code std::chrono::steady_clock$$ is available,
 it will be used for timing.
 $lnext
 Otherwise, if running under the Microsoft compiler,
@@ -74,18 +74,16 @@ $end
 //		cd work/speed/example
 //		make test.sh
 // fails with the error message 'gettimeofday' not defined.
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 
 // define CPPAD_NULL
-# include <cppad/local/define.hpp>
+# include <cppad/core/define.hpp>
 
 // needed before one can use CPPAD_ASSERT_FIRST_CALL_NOT_PARALLEL
 # include <cppad/utility/thread_alloc.hpp>
 
 # if CPPAD_USE_CPLUSPLUS_2011
 # include <chrono>
-# elif _MSC_VER
-extern double microsoft_timer(void);
 # elif CPPAD_HAS_GETTIMEOFDAY
 # include <sys/time.h>
 # else
@@ -118,20 +116,17 @@ inline double elapsed_seconds(void)
 # if CPPAD_USE_CPLUSPLUS_2011
 {	CPPAD_ASSERT_FIRST_CALL_NOT_PARALLEL;
 	static bool first_ = true;
-	static std::chrono::time_point<std::chrono::high_resolution_clock> start_;
+	static std::chrono::time_point<std::chrono::steady_clock> start_;
 	if( first_ )
-	{	start_ = std::chrono::high_resolution_clock::now();
+	{	start_ = std::chrono::steady_clock::now();
 		first_ = false;
 		return 0.0;
 	}
-	std::chrono::time_point<std::chrono::high_resolution_clock> now;
-    now   = std::chrono::high_resolution_clock::now();
+	std::chrono::time_point<std::chrono::steady_clock> now;
+    now   = std::chrono::steady_clock::now();
     std::chrono::duration<double> difference = now - start_;
 	return difference.count();
 }
-// --------------------------------------------------------------------------
-# elif _MSC_VER
-{	return microsoft_timer(); }
 // --------------------------------------------------------------------------
 # elif CPPAD_HAS_GETTIMEOFDAY
 {	CPPAD_ASSERT_FIRST_CALL_NOT_PARALLEL;

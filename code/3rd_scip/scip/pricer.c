@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   pricer.c
+ * @ingroup OTHER_CFILES
  * @brief  methods for variable pricers
  * @author Tobias Achterberg
  * @author Timo Berthold
@@ -93,10 +103,9 @@ SCIP_RETCODE SCIPpricerCopyInclude(
    return SCIP_OKAY;
 }
 
-/** creates a variable pricer
- *  To use the variable pricer for solving a problem, it first has to be activated with a call to SCIPactivatePricer().
- */
-SCIP_RETCODE SCIPpricerCreate(
+/** internal method creating a variable pricer */
+static
+SCIP_RETCODE doPricerCreate(
    SCIP_PRICER**         pricer,             /**< pointer to variable pricer data structure */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -126,6 +135,8 @@ SCIP_RETCODE SCIPpricerCreate(
    assert(pricerredcost != NULL);
 
    SCIP_ALLOC( BMSallocMemory(pricer) );
+   BMSclearMemory(*pricer);
+
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*pricer)->name, name, strlen(name)+1) );
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*pricer)->desc, desc, strlen(desc)+1) );
    (*pricer)->priority = priority;
@@ -156,6 +167,42 @@ SCIP_RETCODE SCIPpricerCreate(
    return SCIP_OKAY;
 }
 
+/** creates a variable pricer
+ *  To use the variable pricer for solving a problem, it first has to be activated with a call to SCIPactivatePricer().
+ */
+SCIP_RETCODE SCIPpricerCreate(
+   SCIP_PRICER**         pricer,             /**< pointer to variable pricer data structure */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
+   BMS_BLKMEM*           blkmem,             /**< block memory for parameter settings */
+   const char*           name,               /**< name of variable pricer */
+   const char*           desc,               /**< description of variable pricer */
+   int                   priority,           /**< priority of the variable pricer */
+   SCIP_Bool             delay,              /**< should the pricer be delayed until no other pricers or already existing
+                                              *   problem variables with negative reduced costs are found */
+   SCIP_DECL_PRICERCOPY  ((*pricercopy)),    /**< copy method of pricer or NULL if you don't want to copy your plugin into sub-SCIPs */
+   SCIP_DECL_PRICERFREE  ((*pricerfree)),    /**< destructor of variable pricer */
+   SCIP_DECL_PRICERINIT  ((*pricerinit)),    /**< initialize variable pricer */
+   SCIP_DECL_PRICEREXIT  ((*pricerexit)),    /**< deinitialize variable pricer */
+   SCIP_DECL_PRICERINITSOL((*pricerinitsol)),/**< solving process initialization method of variable pricer */
+   SCIP_DECL_PRICEREXITSOL((*pricerexitsol)),/**< solving process deinitialization method of variable pricer */
+   SCIP_DECL_PRICERREDCOST((*pricerredcost)),/**< reduced cost pricing method of variable pricer for feasible LPs */
+   SCIP_DECL_PRICERFARKAS((*pricerfarkas)),  /**< Farkas pricing method of variable pricer for infeasible LPs */
+   SCIP_PRICERDATA*      pricerdata          /**< variable pricer data */
+   )
+{
+   assert(pricer != NULL);
+   assert(name != NULL);
+   assert(desc != NULL);
+   assert(pricerredcost != NULL);
+
+   SCIP_CALL_FINALLY( doPricerCreate(pricer, set, messagehdlr, blkmem, name, desc, priority, delay, pricercopy,
+      pricerfree, pricerinit, pricerexit, pricerinitsol, pricerexitsol, pricerredcost, pricerfarkas, pricerdata),
+      (void) SCIPpricerFree(pricer ,set) );
+
+   return SCIP_OKAY;
+}
+
 /** calls destructor and frees memory of variable pricer */
 SCIP_RETCODE SCIPpricerFree(
    SCIP_PRICER**         pricer,             /**< pointer to variable pricer data structure */
@@ -163,7 +210,8 @@ SCIP_RETCODE SCIPpricerFree(
    )
 {
    assert(pricer != NULL);
-   assert(*pricer != NULL);
+   if( *pricer == NULL )
+      return SCIP_OKAY;
    assert(!(*pricer)->initialized);
    assert(set != NULL);
 
@@ -175,8 +223,8 @@ SCIP_RETCODE SCIPpricerFree(
 
    SCIPclockFree(&(*pricer)->pricerclock);
    SCIPclockFree(&(*pricer)->setuptime);
-   BMSfreeMemoryArray(&(*pricer)->name);
-   BMSfreeMemoryArray(&(*pricer)->desc);
+   BMSfreeMemoryArrayNull(&(*pricer)->name);
+   BMSfreeMemoryArrayNull(&(*pricer)->desc);
    BMSfreeMemory(pricer);
 
    return SCIP_OKAY;
@@ -329,7 +377,6 @@ SCIP_RETCODE SCIPpricerDeactivate(
 {
    assert(pricer != NULL);
    assert(set != NULL);
-   assert(set->stage == SCIP_STAGE_PROBLEM);
 
    if( pricer->active )
    {

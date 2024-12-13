@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_randrounding.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  randomized LP rounding heuristic which also generates conflicts via an auxiliary probing tree
  * @author Gregor Hendel
  *
@@ -27,16 +37,31 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/heur_randrounding.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_message.h"
 #include "scip/pub_misc.h"
-
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_randnumgen.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define HEUR_NAME             "randrounding"
 #define HEUR_DESC             "fast LP rounding heuristic"
-#define HEUR_DISPCHAR         'G'
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_ROUNDING
 #define HEUR_PRIORITY         -200
 #define HEUR_FREQ             20
 #define HEUR_FREQOFS          0
@@ -47,7 +72,7 @@
 #define DEFAULT_ONCEPERNODE   FALSE          /**< should the heuristic only be called once per node? */
 #define DEFAULT_RANDSEED         23          /**< default random seed */
 #define DEFAULT_USESIMPLEROUNDING    FALSE   /**< should the heuristic apply the variable lock strategy of simple rounding,
-                                               *  if possible? */
+                                              *   if possible? */
 #define DEFAULT_MAXPROPROUNDS 1              /**< limit of rounds for each propagation call */
 #define DEFAULT_PROPAGATEONLYROOT TRUE       /**< should the probing part of the heuristic be applied exclusively at the root node */
 
@@ -289,8 +314,7 @@ SCIP_RETCODE performLPRandRounding(
    int nlpcands;
 
    /* only call heuristic, if an optimal LP solution is at hand */
-   if ( SCIPgetLPSolstat(scip) != SCIP_LPSOLSTAT_OPTIMAL )
-      return SCIP_OKAY;
+   assert(SCIPgetLPSolstat(scip) == SCIP_LPSOLSTAT_OPTIMAL);
 
    /* only call heuristic, if the LP objective value is smaller than the cutoff bound */
    if( SCIPisGE(scip, SCIPgetLPObjval(scip), SCIPgetCutoffbound(scip)) )
@@ -379,7 +403,7 @@ SCIP_DECL_HEURINIT(heurInitRandrounding) /*lint --e{715}*/
 
    /* create random number generator */
    SCIP_CALL( SCIPcreateRandom(scip, &heurdata->randnumgen,
-         DEFAULT_RANDSEED) );
+         DEFAULT_RANDSEED, TRUE) );
 
    return SCIP_OKAY;
 }
@@ -446,8 +470,8 @@ SCIP_DECL_HEUREXEC(heurExecRandrounding) /*lint --e{715}*/
 
    *result = SCIP_DIDNOTRUN;
 
-   /* only call heuristic, if an optimal LP solution is at hand or if relaxation solution is available */
-   if( SCIPgetLPSolstat(scip) != SCIP_LPSOLSTAT_OPTIMAL && ! SCIPisRelaxSolValid(scip) )
+   /* only call heuristic, if an optimal LP solution is at hand */
+   if( SCIPgetLPSolstat(scip) != SCIP_LPSOLSTAT_OPTIMAL )
       return SCIP_OKAY;
 
    /* only call heuristic, if the LP objective value is smaller than the cutoff bound */
@@ -458,8 +482,8 @@ SCIP_DECL_HEUREXEC(heurExecRandrounding) /*lint --e{715}*/
    heurdata = SCIPheurGetData(heur);
    assert(heurdata != NULL);
 
-   /* don't call heuristic, if we have already processed the current LP solution but no relaxation solution is available */
-   if ( SCIPgetNLPs(scip) == heurdata->lastlp && ! SCIPisRelaxSolValid(scip) )
+   /* don't call heuristic, if we have already processed the current LP solution */
+   if( SCIPgetNLPs(scip) == heurdata->lastlp )
       return SCIP_OKAY;
 
    propagate = (!heurdata->propagateonlyroot || SCIPgetDepth(scip) == 0);

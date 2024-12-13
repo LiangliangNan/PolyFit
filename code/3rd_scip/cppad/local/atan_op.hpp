@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_ATAN_OP_HPP
-# define CPPAD_ATAN_OP_HPP
+# ifndef CPPAD_LOCAL_ATAN_OP_HPP
+# define CPPAD_LOCAL_ATAN_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,7 +13,7 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file atan_op.hpp
 Forward and reverse mode calculations for z = atan(x).
@@ -35,7 +34,7 @@ The auxillary result is
 The value of y, and its derivatives, are computed along with the value
 and derivatives of z.
 
-\copydetails forward_unary2_op
+\copydetails CppAD::local::forward_unary2_op
 */
 template <class Base>
 inline void forward_atan_op(
@@ -60,18 +59,18 @@ inline void forward_atan_op(
 	size_t k;
 	if( p == 0 )
 	{	z[0] = atan( x[0] );
-		b[0] = Base(1) + x[0] * x[0];
+		b[0] = Base(1.0) + x[0] * x[0];
 		p++;
 	}
 	for(size_t j = p; j <= q; j++)
 	{
-		b[j] = Base(2) * x[0] * x[j];
-		z[j] = Base(0);
+		b[j] = Base(2.0) * x[0] * x[j];
+		z[j] = Base(0.0);
 		for(k = 1; k < j; k++)
 		{	b[j] += x[k] * x[j-k];
-			z[j] -= Base(k) * z[k] * b[j-k];
+			z[j] -= Base(double(k)) * z[k] * b[j-k];
 		}
-		z[j] /= Base(j);
+		z[j] /= Base(double(j));
 		z[j] += x[j];
 		z[j] /= b[0];
 	}
@@ -91,7 +90,7 @@ The auxillary result is
 The value of y, and its derivatives, are computed along with the value
 and derivatives of z.
 
-\copydetails forward_unary2_op_dir
+\copydetails CppAD::local::forward_unary2_op_dir
 */
 template <class Base>
 inline void forward_atan_op_dir(
@@ -116,13 +115,13 @@ inline void forward_atan_op_dir(
 
 	size_t m = (q-1) * r + 1;
 	for(size_t ell = 0; ell < r; ell++)
-	{	b[m+ell] = Base(2) * x[m+ell] * x[0];
-		z[m+ell] = Base(q) * x[m+ell];
+	{	b[m+ell] = Base(2.0) * x[m+ell] * x[0];
+		z[m+ell] = Base(double(q)) * x[m+ell];
 		for(size_t k = 1; k < q; k++)
 		{	b[m+ell] += x[(k-1)*r+1+ell] * x[(q-k-1)*r+1+ell];
-			z[m+ell] -= Base(k) * z[(k-1)*r+1+ell] * b[(q-k-1)*r+1+ell];
+			z[m+ell] -= Base(double(k)) * z[(k-1)*r+1+ell] * b[(q-k-1)*r+1+ell];
 		}
-		z[m+ell] /= ( Base(q) * b[0] );
+		z[m+ell] /= ( Base(double(q)) * b[0] );
 	}
 }
 
@@ -139,7 +138,7 @@ The auxillary result is
 \endverbatim
 The value of y is computed along with the value of z.
 
-\copydetails forward_unary2_op_0
+\copydetails CppAD::local::forward_unary2_op_0
 */
 template <class Base>
 inline void forward_atan_op_0(
@@ -159,7 +158,7 @@ inline void forward_atan_op_0(
 	Base* b = z      -       cap_order; // called y in documentation
 
 	z[0] = atan( x[0] );
-	b[0] = Base(1) + x[0] * x[0];
+	b[0] = Base(1.0) + x[0] * x[0];
 }
 /*!
 Reverse mode partial derivatives for result of op = AtanOp.
@@ -174,7 +173,7 @@ The auxillary result is
 \endverbatim
 The value of y is computed along with the value of z.
 
-\copydetails reverse_unary2_op
+\copydetails CppAD::local::reverse_unary2_op
 */
 
 template <class Base>
@@ -205,7 +204,7 @@ inline void reverse_atan_op(
 	const Base* b  = z  - cap_order; // called y in documentation
 	Base* pb       = pz - nc_partial;
 
-	Base inv_b0 = Base(1) / b[0];
+	Base inv_b0 = Base(1.0) / b[0];
 
 	// number of indices to access
 	size_t j = d;
@@ -213,24 +212,24 @@ inline void reverse_atan_op(
 	while(j)
 	{	// scale partials w.r.t z[j] and b[j]
 		pz[j]  = azmul(pz[j], inv_b0);
-		pb[j] *= Base(2);
+		pb[j] *= Base(2.0);
 
 		pb[0] -= azmul(pz[j], z[j]);
 		px[j] += pz[j] + azmul(pb[j], x[0]);
 		px[0] += azmul(pb[j], x[j]);
 
 		// more scaling of partials w.r.t z[j]
-		pz[j] /= Base(j);
+		pz[j] /= Base(double(j));
 
 		for(k = 1; k < j; k++)
-		{	pb[j-k] -= Base(k) * azmul(pz[j], z[k]);
-			pz[k]   -= Base(k) * azmul(pz[j], b[j-k]);
+		{	pb[j-k] -= Base(double(k)) * azmul(pz[j], z[k]);
+			pz[k]   -= Base(double(k)) * azmul(pz[j], b[j-k]);
 			px[k]   += azmul(pb[j], x[j-k]);
 		}
 		--j;
 	}
-	px[0] += azmul(pz[0], inv_b0) + Base(2) * azmul(pb[0], x[0]);
+	px[0] += azmul(pz[0], inv_b0) + Base(2.0) * azmul(pb[0], x[0]);
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

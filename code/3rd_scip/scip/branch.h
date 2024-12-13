@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -25,21 +34,22 @@
 #define __SCIP_BRANCH_H__
 
 
-#include "scip/def.h"
 #include "blockmemshell/memory.h"
-#include "scip/type_retcode.h"
-#include "scip/type_result.h"
-#include "scip/type_set.h"
-#include "scip/type_stat.h"
-#include "scip/type_misc.h"
+#include "scip/def.h"
+#include "scip/type_branch.h"
 #include "scip/type_event.h"
 #include "scip/type_lp.h"
-#include "scip/type_var.h"
+#include "scip/type_message.h"
 #include "scip/type_prob.h"
-#include "scip/type_tree.h"
+#include "scip/type_reopt.h"
+#include "scip/type_result.h"
+#include "scip/type_retcode.h"
+#include "scip/type_scip.h"
 #include "scip/type_sepastore.h"
-#include "scip/type_branch.h"
-#include "scip/pub_branch.h"
+#include "scip/type_set.h"
+#include "scip/type_stat.h"
+#include "scip/type_tree.h"
+#include "scip/type_var.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,25 +60,21 @@ extern "C" {
  */
 
 /** creates a branching candidate storage */
-extern
 SCIP_RETCODE SCIPbranchcandCreate(
    SCIP_BRANCHCAND**     branchcand          /**< pointer to store branching candidate storage */
    );
 
 /** frees branching candidate storage */
-extern
 SCIP_RETCODE SCIPbranchcandFree(
    SCIP_BRANCHCAND**     branchcand          /**< pointer to store branching candidate storage */
    );
 
 /** invalidates branching candidates storage */
-extern
 void SCIPbranchcandInvalidate(
    SCIP_BRANCHCAND*      branchcand          /**< pointer to store branching candidate storage */
    );
 
 /** gets branching candidates for LP solution branching (fractional variables) */
-extern
 SCIP_RETCODE SCIPbranchcandGetLPCands(
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -84,7 +90,6 @@ SCIP_RETCODE SCIPbranchcandGetLPCands(
 
 
 /** gets external branching candidates */
-extern
 SCIP_RETCODE SCIPbranchcandGetExternCands(
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
    SCIP_VAR***           externcands,        /**< pointer to store the array of external branching candidates, or NULL */
@@ -99,55 +104,46 @@ SCIP_RETCODE SCIPbranchcandGetExternCands(
    );
 
 /** gets maximal branching priority of LP branching candidates */
-extern
 int SCIPbranchcandGetLPMaxPrio(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of LP branching candidates with maximal branch priority */
-extern
 int SCIPbranchcandGetNPrioLPCands(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets maximal branching priority of external branching candidates */
-extern
 int SCIPbranchcandGetExternMaxPrio(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of external branching candidates */
-extern
 int SCIPbranchcandGetNExternCands(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of external branching candidates with maximal branch priority */
-extern
 int SCIPbranchcandGetNPrioExternCands(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of binary external branching candidates with maximal branch priority */
-extern
 int SCIPbranchcandGetNPrioExternBins(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of integer external branching candidates with maximal branch priority */
-extern
 int SCIPbranchcandGetNPrioExternInts(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of implicit integer external branching candidates with maximal branch priority */
-extern
 int SCIPbranchcandGetNPrioExternImpls(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of continuous external branching candidates with maximal branch priority */
-extern
 int SCIPbranchcandGetNPrioExternConts(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
@@ -155,7 +151,6 @@ int SCIPbranchcandGetNPrioExternConts(
 /** insert variable, its score and its solution value into the external branching candidate storage
  * the absolute difference of the current lower and upper bounds of the variable must be at least epsilon
  */
-extern
 SCIP_RETCODE SCIPbranchcandAddExternCand(
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -165,20 +160,17 @@ SCIP_RETCODE SCIPbranchcandAddExternCand(
    );
 
 /** removes all external candidates from the storage for external branching */
-extern
 void SCIPbranchcandClearExternCands(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** checks whether the given variable is contained in the candidate storage for external branching */
-extern
 SCIP_Bool SCIPbranchcandContainsExternCand(
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
    SCIP_VAR*             var                 /**< variable to look for */
    );
 
 /** gets branching candidates for pseudo solution branching (non-fixed variables) */
-extern
 SCIP_RETCODE SCIPbranchcandGetPseudoCands(
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -189,44 +181,37 @@ SCIP_RETCODE SCIPbranchcandGetPseudoCands(
    );
 
 /** gets number of branching candidates for pseudo solution branching (non-fixed variables) */
-extern
 int SCIPbranchcandGetNPseudoCands(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of branching candidates with maximal branch priority for pseudo solution branching */
-extern
 int SCIPbranchcandGetNPrioPseudoCands(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of binary branching candidates with maximal branch priority for pseudo solution branching */
-extern
 int SCIPbranchcandGetNPrioPseudoBins(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of integer branching candidates with maximal branch priority for pseudo solution branching */
-extern
 int SCIPbranchcandGetNPrioPseudoInts(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** gets number of implicit integer branching candidates with maximal branch priority for pseudo solution branching */
-extern
 int SCIPbranchcandGetNPrioPseudoImpls(
    SCIP_BRANCHCAND*      branchcand          /**< branching candidate storage */
    );
 
 /** removes variable from branching candidate list */
-extern
 SCIP_RETCODE SCIPbranchcandRemoveVar(
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
    SCIP_VAR*             var                 /**< variable that changed its bounds */
    );
 
 /** updates branching candidate list for a given variable */
-extern
 SCIP_RETCODE SCIPbranchcandUpdateVar(
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -234,7 +219,6 @@ SCIP_RETCODE SCIPbranchcandUpdateVar(
    );
 
 /** updates branching priority of the given variable and update the pseudo candidate array if needed */
-extern
 SCIP_RETCODE SCIPbranchcandUpdateVarBranchPriority(
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -250,14 +234,12 @@ SCIP_RETCODE SCIPbranchcandUpdateVarBranchPriority(
  */
 
 /** copies the given branchrule to a new scip */
-extern
 SCIP_RETCODE SCIPbranchruleCopyInclude(
    SCIP_BRANCHRULE*      branchrule,         /**< branchrule */
    SCIP_SET*             set                 /**< SCIP_SET of SCIP to copy to */
    );
 
 /** creates a branching rule */
-extern
 SCIP_RETCODE SCIPbranchruleCreate(
    SCIP_BRANCHRULE**     branchrule,         /**< pointer to store branching rule */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -283,42 +265,36 @@ SCIP_RETCODE SCIPbranchruleCreate(
    );
 
 /** frees memory of branching rule */
-extern
 SCIP_RETCODE SCIPbranchruleFree(
    SCIP_BRANCHRULE**     branchrule,         /**< pointer to branching rule data structure */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** initializes branching rule */
-extern
 SCIP_RETCODE SCIPbranchruleInit(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** deinitializes branching rule */
-extern
 SCIP_RETCODE SCIPbranchruleExit(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs branching rule that the branch and bound process is being started */
-extern
 SCIP_RETCODE SCIPbranchruleInitsol(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs branching rule that the branch and bound process data is being freed */
-extern
 SCIP_RETCODE SCIPbranchruleExitsol(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** executes branching rule for fractional LP solution */
-extern
 SCIP_RETCODE SCIPbranchruleExecLPSol(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -331,7 +307,6 @@ SCIP_RETCODE SCIPbranchruleExecLPSol(
    );
 
 /** executes branching rule for external branching candidates */
-extern
 SCIP_RETCODE SCIPbranchruleExecExternSol(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -344,7 +319,6 @@ SCIP_RETCODE SCIPbranchruleExecExternSol(
    );
 
 /** executes branching rule for not completely fixed pseudo solution */
-extern
 SCIP_RETCODE SCIPbranchruleExecPseudoSol(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -356,7 +330,6 @@ SCIP_RETCODE SCIPbranchruleExecPseudoSol(
    );
 
 /** sets priority of branching rule */
-extern
 void SCIPbranchruleSetPriority(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -364,84 +337,72 @@ void SCIPbranchruleSetPriority(
    );
 
 /** sets maximal depth level, up to which this branching rule should be used (-1 for no limit) */
-extern
 void SCIPbranchruleSetMaxdepth(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    int                   maxdepth            /**< new maxdepth of the branching rule */
    );
 
 /** sets maximal relative distance from current node's dual bound to primal bound for applying branching rule */
-extern
 void SCIPbranchruleSetMaxbounddist(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_Real             maxbounddist        /**< new maxbounddist of the branching rule */
    );
 
 /** sets copy method of branching rule */
-extern
 void SCIPbranchruleSetCopy(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHCOPY  ((*branchcopy))     /**< copy method of branching rule or NULL if you don't want to copy your plugin into sub-SCIPs */
    );
 
 /** sets destructor method of branching rule */
-extern
 void SCIPbranchruleSetFree(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHFREE  ((*branchfree))     /**< destructor of branching rule */
    );
 
 /** sets initialization method of branching rule */
-extern
 void SCIPbranchruleSetInit(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHINIT  ((*branchinit))     /**< initialize branching rule */
    );
 
 /** sets deinitialization method of branching rule */
-extern
 void SCIPbranchruleSetExit(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHEXIT  ((*branchexit))     /**< deinitialize branching rule */
    );
 
 /** sets solving process initialization method of branching rule */
-extern
 void SCIPbranchruleSetInitsol(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHINITSOL((*branchinitsol)) /**< solving process initialization method of branching rule */
    );
 
 /** sets solving process deinitialization method of branching rule */
-extern
 void SCIPbranchruleSetExitsol(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHEXITSOL((*branchexitsol)) /**< solving process deinitialization method of branching rule */
    );
 
 /** sets branching execution method for fractional LP solutions */
-extern
 void SCIPbranchruleSetExecLp(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHEXECLP((*branchexeclp))   /**< branching execution method for fractional LP solutions */
    );
 
 /** sets branching execution method for external candidates  */
-extern
 void SCIPbranchruleSetExecExt(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHEXECEXT((*branchexecext)) /**< branching execution method for external candidates */
    );
 
 /** sets branching execution method for not completely fixed pseudo solutions */
-extern
 void SCIPbranchruleSetExecPs(
    SCIP_BRANCHRULE*      branchrule,         /**< branching rule */
    SCIP_DECL_BRANCHEXECPS((*branchexecps))   /**< branching execution method for not completely fixed pseudo solutions */
    );
 
 /** enables or disables all clocks of \p branchrule, depending on the value of the flag */
-extern
 void SCIPbranchruleEnableOrDisableClocks(
    SCIP_BRANCHRULE*      branchrule,         /**< the branching rule for which all clocks should be enabled or disabled */
    SCIP_Bool             enable              /**< should the clocks of the branching rule be enabled? */
@@ -452,7 +413,6 @@ void SCIPbranchruleEnableOrDisableClocks(
  */
 
 /** calculates the branching score out of the gain predictions for a binary branching */
-extern
 SCIP_Real SCIPbranchGetScore(
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_VAR*             var,                /**< variable, of which the branching factor should be applied, or NULL */
@@ -461,7 +421,6 @@ SCIP_Real SCIPbranchGetScore(
    );
 
 /** calculates the branching score out of the gain predictions for a branching with arbitrary many children */
-extern
 SCIP_Real SCIPbranchGetScoreMultiple(
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_VAR*             var,                /**< variable, of which the branching factor should be applied, or NULL */
@@ -477,7 +436,6 @@ SCIP_Real SCIPbranchGetScoreMultiple(
  * for a continuous variable, the parameter branching/clamp defines how far a branching point need to be from the bounds of a variable
  * the latter is only applied if no point has been suggested, or the suggested point is not inside the variable's interval
  */
-extern
 SCIP_Real SCIPbranchGetBranchingPoint(
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_TREE*            tree,               /**< branch and bound tree */
@@ -489,7 +447,6 @@ SCIP_Real SCIPbranchGetBranchingPoint(
  *  if the branch priority of an unfixed variable is larger than the maximal branch priority of the fractional
  *  variables, pseudo solution branching is applied on the unfixed variables with maximal branch priority
  */
-extern
 SCIP_RETCODE SCIPbranchExecLP(
    BMS_BLKMEM*           blkmem,             /**< block memory for parameter settings */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -508,7 +465,6 @@ SCIP_RETCODE SCIPbranchExecLP(
    );
 
 /** calls branching rules to branch on an external solution; if no external branching candidates exist, the result is SCIP_DIDNOTRUN */
-extern
 SCIP_RETCODE SCIPbranchExecExtern(
    BMS_BLKMEM*           blkmem,             /**< block memory for parameter settings */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -527,7 +483,6 @@ SCIP_RETCODE SCIPbranchExecExtern(
    );
 
 /** calls branching rules to branch on a pseudo solution; if no unfixed variables exist, the result is SCIP_DIDNOTRUN */
-extern
 SCIP_RETCODE SCIPbranchExecPseudo(
    BMS_BLKMEM*           blkmem,             /**< block memory for parameter settings */
    SCIP_SET*             set,                /**< global SCIP settings */

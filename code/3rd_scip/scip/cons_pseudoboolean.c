@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   cons_pseudoboolean.c
+ * @ingroup DEFPLUGINS_CONS
  * @brief  constraint handler for pseudo Boolean constraints
  * @author Gerald Gamrath
  * @author Stefan Heinz
@@ -31,22 +41,36 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
-#include "scip/cons_pseudoboolean.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_and.h"
 #include "scip/cons_indicator.h"
-#ifdef WITHEQKNAPSACK
-#include "scip/cons_eqknapsack.h"
-#endif
 #include "scip/cons_knapsack.h"
 #include "scip/cons_linear.h"
 #include "scip/cons_logicor.h"
+#include "scip/cons_pseudoboolean.h"
 #include "scip/cons_setppc.h"
 #include "scip/cons_xor.h"
-#include "scip/pub_var.h"
 #include "scip/debug.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_var.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_var.h"
+#include <string.h>
+
+#ifdef WITHEQKNAPSACK
+#include "scip/cons_eqknapsack.h"
+#endif
 
 /* constraint handler properties */
 #define CONSHDLR_NAME          "pseudoboolean"
@@ -67,6 +91,10 @@
 #define DEFAULT_PROPAGATENONLINEAR TRUE /**< if decomposed, should the nonlinear constraints be propagated during node processing */
 #define DEFAULT_REMOVABLENONLINEAR TRUE /**< if decomposed, should the nonlinear constraints be removable */
 #define USEINDICATOR               TRUE
+#define NONLINCONSUPGD_PRIORITY   60000 /**< priority of upgrading nonlinear constraints */
+
+/* remove this line to compile the upgrade from nonlinear to pseudoboolean constraints */
+#undef NONLINCONSUPGD_PRIORITY  /*lint !e750*/
 
 /*
  * Data structures
@@ -367,8 +395,7 @@ SCIP_DECL_HASHKEYVAL(hashKeyValAndConsDatas)
    maxidx = SCIPvarGetIndex(cdata->vars[cdata->nvars - 1]);
    assert(minidx >= 0 && minidx <= maxidx);
 
-   return SCIPhashTwo(SCIPcombineTwoInt(cdata->nvars, minidx),
-                      SCIPcombineTwoInt(mididx, maxidx)); /*lint !e701*/
+   return SCIPhashFour(cdata->nvars, minidx, mididx, maxidx);
 }
 
 /** initializes the hashmap and -table used in this constraint handler data for artificial variables and specific
@@ -840,10 +867,8 @@ SCIP_RETCODE getLinVarsAndAndRess(
 	 }
       }
 
-      if( !hashmapentryexists && linvars != NULL )
+      if( !hashmapentryexists && linvars != NULL && nlinvars != NULL )
       {
-         assert(nlinvars != NULL);
-
          linvars[*nlinvars] = vars[v];
 	 if( lincoefs != NULL )
 	 {
@@ -1624,8 +1649,8 @@ SCIP_RETCODE checkLocksAndRes(
    assert(res != NULL);
 
    /* the resultant has no locks left and might be dual fixed now, we need to delete all its cliques */
-   if( SCIPvarIsActive(res) && SCIPvarGetNLocksDown(res) == 0 && SCIPvarGetNLocksUp(res) == 0
-      && SCIPgetStage(scip) < SCIP_STAGE_FREETRANS )
+   if( SCIPvarIsActive(res) && SCIPvarGetNLocksDownType(res, SCIP_LOCKTYPE_MODEL) == 0
+      && SCIPvarGetNLocksUpType(res, SCIP_LOCKTYPE_MODEL) == 0 && SCIPgetStage(scip) < SCIP_STAGE_FREETRANS )
    {
       SCIP_CALL( SCIPremoveVarFromGlobalStructures(scip, res) );
    }
@@ -1653,6 +1678,7 @@ SCIP_RETCODE lockRoundingAndCons(
 
    assert(scip != NULL);
    assert(cons != NULL);
+   assert(!SCIPconsIsLockedType(cons, SCIP_LOCKTYPE_CONFLICT));
    assert(consanddata != NULL);
    assert(!SCIPisInfinity(scip, coef) && !SCIPisInfinity(scip, -coef));
    assert(!SCIPisInfinity(scip, lhs));
@@ -1721,6 +1747,7 @@ SCIP_RETCODE unlockRoundingAndCons(
 
    assert(scip != NULL);
    assert(cons != NULL);
+   assert(!SCIPconsIsLockedType(cons, SCIP_LOCKTYPE_CONFLICT));
    assert(consanddata != NULL);
    assert(!SCIPisInfinity(scip, coef) && !SCIPisInfinity(scip, -coef));
    assert(!SCIPisInfinity(scip, lhs));
@@ -2384,6 +2411,7 @@ SCIP_RETCODE chgLhs(
 
    assert(scip != NULL);
    assert(cons != NULL);
+   assert(!SCIPconsIsLockedType(cons, SCIP_LOCKTYPE_CONFLICT));
    assert(!SCIPisInfinity(scip, lhs));
 
    /* adjust value to not be smaller than -inf */
@@ -2557,6 +2585,7 @@ SCIP_RETCODE chgRhs(
 
    assert(scip != NULL);
    assert(cons != NULL);
+   assert(!SCIPconsIsLockedType(cons, SCIP_LOCKTYPE_CONFLICT));
    assert(!SCIPisInfinity(scip, -rhs));
 
    /* adjust value to not be larger than inf */
@@ -3968,23 +3997,29 @@ SCIP_RETCODE copyConsPseudoboolean(
             assert(!(*valid) || intvar != NULL);
          }
 
-         if( name != NULL )
-            consname = name;
-         else
-            consname = SCIPconsGetName(sourcecons);
+         if( *valid )
+         {
+            if( name != NULL )
+               consname = name;
+            else
+               consname = SCIPconsGetName(sourcecons);
 
-         /* get new left and right hand sides of copied linear constraint since
-          * they might have changed if compressed copying is used
-          */
-         SCIP_CALL( getLinearConsSides(targetscip, targetlincons, targetlinconstype, &targetlhs, &targetrhs) );
+            /* get new left and right hand sides of copied linear constraint since
+             * they might have changed if compressed copying is used
+             */
+            SCIP_CALL( getLinearConsSides(targetscip, targetlincons, targetlinconstype, &targetlhs, &targetrhs) );
 
-         /* create new pseudoboolean constraint */
-         SCIP_CALL( SCIPcreateConsPseudobooleanWithConss(targetscip, targetcons, consname,
-               targetlincons, targetlinconstype, targetandconss, targetandcoefs, ntargetandconss,
-               indvar, sourceconsdata->weight, sourceconsdata->issoftcons, intvar, targetlhs, targetrhs,
-               initial, separate, enforce, check, propagate, local, modifiable, dynamic, removable, stickingatnode) );
+            /* create new pseudoboolean constraint */
+            /* coverity[var_deref_op] */
+            /* coverity[var_deref_model] */
+            SCIP_CALL( SCIPcreateConsPseudobooleanWithConss(targetscip, targetcons, consname,
+                  targetlincons, targetlinconstype, targetandconss, targetandcoefs, ntargetandconss,
+                  indvar, sourceconsdata->weight, sourceconsdata->issoftcons, intvar, targetlhs, targetrhs,
+                  initial, separate, enforce, check, propagate, local, modifiable, dynamic, removable, stickingatnode) );
+         }
       }
-      else if( !SCIPisConsCompressionEnabled(sourcescip) )
+
+      if( !(*valid) && !SCIPisConsCompressionEnabled(sourcescip) )
       {
          SCIPverbMessage(sourcescip, SCIP_VERBLEVEL_MINIMAL, NULL, "could not copy constraint <%s>\n", SCIPconsGetName(sourcecons));
       }
@@ -5372,24 +5407,20 @@ SCIP_RETCODE updateConsanddataUses(
    consanddatas = consdata->consanddatas;
    nconsanddatas = consdata->nconsanddatas;
    assert(nconsanddatas > 0 && consanddatas != NULL);
+   assert(consdata->andcoefs != NULL);
 
    /* remove old locks */
-   if( nconsanddatas > 0 )
+   for( c = nconsanddatas - 1; c >= 0; --c )
    {
-      assert(consdata->andcoefs != NULL);
+      CONSANDDATA* consanddata;
 
-      for( c = nconsanddatas - 1; c >= 0; --c )
-      {
-         CONSANDDATA* consanddata;
+      consanddata = consanddatas[c];
+      assert(consanddata != NULL);
 
-         consanddata = consanddatas[c];
-         assert(consanddata != NULL);
+      if( !consanddata->istransformed )
+         continue;
 
-         if( !consanddata->istransformed )
-            continue;
-
-         SCIP_CALL( removeOldLocks(scip, cons, consanddata, consdata->andcoefs[c], consdata->lhs, consdata->rhs) );
-      }
+      SCIP_CALL( removeOldLocks(scip, cons, consanddata, consdata->andcoefs[c], consdata->lhs, consdata->rhs) );
    }
 
    /* correct consandata usage counters and data */
@@ -5965,7 +5996,7 @@ SCIP_RETCODE tryUpgradingXor(
    {
       (void) SCIPsnprintf(newname, SCIP_MAXSTRLEN, "%s_upgraded", SCIPconsGetName(lincons));
 
-      SCIP_CALL( SCIPcreateConsXor(scip, &newcons, newname, (unsigned int) xortype, nlinvars, linvars,
+      SCIP_CALL( SCIPcreateConsXor(scip, &newcons, newname, (SCIP_Bool) xortype, nlinvars, linvars,
             SCIPconsIsInitial(lincons), SCIPconsIsSeparated(lincons), SCIPconsIsEnforced(lincons), SCIPconsIsChecked(lincons),
             SCIPconsIsPropagated(lincons), SCIPconsIsLocal(lincons), SCIPconsIsModifiable(lincons),
             SCIPconsIsDynamic(lincons), SCIPconsIsRemovable(lincons), SCIPconsIsStickingAtNode(lincons)) );
@@ -7423,7 +7454,7 @@ SCIP_RETCODE findAggregation(
 	     */
 	 }
 #endif
-      }
+      } /*lint !e438*/
       /* we have a constraint in the form of: x1 + x2 * x3 + ~x2 * x3 + ~x2 * ~x3 == 1
        * this leads to the aggregation x1 = x2 * ~x3
        *
@@ -7510,7 +7541,7 @@ SCIP_RETCODE findAggregation(
 	 SCIP_CALL( SCIPdelCons(scip, consdata->lincons) );
 	 SCIP_CALL( SCIPdelCons(scip, cons) );
 	 (*ndelconss) += 2;
-      }
+      } /*lint !e438*/
    }
 
    if( SCIPconsIsDeleted(cons) )
@@ -7529,7 +7560,6 @@ SCIP_RETCODE findAggregation(
    SCIPfreeBufferArray(scip, &(varcount[0]));
    SCIPfreeBufferArray(scip, &allvars);
 
-
    return SCIP_OKAY;
 }
 
@@ -7537,6 +7567,215 @@ SCIP_RETCODE findAggregation(
 /*
  * Callback methods of constraint handler
  */
+
+#ifdef NONLINCONSUPGD_PRIORITY
+#include "scip/cons_nonlinear.h"
+/** tries to upgrade a nonlinear constraint into a pseudoboolean constraint */
+static
+SCIP_DECL_NONLINCONSUPGD(nonlinconsUpgdPseudoboolean)
+{
+   SCIP_EXPRGRAPH* exprgraph;
+   SCIP_EXPRGRAPHNODE* node;
+   SCIP_Real lhs;
+   SCIP_Real rhs;
+   SCIP_VAR* var;
+   SCIP_VAR* objvar = NULL;
+   SCIP_VAR** linvars = NULL;
+   int nlinvars;
+   SCIP_VAR*** terms;
+   int nterms;
+   int* ntermvars;
+   SCIP_Real* termvals;
+   int i;
+   int j;
+
+   assert(nupgdconss != NULL);
+   assert(upgdconss != NULL);
+
+   *nupgdconss = 0;
+
+   node = SCIPgetExprgraphNodeNonlinear(scip, cons);
+
+   /* no interest in linear constraints */
+   if( node == NULL )
+      return SCIP_OKAY;
+
+   switch( SCIPexprgraphGetNodeOperator(node) )
+   {
+   case SCIP_EXPR_VARIDX:
+   case SCIP_EXPR_CONST:
+   case SCIP_EXPR_PLUS:
+   case SCIP_EXPR_MINUS:
+   case SCIP_EXPR_SUM:
+   case SCIP_EXPR_LINEAR:
+      /* these should not appear as exprgraphnodes after constraint presolving */
+      return SCIP_OKAY;
+
+   case SCIP_EXPR_MUL:
+   case SCIP_EXPR_DIV:
+   case SCIP_EXPR_SQUARE:
+   case SCIP_EXPR_SQRT:
+   case SCIP_EXPR_REALPOWER:
+   case SCIP_EXPR_INTPOWER:
+   case SCIP_EXPR_SIGNPOWER:
+   case SCIP_EXPR_EXP:
+   case SCIP_EXPR_LOG:
+   case SCIP_EXPR_SIN:
+   case SCIP_EXPR_COS:
+   case SCIP_EXPR_TAN:
+      /* case SCIP_EXPR_ERF: */
+      /* case SCIP_EXPR_ERFI: */
+   case SCIP_EXPR_MIN:
+   case SCIP_EXPR_MAX:
+   case SCIP_EXPR_ABS:
+   case SCIP_EXPR_SIGN:
+   case SCIP_EXPR_PRODUCT:
+   case SCIP_EXPR_USER:
+      /* these do not look like a proper pseudoboolean expression (assuming the expression graph simplifier did run) */
+      return SCIP_OKAY;
+
+   case SCIP_EXPR_QUADRATIC:  /* let cons_quadratic still handle these for now */
+      return SCIP_OKAY;
+
+   case SCIP_EXPR_POLYNOMIAL:
+      /* these mean that we have something polynomial */
+      break;
+
+   case SCIP_EXPR_PARAM:
+   case SCIP_EXPR_LAST:
+   default:
+      SCIPwarningMessage(scip, "unexpected expression operator %d in nonlinear constraint <%s>\n", SCIPexprgraphGetNodeOperator(node), SCIPconsGetName(cons));
+      return SCIP_OKAY;
+   }
+
+   lhs = SCIPgetLhsNonlinear(scip, cons);
+   rhs = SCIPgetRhsNonlinear(scip, cons);
+
+   /* we need all linear variables to be binary, except for one that was added to reformulate an objective function */
+   for( i = 0; i < SCIPgetNLinearVarsNonlinear(scip, cons); ++i )
+   {
+      var = SCIPgetLinearVarsNonlinear(scip, cons)[i];
+      assert(var != NULL);
+
+      if( SCIPvarIsBinary(var) )
+         continue;
+
+#ifdef SCIP_DISABLED_CODE /* not working in cons_pseudoboolean yet, see cons_pseudoboolean.c:7925 */
+      /* check whether the variable may have been added to represent the objective function */
+      if( objvar == NULL && SCIPgetLinearCoefsNonlinear(scip, cons)[i] == -1.0 && /*TODO we could divide by the coefficient*/
+          SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL) == (SCIPisInfinity(scip,  rhs) ? 0 : 1) &&  /*TODO correct?*/
+          SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL) == (SCIPisInfinity(scip, -lhs) ? 0 : 1) &&  /*TODO correct?*/
+          SCIPisInfinity(scip, -SCIPvarGetLbGlobal(var)) && SCIPisInfinity(scip, SCIPvarGetUbGlobal(var)) &&
+          SCIPvarGetObj(var) == 1.0 )  /*TODO we need this or just positive?*/
+      {
+         objvar = var;
+         continue;
+      }
+#endif
+
+      SCIPdebugMsg(scip, "not pseudoboolean because linear variable <%s> is not binary or objective\n", SCIPvarGetName(var));
+      return SCIP_OKAY;
+   }
+
+   /* if simplified, then all children of root node should be variables, we need all of them to be binary */
+   exprgraph = SCIPgetExprgraphNonlinear(scip, SCIPconsGetHdlr(cons));
+   for( i = 0; i < SCIPexprgraphGetNodeNChildren(node); ++i )
+   {
+      SCIP_EXPRGRAPHNODE* child;
+
+      child = SCIPexprgraphGetNodeChildren(node)[i];
+      assert(child != NULL);
+      if( SCIPexprgraphGetNodeOperator(child) != SCIP_EXPR_VARIDX )
+      {
+         SCIPdebugMsg(scip, "not pseudoboolean because child %d is not a variable\n", i);
+         return SCIP_OKAY;
+      }
+
+      var = (SCIP_VAR*)SCIPexprgraphGetNodeVar(exprgraph, child);
+      assert(var != NULL);
+      if( !SCIPvarIsBinary(var) )
+      {
+         SCIPdebugMsg(scip, "not pseudoboolean because nonlinear var <%s> is not binary\n", SCIPvarGetName(var));
+         return SCIP_OKAY;
+      }
+   }
+
+   /* setup a pseudoboolean constraint */
+
+   if( upgdconsssize < 1 )
+   {
+      /* request larger upgdconss array */
+      *nupgdconss = -1;
+      return SCIP_OKAY;
+   }
+
+   SCIPdebugMsg(scip, "upgrading nonlinear constraint <%s> to pseudo-boolean\n", SCIPconsGetName(cons));
+
+   if( !SCIPisInfinity(scip, -lhs) )
+      lhs -= SCIPexprgraphGetNodePolynomialConstant(node);
+   if( !SCIPisInfinity(scip, -rhs) )
+      rhs -= SCIPexprgraphGetNodePolynomialConstant(node);
+
+   /* setup linear part, if not identical */
+   if( objvar != NULL )
+   {
+      SCIP_CALL( SCIPallocBufferArray(scip, &linvars, SCIPgetNLinearVarsNonlinear(scip, cons)-1) );
+      nlinvars = 0;
+      for( i = 0; i < SCIPgetNLinearVarsNonlinear(scip, cons); ++i )
+      {
+         var = SCIPgetLinearVarsNonlinear(scip, cons)[i];
+         if( var != objvar )
+            linvars[nlinvars++] = var;
+      }
+   }
+   else
+      nlinvars = SCIPgetNLinearVarsNonlinear(scip, cons);
+
+   /* setup nonlinear terms */
+   nterms = SCIPexprgraphGetNodePolynomialNMonomials(node);
+   SCIP_CALL( SCIPallocBufferArray(scip, &terms, nterms) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &ntermvars, nterms) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &termvals, nterms) );
+
+   for( i = 0; i < nterms; ++i )
+   {
+      SCIP_EXPRDATA_MONOMIAL* monomial;
+
+      monomial = SCIPexprgraphGetNodePolynomialMonomials(node)[i];
+      assert(monomial != NULL);
+
+      ntermvars[i] = SCIPexprGetMonomialNFactors(monomial);
+      SCIP_CALL( SCIPallocBufferArray(scip, &terms[i], ntermvars[i]) );
+
+      for( j = 0; j < SCIPexprGetMonomialNFactors(monomial); ++j )
+      {
+         terms[i][j] = (SCIP_VAR*)SCIPexprgraphGetNodeVar(exprgraph, SCIPexprgraphGetNodeChildren(node)[SCIPexprGetMonomialChildIndices(monomial)[j]]);
+         assert(SCIPexprGetMonomialExponents(monomial)[j] > 0.0);
+      }
+
+      termvals[i] = SCIPexprGetMonomialCoef(monomial);
+   }
+
+   *nupgdconss = 1;
+   SCIP_CALL( SCIPcreateConsPseudoboolean(scip, &upgdconss[0], SCIPconsGetName(cons),
+         objvar != NULL ? linvars : SCIPgetLinearVarsNonlinear(scip, cons), nlinvars, SCIPgetLinearCoefsNonlinear(scip, cons),
+         terms, nterms, ntermvars, termvals, NULL, 0.0, FALSE, objvar,
+         lhs, rhs,
+         SCIPconsIsInitial(cons), SCIPconsIsSeparated(cons), SCIPconsIsEnforced(cons),
+         SCIPconsIsChecked(cons), SCIPconsIsPropagated(cons), SCIPconsIsLocal(cons),
+         SCIPconsIsModifiable(cons), SCIPconsIsDynamic(cons), SCIPconsIsRemovable(cons), SCIPconsIsStickingAtNode(cons)) );
+
+   for( i = nterms-1; i >= 0; --i )
+      SCIPfreeBufferArray(scip, &terms[i]);
+
+   SCIPfreeBufferArray(scip, &terms);
+   SCIPfreeBufferArray(scip, &ntermvars);
+   SCIPfreeBufferArray(scip, &termvals);
+   SCIPfreeBufferArrayNull(scip, &linvars);
+
+   return SCIP_OKAY;
+}
+#endif
 
 /** copy method for constraint handler plugins (called when SCIP copies plugins) */
 static
@@ -8354,6 +8593,7 @@ SCIP_DECL_CONSLOCK(consLockPseudoboolean)
    assert(cons != NULL);
    assert(conshdlr != NULL);
    assert(strcmp(SCIPconshdlrGetName(conshdlr), CONSHDLR_NAME) == 0);
+   assert(locktype == SCIP_LOCKTYPE_MODEL);
 
    consdata = SCIPconsGetData(cons);
    assert(consdata != NULL);
@@ -8429,9 +8669,9 @@ SCIP_DECL_CONSLOCK(consLockPseudoboolean)
          {
             for( v = nandvars - 1; v >= 0; --v )
             {
-               SCIP_CALL( SCIPaddVarLocks(scip, andvars[v], nlockspos, nlocksneg) );
+               SCIP_CALL( SCIPaddVarLocksType(scip, andvars[v], locktype, nlockspos, nlocksneg) );
             }
-            SCIP_CALL( SCIPaddVarLocks(scip, andres, nlocksneg + nlockspos, nlocksneg + nlockspos) );
+            SCIP_CALL( SCIPaddVarLocksType(scip, andres, locktype, nlocksneg + nlockspos, nlocksneg + nlockspos) );
 
             SCIP_CALL( checkLocksAndRes(scip, andres) );
          }
@@ -8439,12 +8679,12 @@ SCIP_DECL_CONSLOCK(consLockPseudoboolean)
          {
             for( v = nandvars - 1; v >= 0; --v )
             {
-               SCIP_CALL( SCIPaddVarLocks(scip, andvars[v], nlocksneg, nlockspos) );
+               SCIP_CALL( SCIPaddVarLocksType(scip, andvars[v], locktype, nlocksneg, nlockspos) );
             }
             /* don't double the locks on the and-resultant */
             if( !haslhs )
             {
-               SCIP_CALL( SCIPaddVarLocks(scip, andres, nlocksneg + nlockspos, nlocksneg + nlockspos) );
+               SCIP_CALL( SCIPaddVarLocksType(scip, andres, locktype, nlocksneg + nlockspos, nlocksneg + nlockspos) );
 
                SCIP_CALL( checkLocksAndRes(scip, andres) );
             }
@@ -8456,9 +8696,9 @@ SCIP_DECL_CONSLOCK(consLockPseudoboolean)
          {
             for( v = nandvars - 1; v >= 0; --v )
             {
-               SCIP_CALL( SCIPaddVarLocks(scip, andvars[v], nlocksneg, nlockspos) );
+               SCIP_CALL( SCIPaddVarLocksType(scip, andvars[v], SCIP_LOCKTYPE_MODEL, nlocksneg, nlockspos) );
             }
-            SCIP_CALL( SCIPaddVarLocks(scip, andres, nlocksneg + nlockspos, nlocksneg + nlockspos) );
+            SCIP_CALL( SCIPaddVarLocksType(scip, andres, SCIP_LOCKTYPE_MODEL, nlocksneg + nlockspos, nlocksneg + nlockspos) );
 
             SCIP_CALL( checkLocksAndRes(scip, andres) );
          }
@@ -8466,12 +8706,12 @@ SCIP_DECL_CONSLOCK(consLockPseudoboolean)
          {
             for( v = nandvars - 1; v >= 0; --v )
             {
-               SCIP_CALL( SCIPaddVarLocks(scip, andvars[v], nlockspos, nlocksneg) );
+               SCIP_CALL( SCIPaddVarLocksType(scip, andvars[v], SCIP_LOCKTYPE_MODEL, nlockspos, nlocksneg) );
             }
             /* don't double the locks on the and-resultant */
             if( !haslhs )
             {
-               SCIP_CALL( SCIPaddVarLocks(scip, andres, nlocksneg + nlockspos, nlocksneg + nlockspos) );
+               SCIP_CALL( SCIPaddVarLocksType(scip, andres, SCIP_LOCKTYPE_MODEL, nlocksneg + nlockspos, nlocksneg + nlockspos) );
 
                SCIP_CALL( checkLocksAndRes(scip, andres) );
             }
@@ -8540,13 +8780,13 @@ SCIP_DECL_CONSGETVARS(consGetVarsPseudoboolean)
    assert(conshdlr != NULL);
    assert(cons != NULL);
    assert(vars != NULL);
-   assert(varssize >= 0);
    assert(success != NULL);
 
    if( varssize < 0 )
       return SCIP_INVALIDDATA;
+   assert(varssize >= 0);
 
-   (*success) = TRUE;
+   *success = TRUE;
 
    /* pseudoboolean constraint is already deleted */
    if( SCIPconsIsDeleted(cons) )
@@ -8868,10 +9108,18 @@ SCIP_RETCODE SCIPincludeConshdlrPseudoboolean(
          "constraints/" CONSHDLR_NAME "/nlcremovable", "should the nonlinear constraints be removable?",
          NULL, TRUE, DEFAULT_REMOVABLENONLINEAR, NULL, NULL) );
 
+#ifdef NONLINCONSUPGD_PRIORITY
+   /* include the quadratic constraint upgrade in the nonlinear constraint handler */
+   SCIP_CALL( SCIPincludeNonlinconsUpgrade(scip, nonlinconsUpgdPseudoboolean, NULL, NONLINCONSUPGD_PRIORITY, TRUE, CONSHDLR_NAME) );
+#endif
+
    return SCIP_OKAY;
 }
 
-/** creates and captures a pseudoboolean constraint, with given linear and and-constraints */
+/** creates and captures a pseudoboolean constraint, with given linear and and-constraints
+ *
+ *  @note intvar must currently be NULL
+ */
 SCIP_RETCODE SCIPcreateConsPseudobooleanWithConss(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -8934,6 +9182,13 @@ SCIP_RETCODE SCIPcreateConsPseudobooleanWithConss(
    assert(andcoefs != NULL);
    assert(nandconss >= 1);
    assert(issoftcons == (indvar != NULL));
+
+   if( intvar != NULL )
+   {
+      /* FIXME should work or really be removed */
+      SCIPerrorMessage("intvar currently not supported by pseudo boolean constraint handler\n");
+      return SCIP_INVALIDDATA;
+   }
 
    /* find the pseudoboolean constraint handler */
    conshdlr = SCIPfindConshdlr(scip, CONSHDLR_NAME);
@@ -9141,6 +9396,8 @@ SCIP_RETCODE SCIPcreateConsPseudobooleanWithConss(
  *        respectively
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
+ *
+ *  @note intvar must currently be NULL
  */
 SCIP_RETCODE SCIPcreateConsPseudoboolean(
    SCIP*                 scip,               /**< SCIP data structure */
@@ -9203,6 +9460,13 @@ SCIP_RETCODE SCIPcreateConsPseudoboolean(
    assert(nlinvars == 0 || (linvars != NULL && linvals != NULL));
    assert(nterms == 0 || (terms != NULL && termvals != NULL && ntermvars != NULL));
    assert(issoftcons == (indvar != NULL));
+
+   if( intvar != NULL )
+   {
+      /* FIXME should work or really be removed */
+      SCIPerrorMessage("intvar currently not supported by pseudo boolean constraint handler\n");
+      return SCIP_INVALIDDATA;
+   }
 
    /* find the pseudoboolean constraint handler */
    conshdlr = SCIPfindConshdlr(scip, CONSHDLR_NAME);
@@ -9288,6 +9552,8 @@ SCIP_RETCODE SCIPcreateConsPseudoboolean(
  *  in its most basic variant, i. e., with all constraint flags set to their default values
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
+ *
+ *  @note intvar must currently be NULL
  */
 SCIP_RETCODE SCIPcreateConsBasicPseudoboolean(
    SCIP*                 scip,               /**< SCIP data structure */
@@ -9776,6 +10042,8 @@ SCIP_Real SCIPgetLhsPseudoboolean(
 {
    SCIP_CONSDATA* consdata;
 
+   assert(scip != NULL);
+
    if( strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), CONSHDLR_NAME) != 0 )
    {
       SCIPerrorMessage("constraint is not pseudo boolean\n");
@@ -9798,6 +10066,8 @@ SCIP_Real SCIPgetRhsPseudoboolean(
    )
 {
    SCIP_CONSDATA* consdata;
+
+   assert(scip != NULL);
 
    if( strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), CONSHDLR_NAME) != 0 )
    {

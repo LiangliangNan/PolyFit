@@ -3,18 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file    prop_genvbounds.c
- * @ingroup PROPAGATORS
+ * @ingroup DEFPLUGINS_PROP
  * @brief   generalized variable bounds propagator
  * @author  Stefan Weltge
  * @author  Ambros Gleixner
@@ -27,12 +36,33 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
-#include "scip/prop_genvbounds.h"
-#include "scip/debug.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_linear.h"
+#include "scip/debug.h"
+#include "scip/prop_genvbounds.h"
+#include "scip/pub_event.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_prop.h"
+#include "scip/pub_var.h"
+#include "scip/scip_conflict.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_datastructures.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_prop.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define PROP_NAME                            "genvbounds"
 #define PROP_DESC                            "generalized variable bounds propagator"
@@ -63,7 +93,7 @@
 /** GenVBound data */
 struct GenVBound
 {
-   SCIP_VAR**            vars;               /**< pointers to variables x_j occuring in this generalized variable
+   SCIP_VAR**            vars;               /**< pointers to variables x_j occurring in this generalized variable
                                               *   bound */
    SCIP_VAR*             var;                /**< pointer to variable x_i */
    SCIP_Real*            coefs;              /**< coefficients a_j of the variables listed in vars */
@@ -74,6 +104,7 @@ struct GenVBound
    int                   ncoefs;             /**< number of nonzero coefficients a_j */
    SCIP_BOUNDTYPE        boundtype;          /**< type of bound provided by the genvbound, SCIP_BOUNDTYPE_LOWER/UPPER
                                               *   if +/- x_i on left-hand side */
+   SCIP_Bool             relaxonly;          /**< contains a relaxation-only variable */
 };
 typedef struct GenVBound GENVBOUND;
 
@@ -672,11 +703,63 @@ SCIP_RETCODE freeGenVBounds(
       /* release the cutoffboundvar and undo the locks */
       if( propdata->cutoffboundvar != NULL )
       {
-         SCIP_CALL( SCIPaddVarLocks(scip, propdata->cutoffboundvar, -1, -1) );
+         SCIP_CALL( SCIPaddVarLocksType(scip, propdata->cutoffboundvar, SCIP_LOCKTYPE_MODEL, -1, -1) );
          SCIP_CALL( SCIPreleaseVar(scip, &(propdata->cutoffboundvar)) );
          propdata->cutoffboundvar = NULL;
          SCIPdebugMsg(scip, "release cutoffboundvar!\n");
       }
+   }
+
+   return SCIP_OKAY;
+}
+
+/** helper function to release relax-only genvbounds */
+static
+SCIP_RETCODE freeGenVBoundsRelaxOnly(
+   SCIP*                 scip,
+   SCIP_PROPDATA*        propdata
+   )
+{
+   SCIP_Bool freedgenvbound;
+   int i;
+
+   assert(scip != NULL);
+   assert(propdata != NULL);
+
+   if( propdata->genvboundstore == NULL )
+      return SCIP_OKAY;
+
+   /* free genvbounds */
+   freedgenvbound = FALSE;
+   for( i = 0 ; i < propdata->ngenvbounds; )
+   {
+      if( propdata->genvboundstore[i]->relaxonly )
+      {
+         SCIP_CALL( SCIPhashmapRemove(propdata->genvboundstore[i]->boundtype == SCIP_BOUNDTYPE_LOWER ? propdata->lbgenvbounds : propdata->ubgenvbounds,
+            propdata->genvboundstore[i]->var) );
+
+         SCIP_CALL( freeGenVBound(scip, propdata->genvboundstore[i]) );
+         if( i != propdata->ngenvbounds-1 )
+         {
+            propdata->genvboundstore[i] = propdata->genvboundstore[propdata->ngenvbounds-1];
+            propdata->genvboundstore[i]->index = i;
+         }
+         --propdata->ngenvbounds;
+
+         propdata->issorted = FALSE;
+         freedgenvbound = TRUE;
+      }
+      else
+         ++i;
+   }
+
+   if( freedgenvbound )
+   {
+      /* free componentsstart array */
+      SCIP_CALL( freeComponentsData(scip, propdata) );
+
+      /* free starting indices data */
+      SCIP_CALL( freeStartingData(scip, propdata) );
    }
 
    return SCIP_OKAY;
@@ -1639,11 +1722,12 @@ SCIP_RETCODE sortGenVBounds(
       propdata->genvboundstore[i] = genvboundssorted[i];
       propdata->genvboundstore[i]->index = i;
    }
-   SCIPfreeBufferArray(scip, &(genvboundssorted));
 
    /* free strong component arrays */
    SCIPfreeBufferArray(scip, &strongcompstartidx);
    SCIPfreeBufferArray(scip, &strongcomponents);
+
+   SCIPfreeBufferArray(scip, &(genvboundssorted));
 
    /* free digraph */
    SCIPdigraphFree(&graph);
@@ -1952,7 +2036,7 @@ SCIP_RETCODE createConstraints(
        * linear constraints as non-check constraints, the cutoffboundvar will not be locked by the linear constraint
        * handler
        */
-      SCIP_CALL( SCIPaddVarLocks(scip, propdata->cutoffboundvar, 1, 1) );
+      SCIP_CALL( SCIPaddVarLocksType(scip, propdata->cutoffboundvar, SCIP_LOCKTYPE_MODEL, 1, 1) );
    }
 
    assert(propdata->cutoffboundvar != NULL);
@@ -2163,12 +2247,15 @@ SCIP_RETCODE SCIPgenVBoundAdd(
    genvbound->var = var;
    genvbound->ncoefs = ncoefs;
    genvbound->constant = constant;
+   genvbound->relaxonly = SCIPvarIsRelaxationOnly(genvbound->var);
 
-   /* capture variables */
+   /* capture variables and check for relax-only vars */
    for( i = 0; i < genvbound->ncoefs; ++i )
    {
       assert(genvbound->vars[i] != NULL);
       SCIP_CALL( SCIPcaptureVar(scip, genvbound->vars[i]) );
+      if( SCIPvarIsRelaxationOnly(genvbound->vars[i]) )
+         genvbound->relaxonly = TRUE;
    }
    if( newgenvbound )
    {
@@ -2298,7 +2385,7 @@ SCIP_DECL_PROPPRESOL(propPresolGenvbounds)
 
    *result = SCIP_DIDNOTRUN;
 
-   if( !SCIPallowDualReds(scip) )
+   if( !SCIPallowStrongDualReds(scip) )
       return SCIP_OKAY;
 
    /* get propagator data */
@@ -2339,10 +2426,10 @@ SCIP_DECL_PROPINITPRE(propInitpreGenvbounds)
    if( propdata->cutoffboundvar != NULL )
    {
       SCIPdebugMsg(scip, "propinitpre in problem <%s>: locking cutoffboundvar (current downlocks=%d, uplocks=%d)\n",
-         SCIPgetProbName(scip), SCIPvarGetNLocksDown(propdata->cutoffboundvar),
-         SCIPvarGetNLocksUp(propdata->cutoffboundvar));
+         SCIPgetProbName(scip), SCIPvarGetNLocksDownType(propdata->cutoffboundvar, SCIP_LOCKTYPE_MODEL),
+         SCIPvarGetNLocksUpType(propdata->cutoffboundvar, SCIP_LOCKTYPE_MODEL));
 
-      SCIP_CALL( SCIPaddVarLocks(scip, propdata->cutoffboundvar, 1, 1) );
+      SCIP_CALL( SCIPaddVarLocksType(scip, propdata->cutoffboundvar, SCIP_LOCKTYPE_MODEL, 1, 1) );
    }
 
    return SCIP_OKAY;
@@ -2496,7 +2583,7 @@ SCIP_DECL_PROPEXEC(propExecGenvbounds)
    *result = SCIP_DIDNOTRUN;
 
    /* do not run if propagation w.r.t. current objective is not allowed */
-   if( !SCIPallowObjProp(scip) )
+   if( !SCIPallowWeakDualReds(scip) )
       return SCIP_OKAY;
 
    /* get propagator data */
@@ -2648,10 +2735,15 @@ SCIP_DECL_PROPEXITSOL(propExitsolGenvbounds)
    propdata = SCIPpropGetData(prop);
    assert(propdata != NULL);
 
-   /* free all genvbounds if we are not in a restart */
    if( !SCIPisInRestart(scip) )
    {
+      /* free all genvbounds if we are not in a restart */
       SCIP_CALL( freeGenVBounds(scip, propdata) );
+   }
+   else
+   {
+      /* free all genvbounds that use relax-only variables if we are in a restart */
+      SCIP_CALL( freeGenVBoundsRelaxOnly(scip, propdata) );
    }
 
    /* drop and free all events */
@@ -2734,7 +2826,7 @@ SCIP_DECL_EVENTEXEC(eventExecGenvbounds)
          int componentidx;
 
          /* get its index */
-         componentidx = ((int)(size_t) SCIPhashmapGetImage(propdata->startmap, (void*)(size_t) (component + 1))) - 1; /*lint !e776*/
+         componentidx = (SCIPhashmapGetImageInt(propdata->startmap, (void*)(size_t) (component + 1))) - 1; /*lint !e571 !e776*/
          assert(componentidx >= 0);
          assert(propdata->startcomponents[componentidx] == component);
 
@@ -2752,8 +2844,7 @@ SCIP_DECL_EVENTEXEC(eventExecGenvbounds)
          propdata->startindices[componentidx] = startidx;
 
          /* store component in hashmap */
-         SCIP_CALL( SCIPhashmapInsert(propdata->startmap, (void*)(size_t) (component + 1),
-               (void*)(size_t) (componentidx + 1)) );
+         SCIP_CALL( SCIPhashmapInsertInt(propdata->startmap, (void*)(size_t) (component + 1), componentidx + 1) ); /*lint !e571 !e776*/
 
          /* increase number of starting indices */
          propdata->nindices++;

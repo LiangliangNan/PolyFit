@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_repair.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  repair primal heuristic
  * @author Gregor Hendel
  * @author Thomas Nagel
@@ -28,18 +38,40 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
-#include "scip/heur_repair.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_linear.h"
-#include "scip/scipdefplugins.h"
 #include "scip/cons_varbound.h"
+#include "scip/heur_repair.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include "scip/scipdefplugins.h"
+#include <string.h>
 
 #define HEUR_NAME             "repair"
 #define HEUR_DESC             "tries to repair a primal infeasible solution"
-#define HEUR_DISPCHAR         '!'
-#define HEUR_PRIORITY         0
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_LNS
+#define HEUR_PRIORITY         -20
 #define HEUR_FREQ             -1
 #define HEUR_FREQOFS          0
 #define HEUR_MAXDEPTH         -1
@@ -250,7 +282,6 @@ SCIP_RETCODE tryFixVar(
    SCIP_VAR*             subvar,             /**< representative variable for var in the sub-SCIP */
    int*                  inftycounter,       /**< counters how many variables have an infinity potential in a row */
    SCIP_HEURDATA*        heurdata,           /**< repairs heuristic data */
-   SCIP_Bool*            infeasible,         /**< pointer to store whether the fixing is infeasible */
    SCIP_Bool*            fixed               /**< pointer to store whether the fixing was performed (variable was unfixed) */
    )
 {
@@ -259,6 +290,7 @@ SCIP_RETCODE tryFixVar(
    SCIP_Real* vals;
    SCIP_Real alpha;
    SCIP_Real solval;
+   SCIP_Bool infeasible;
    int nrows;
    int i;
    int sgn;
@@ -272,7 +304,7 @@ SCIP_RETCODE tryFixVar(
    assert(NULL != heurdata);
 
    alpha = heurdata->alpha;
-   *infeasible = TRUE;
+   infeasible = TRUE;
    *fixed = FALSE;
 
    solval = SCIPgetSolVal(scip, sol, var);
@@ -294,8 +326,8 @@ SCIP_RETCODE tryFixVar(
    if( NULL == rows )
    {
       SCIP_CALL( SCIPfixVar(subscip, subvar, solval,
-               infeasible, fixed) );
-      assert(!*infeasible && *fixed);
+               &infeasible, fixed) );
+      assert(!infeasible && *fixed);
       heurdata->nvarfixed++;
       SCIPdebugMsg(scip,"Variable %s is fixed to %g\n",SCIPvarGetName(var), solval);
       return SCIP_OKAY;
@@ -362,8 +394,8 @@ SCIP_RETCODE tryFixVar(
       }
    }
 
-   SCIP_CALL( SCIPfixVar(subscip, subvar, solval, infeasible, fixed) );
-   assert(!*infeasible && *fixed);
+   SCIP_CALL( SCIPfixVar(subscip, subvar, solval, &infeasible, fixed) );
+   assert(!infeasible && *fixed);
    heurdata->nvarfixed++;
    SCIPdebugMsg(scip,"Variable %s is fixed to %g\n",SCIPvarGetName(var),
          SCIPgetSolVal(scip, sol, var));
@@ -416,7 +448,7 @@ SCIP_RETCODE checkCands(
          {
             SCIP_Real roundedvalue;
 
-            if( SCIPvarGetNLocksUp(vars[i]) > SCIPvarGetNLocksDown(vars[i]) )
+            if( SCIPvarGetNLocksUpType(vars[i], SCIP_LOCKTYPE_MODEL) > SCIPvarGetNLocksDownType(vars[i], SCIP_LOCKTYPE_MODEL) )
             {
                roundedvalue = SCIPceil(scip, value - 1.0);
             }
@@ -463,9 +495,6 @@ SCIP_RETCODE createNewSol(
    SCIP_Bool*            success             /**< used to store whether new solution was found or not */
    )
 {
-   SCIP_VAR** vars;                          /* the original problem's variables                */
-   int        nvars;                         /* the original problem's number of variables      */
-   SCIP_Real* subsolvals;                    /* solution values of the subproblem               */
    SCIP_SOL*  newsol;                        /* solution to be created for the original problem */
 
    assert(scip != NULL);
@@ -473,26 +502,12 @@ SCIP_RETCODE createNewSol(
    assert(subvars != NULL);
    assert(subsol != NULL);
 
-   /* get variables' data */
-   SCIP_CALL( SCIPgetVarsData(scip, &vars, &nvars, NULL, NULL, NULL, NULL) );
+   SCIP_CALL( SCIPtranslateSubSol(scip, subscip, subsol, heur, subvars, &newsol) );
 
-   /* sub-SCIP may have more variables than the number of active (transformed) variables in the main SCIP
-    * since constraint copying may have required the copy of variables that are fixed in the main SCIP
-    */
-   assert(nvars <= SCIPgetNOrigVars(subscip));
-
-   SCIP_CALL( SCIPallocBufferArray(scip, &subsolvals, nvars) );
-
-   /* copy the solution */
-   SCIP_CALL( SCIPgetSolVals(subscip, subsol, nvars, subvars, subsolvals) );
-
-   /* create new solution for the original problem */
-   SCIP_CALL( SCIPcreateSol(scip, &newsol, heur) );
-   SCIP_CALL( SCIPsetSolVals(scip, newsol, nvars, vars, subsolvals) );
    /* try to add new solution to SCIP and free it immediately */
    SCIP_CALL( SCIPtrySolFree(scip, &newsol, FALSE, FALSE, TRUE, TRUE, TRUE, success) );
 
-#ifdef SCIP_STATISTICS
+#ifdef SCIP_STATISTIC
    {
       SCIP_HEURDATA* heurdata;
       heurdata = SCIPheurGetData(heur);
@@ -503,8 +518,6 @@ SCIP_RETCODE createNewSol(
       }
    }
 #endif
-
-   SCIPfreeBufferArray(scip, &subsolvals);
 
    return SCIP_OKAY;
 }
@@ -544,6 +557,7 @@ SCIP_RETCODE applyRepair(
    int ndiscvars;
    int nfixeddiscvars;
    SCIP_Bool success;
+   SCIP_Bool avoidmemout;
 
    heurdata = SCIPheurGetData(heur);
    sol = heurdata->infsol;
@@ -620,7 +634,6 @@ SCIP_RETCODE applyRepair(
       {
          lb = value;
          varslack = lborig - value;
-         SCIP_CALL( SCIPchgVarLbGlobal(subscip, subvars[i], lb) );
       }
       else
       {
@@ -632,7 +645,6 @@ SCIP_RETCODE applyRepair(
       {
          ub = value;
          varslack = uborig - value;
-         SCIP_CALL( SCIPchgVarUbGlobal(subscip, subvars[i], ub) );
       }
       else
       {
@@ -657,7 +669,6 @@ SCIP_RETCODE applyRepair(
       if( !SCIPisFeasZero(scip, varslack) && SCIP_VARTYPE_BINARY == vartype )
       {
          vartype = SCIP_VARTYPE_INTEGER;
-         SCIP_CALL( SCIPchgVarType(subscip, subvars[i], vartype, &success) );
       }
 
       (void) SCIPsnprintf(varname, SCIP_MAXSTRLEN, "sub_%s", SCIPvarGetName(vars[i]));
@@ -709,7 +720,6 @@ SCIP_RETCODE applyRepair(
          heurdata->nviolatedvars++;
 #endif
       }
-
 
 #ifdef SCIP_STATISTIC
       if( SCIPisFeasLT(scip, value, lb) || SCIPisFeasGT(scip, value, ub) )
@@ -823,7 +833,6 @@ SCIP_RETCODE applyRepair(
          }
       }
 
-
       /* create a new linear constraint, representing the old one */
       SCIP_CALL( SCIPcreateConsBasicLinear(subscip, &subcons[i], SCIProwGetName(rows[i]),
                nnonz, consvars, vals, lhs, rhs) );
@@ -869,10 +878,13 @@ SCIP_RETCODE applyRepair(
       heurdata->nvarfixed = 0;
       for( i = 0; i < nvars; ++i )
       {
-         SCIP_Bool infeasible = FALSE;
-         SCIP_Bool fixed = TRUE;
+         SCIP_Bool fixed;
 
-         SCIP_CALL( tryFixVar(scip, subscip, sol, potential, slacks, vars[permutation[i]], subvars[permutation[i]], inftycounter, heurdata, &infeasible, &fixed) );
+         /* continue if we have a loose variable */
+         if( SCIPvarGetStatus(vars[permutation[i]]) != SCIP_VARSTATUS_COLUMN )
+            continue;
+
+         SCIP_CALL( tryFixVar(scip, subscip, sol, potential, slacks, vars[permutation[i]], subvars[permutation[i]], inftycounter, heurdata, &fixed) );
 
          if( fixed && (SCIP_VARTYPE_BINARY == SCIPvarGetType(subvars[permutation[i]])
             || SCIP_VARTYPE_INTEGER == SCIPvarGetType(subvars[permutation[i]])) )
@@ -908,6 +920,7 @@ SCIP_RETCODE applyRepair(
    if( !SCIPisInfinity(scip, timelimit) )
       timelimit -= SCIPgetSolvingTime(scip);
    SCIP_CALL( SCIPgetRealParam(scip, "limits/memory", &memorylimit) );
+   SCIP_CALL( SCIPgetBoolParam(scip, "misc/avoidmemout", &avoidmemout) );
 
    /* subtract the memory already used by the main SCIP and the estimated memory usage of external software */
    if( !SCIPisInfinity(scip, memorylimit) )
@@ -916,8 +929,9 @@ SCIP_RETCODE applyRepair(
       memorylimit -= SCIPgetMemExternEstim(scip) / 1048576.0;
    }
 
-   /* abort if no time is left or not enough memory to create a copy of SCIP, including external memory usage */
-   if( timelimit <= 0.0 || memorylimit <= 2.0 * SCIPgetMemExternEstim(scip) / 1048576.0 )
+   /* abort if no time is left or not enough memory (we don't abort in this case if misc_avoidmemout == FALSE)
+    * to create a copy of SCIP, including external memory usage */
+   if( timelimit <= 0.0 || (avoidmemout && memorylimit <= 2.0 * SCIPgetMemExternEstim(scip) / 1048576.0) )
       goto TERMINATE;
 
    /* set limits for the subproblem */
@@ -1040,7 +1054,6 @@ SCIP_DECL_HEURFREE(heurFreeRepair)
 static
 SCIP_DECL_HEURINIT(heurInitRepair)
 {  /*lint --e{715}*/
-
    SCIP_HEURDATA* heurdata;
 
    heurdata = SCIPheurGetData(heur);
@@ -1128,7 +1141,7 @@ SCIP_DECL_HEUREXIT(heurExitRepair)
    SCIPstatistic(
       SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, "<repair> \n total violations             : %10d\n", violateds);
       SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, " violated variables           : %10d\n", ninvars);
-      SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, " total variables              : %10d\n", nvars)
+      SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, " total variables              : %10d\n", nvars);
       SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, " relative violated variables  : %10.2f%%\n", 100 * relvars);
       SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, " violated constraints         : %10d\n", ninvcons);
       SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, " total constraints            : %10d\n", ncons);
@@ -1142,7 +1155,6 @@ SCIP_DECL_HEUREXIT(heurExitRepair)
       SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, "</repair>\n\n");
       SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, " value of best solution       : %10g\n", solval);
       SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, " improved orig. solval        : %10g\n", heurdata->improvedoldsol);
-      SCIPverbMessage(scip, SCIP_VERBLEVEL_HIGH, NULL, message);
    )
 
 #endif
@@ -1219,7 +1231,6 @@ SCIP_DECL_HEUREXEC(heurExecRepair)
    {
       error = FALSE;
       retcode = SCIPreadSolFile(scip, heurdata->filename, heurdata->infsol, FALSE, NULL, &error);
-      assert(error || SCIP_OKAY == retcode);
    }
 
    if( SCIP_NOFILE == retcode )
@@ -1343,7 +1354,6 @@ SCIP_RETCODE SCIPincludeHeurRepair(
    SCIP_CALL( SCIPaddRealParam(scip, "heuristics/" HEUR_NAME "/nodesquot",
          "contingent of sub problem nodes in relation to the number of nodes of the original problem",
          &heurdata->nodesquot, FALSE, DEFAULT_NODESQUOT, 0.0, 1.0, NULL, NULL) );
-
 
    SCIP_CALL( SCIPaddRealParam(scip, "heuristics/" HEUR_NAME "/minfixingrate",
          "minimum percentage of integer variables that have to be fixed",

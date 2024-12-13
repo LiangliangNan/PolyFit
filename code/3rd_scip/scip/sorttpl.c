@@ -3,20 +3,31 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   sorttpl.c
+ * @ingroup OTHER_CFILES
  * @brief  template functions for sorting
  * @author Michael Winkler
  * @author Tobias Achterberg
+ * @author Gregor Hendel
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
@@ -35,7 +46,8 @@
  * #define SORTTPL_BACKWARDS               should the array be sorted other way around
  */
 #include "scip/def.h"
-#define SORTTPL_SHELLSORTMAX 25
+#include "scip/dbldblarith.h"
+#define SORTTPL_SHELLSORTMAX    25 /* maximal size for shell sort */
 #define SORTTPL_MINSIZENINTHER 729 /* minimum input size to use ninther (median of nine) for pivot selection */
 
 #ifndef SORTTPL_NAMEEXT
@@ -231,7 +243,7 @@ void SORTTPL_NAME(sorttpl_shellSort, SORTTPL_NAMEEXT)
    }
 }
 
-/** returns the index a,b, or c of the median element among key[a], key[b], and key[c] */
+/** returns the index a, b, or c of the median element among key[a], key[b], and key[c] */
 static
 int SORTTPL_NAME(sorttpl_medianThree, SORTTPL_NAMEEXT)
 (
@@ -250,7 +262,8 @@ int SORTTPL_NAME(sorttpl_medianThree, SORTTPL_NAMEEXT)
    assert(a != b);
    assert(b != c);
    assert(c != a);
-   /* let the elements in the unsorted order be a,b,c at positions start, mid, and end */
+
+   /* let the elements in the unsorted order be a, b, c at positions start, mid, and end */
    if( SORTTPL_ISBETTER( key[a], key[b]) ) /* a <= b */
    {
       if( SORTTPL_ISBETTER( key[b], key[c]) ) /* b <= c */
@@ -282,7 +295,8 @@ int SORTTPL_NAME(sorttpl_medianThree, SORTTPL_NAMEEXT)
          return b;
    }
 }
-/* guess a median for the key array [start, ..., end] by using the median of the first, last, and middle element */
+
+/** guess a median for the key array [start, ..., end] by using the median of the first, last, and middle element */
 static
 int SORTTPL_NAME(sorttpl_selectPivotIndex, SORTTPL_NAMEEXT)
 (
@@ -622,7 +636,8 @@ void SORTTPL_NAME(SCIPsort, SORTTPL_NAMEEXT)
 }
 
 
-/** SCIPsortedvecInsert...(): adds an element to a sorted multi-vector;
+/** SCIPsortedvecInsert...(): adds an element to a sorted multi-vector
+ *
  *  This method does not do any memory allocation! It assumes that the arrays are large enough
  *  to store the additional values.
  */
@@ -787,8 +802,58 @@ SCIP_Bool SORTTPL_NAME(SCIPsortedvecFind, SORTTPL_NAMEEXT)
    }                                                                                           \
    while( FALSE )
 
+#ifndef NDEBUG
+/** verifies that the partial sorting and especially the median element satisfy all properties */
+static
+void SORTTPL_NAME(sorttpl_checkWeightedSelection, SORTTPL_NAMEEXT)
+(
+   SORTTPL_KEYTYPE*      key,                /**< pointer to data array that defines the order */
+   SORTTPL_HASPTRCOMPPAR( SCIP_DECL_SORTPTRCOMP((*ptrcomp)) )  /**< data element comparator */
+   SORTTPL_HASINDCOMPPAR( SCIP_DECL_SORTINDCOMP((*indcomp)) )  /**< data element comparator */
+   SORTTPL_HASINDCOMPPAR( void*                  dataptr    )  /**< pointer to data field that is given to the external compare method */
+   SCIP_Real*            weights,            /**< (optional), nonnegative weights array for weighted median, or NULL (all weights are equal to 1) */
+   SCIP_Real             capacity,           /**< the maximum capacity that is exceeded by the median */
+   int                   len,                /**< length of arrays */
+   int                   medianpos           /**< the position of the weighted median */
+   )
+{
+   int i;
+   SCIP_Real QUAD(weightsum);
+   QUAD_ASSIGN(weightsum, -capacity);
+
+   for( i = 0; i < len; i++ )
+   {
+      if ( weights != NULL )
+      {
+         SCIPquadprecSumQD(weightsum, weightsum, weights[i]);
+      }
+      else
+      {
+         SCIPquadprecSumQD(weightsum, weightsum, 1.0);
+      }
+
+      /* check that the weight sum exceeds the capacity at the median element */
+      if( i == medianpos )
+      {
+         assert(QUAD_TO_DBL(weightsum) >  -SCIP_DEFAULT_EPSILON);
+      }
+      else if( i < medianpos )
+      {
+         /* check that the partial sorting is correct w.r.t. the median element and that capacity is not exceeded */
+         assert(medianpos == len || ! SORTTPL_ISBETTER(key[medianpos], key[i]));
+
+         assert(QUAD_TO_DBL(weightsum) <= SCIP_DEFAULT_EPSILON );
+      }
+      else
+      {
+         assert(!SORTTPL_ISBETTER(key[i], key[medianpos]));
+      }
+   }
+}
+#endif
+
 /** partially sorts a given keys array around the weighted median w.r.t. the \p capacity and permutes the additional 'field' arrays
- *  in the same way.
+ *  in the same way
  *
  *  If no weights-array is passed, the algorithm assumes weights equal to 1.
  */
@@ -813,13 +878,30 @@ void SORTTPL_NAME(SCIPselectWeighted, SORTTPL_NAMEEXT)
    int hi;
    int lo;
    int j;
-   int recursiondepth;
+   int recursiondepth = 0;
+   int localmedianpos = -1;
+   SCIP_Real totalweightsum = 0.0;
    SCIP_Real residualcapacity;
 
    lo = 0;
    hi = len - 1;
    residualcapacity = capacity;
-   recursiondepth = 0;
+
+   /* compute the total weight and stop if all items fit */
+   if( weights != NULL )
+   {
+      for( j = 0; j < len; ++j )
+         totalweightsum += weights[j];
+   }
+   else
+      totalweightsum = len;
+
+   if( totalweightsum <= capacity )
+   {
+      localmedianpos = len;
+
+      goto CHECKANDRETURN;
+   }
 
    while( hi - lo + 1 > SORTTPL_SHELLSORTMAX )
    {
@@ -888,8 +970,8 @@ void SORTTPL_NAME(SCIPselectWeighted, SORTTPL_NAMEEXT)
 
       if( weights != NULL )
       {
-         betterweightsum = 0.0;
          /* collect weights of elements larger than the pivot  */
+         betterweightsum = 0.0;
          for( i = lo; i < bt; ++i )
          {
             assert(SORTTPL_ISBETTER(key[i], pivot));
@@ -903,27 +985,27 @@ void SORTTPL_NAME(SCIPselectWeighted, SORTTPL_NAMEEXT)
       }
 
       /* the weight in the better half of the array exceeds the capacity. Continue the search there */
-      if( betterweightsum >= residualcapacity )
+      if( betterweightsum > residualcapacity )
       {
          hi = bt - 1;
       }
       else
       {
          SCIP_Real weightsum = betterweightsum;
+
          /* loop through duplicates of pivot element and check if one is the weighted median */
          for( p = bt; p <= wt; ++p )
          {
             assert(SORTTPL_CMP(key[p], pivot) == 0);
-            pivotweight = weights != NULL ? weights[p] : 1;
+            pivotweight = weights != NULL ? weights[p] : 1.0;
             weightsum += pivotweight;
 
             /* the element at index p is exactly the weighted median */
-            if( weightsum >= residualcapacity )
+            if( weightsum > residualcapacity )
             {
-               if( medianpos != NULL )
-                  *medianpos = p;
+               localmedianpos = p;
 
-               return;
+               goto CHECKANDRETURN;
             }
          }
 
@@ -951,15 +1033,22 @@ void SORTTPL_NAME(SCIPselectWeighted, SORTTPL_NAMEEXT)
          SORTTPL_HASINDCOMPPAR(dataptr)
          lo, hi);
    }
+
+   /* it is impossible for lo or high to reach the end of the array. In this case, the item weights sum up to
+    * less than the capacity, which is handled at the top of this method.
+    */
+   assert(lo < len);
+   assert(hi < len);
+
    /* determine the median position among the remaining elements */
    for( j = lo; j <= MAX(lo, hi); ++j )
    {
-      SCIP_Real weight = (weights != NULL ? weights[j] : 1);
+      SCIP_Real weight = (weights != NULL ? weights[j] : 1.0);
+
       /* we finally found the median element */
-      if( weight >= residualcapacity )
+      if( weight > residualcapacity )
       {
-         if( medianpos != NULL )
-            *medianpos = j;
+         localmedianpos = j;
 
          break;
       }
@@ -967,12 +1056,25 @@ void SORTTPL_NAME(SCIPselectWeighted, SORTTPL_NAMEEXT)
          residualcapacity -= weight;
    }
 
-   /* the capacity is not exceeded by the elements in the array */
-   if( j == len && medianpos != NULL )
-   {
-      assert(residualcapacity > 0);
-      *medianpos = len;
-   }
+CHECKANDRETURN:
+
+/* perform a thorough debug check of the selection result */
+#ifndef NDEBUG
+   SORTTPL_NAME(sorttpl_checkWeightedSelection, SORTTPL_NAMEEXT)
+   (key,
+      SORTTPL_HASPTRCOMPPAR(ptrcomp)
+      SORTTPL_HASINDCOMPPAR(indcomp)
+      SORTTPL_HASINDCOMPPAR(dataptr)
+    weights,
+    capacity,
+    len,
+    localmedianpos);
+#endif
+
+   if( medianpos != NULL )
+      *medianpos = localmedianpos;
+
+   return;
 }
 
 /** partially sorts a given keys array around the given index \p k and permutes the additional 'field' arrays are in the same way */

@@ -1,9 +1,9 @@
-// $Id$
-# ifndef CPPAD_PARAMETER_OP_HPP
-# define CPPAD_PARAMETER_OP_HPP
+// $Id: parameter_op.hpp 3845 2016-11-19 01:50:47Z bradbell $
+# ifndef CPPAD_LOCAL_PARAMETER_OP_HPP
+# define CPPAD_LOCAL_PARAMETER_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-16 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,7 +14,7 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file parameter_op.hpp
 Zero order forward mode for ParOp
@@ -86,5 +86,5 @@ inline void forward_par_op_0(
 	z[0]  = parameter[ arg[0] ];
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

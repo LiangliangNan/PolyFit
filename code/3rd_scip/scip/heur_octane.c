@@ -3,31 +3,56 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_octane.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  octane primal heuristic based on Balas, Ceria, Dawande, Margot, and Pataki
  * @author Timo Berthold
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-#include <math.h>
+#include "blockmemshell/memory.h"
 #include "scip/heur_octane.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include <string.h>
 
 #define HEUR_NAME             "octane"
 #define HEUR_DESC             "octane primal heuristic for pure {0;1}-problems based on Balas et al."
-#define HEUR_DISPCHAR         'O'
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_ROUNDING
 #define HEUR_PRIORITY         -1008000
 #define HEUR_FREQ             -1
 #define HEUR_FREQOFS          0
@@ -267,6 +292,7 @@ SCIP_RETCODE generateAverageRay(
          {
             tableaurowind = tableaurowinds[j][i];
             rownorm[tableaurowind] += tableaurows[j][tableaurowind] * tableaurows[j][tableaurowind];
+            assert(usedrowids != NULL);  /* for lint */
             if( !usedrowids[tableaurowind] )
             {
                usedrowids[tableaurowind] = TRUE;
@@ -488,7 +514,7 @@ SCIP_RETCODE generateAverageNBRay(
 
 /** generates the starting point for the shooting ray in original coordinates */
 static
-SCIP_RETCODE generateStartingPoint(
+void generateStartingPoint(
    SCIP*                 scip,               /**< SCIP data structure                   */
    SCIP_Real*            rayorigin,          /**< origin of the shooting ray            */
    SCIP_VAR**            subspacevars,       /**< pointer to fractional space variables */
@@ -503,8 +529,6 @@ SCIP_RETCODE generateStartingPoint(
 
    for( v = nsubspacevars - 1; v >= 0; --v )
       rayorigin[v] = SCIPvarGetLPSol(subspacevars[v]);
-
-   return SCIP_OKAY;
 }
 
 /** translates the inner point of the LP to an inner point rayorigin of the unit hyper octahedron and
@@ -864,7 +888,6 @@ SCIP_DECL_HEUREXEC(heurExecOctane)
             subspacevars[currentindex] = vars[i];
             fracspace[i] = currentindex;
             ++currentindex;
-
          }
          else
          {
@@ -876,7 +899,11 @@ SCIP_DECL_HEUREXEC(heurExecOctane)
 
    /* nothing to do for empty search space */
    if( nsubspacevars == 0 )
+   {
+      SCIPfreeBufferArray(scip, &subspacevars);
+      SCIPfreeBufferArray(scip, &fracspace);
       return SCIP_OKAY;
+   }
 
    assert(0 < nsubspacevars && nsubspacevars <= nvars);
 
@@ -902,7 +929,6 @@ SCIP_DECL_HEUREXEC(heurExecOctane)
    SCIP_CALL( SCIPallocBufferArray(scip, &lambda, f_max + 1) );
    SCIP_CALL( SCIPallocBufferArray(scip, &facets, f_max + 1) );
 
-
    for( i = f_max; i >= 0; --i )
    {
       /*lint --e{866}*/
@@ -917,7 +943,7 @@ SCIP_DECL_HEUREXEC(heurExecOctane)
       usefracspace ? "fractional" : "all", nsubspacevars, f_max, (heurdata->lastrule+1)%5);
 
    /* generate starting point in original coordinates */
-   SCIP_CALL( generateStartingPoint(scip, rayorigin, subspacevars, nsubspacevars) );
+   generateStartingPoint(scip, rayorigin, subspacevars, nsubspacevars);
    for( i = nsubspacevars - 1; i >= 0; --i )
       rayorigin[i] -= 0.5;
 
@@ -1113,7 +1139,6 @@ SCIP_DECL_HEUREXEC(heurExecOctane)
                break;
          }
       }
-
 
       if( !cons_viol )
       {

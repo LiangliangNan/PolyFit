@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -40,14 +49,12 @@ extern "C" {
 #endif
 
 /** copies the given separator to a new scip */
-extern
 SCIP_RETCODE SCIPsepaCopyInclude(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_SET*             set                 /**< SCIP_SET of SCIP to copy to */
    );
 
 /** creates a separator */
-extern
 SCIP_RETCODE SCIPsepaCreate(
    SCIP_SEPA**           sepa,               /**< pointer to separator data structure */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -73,42 +80,36 @@ SCIP_RETCODE SCIPsepaCreate(
    );
 
 /** calls destructor and frees memory of separator */
-extern
 SCIP_RETCODE SCIPsepaFree(
    SCIP_SEPA**           sepa,               /**< pointer to separator data structure */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** initializes separator */
-extern
 SCIP_RETCODE SCIPsepaInit(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** calls exit method of separator */
-extern
 SCIP_RETCODE SCIPsepaExit(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs separator that the branch and bound process is being started */
-extern
 SCIP_RETCODE SCIPsepaInitsol(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs separator that the branch and bound process data is being freed */
-extern
 SCIP_RETCODE SCIPsepaExitsol(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** calls LP separation method of separator */
-extern
 SCIP_RETCODE SCIPsepaExecLP(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -122,7 +123,6 @@ SCIP_RETCODE SCIPsepaExecLP(
    );
 
 /** calls primal solution separation method of separator */
-extern
 SCIP_RETCODE SCIPsepaExecSol(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -136,7 +136,6 @@ SCIP_RETCODE SCIPsepaExecSol(
    );
 
 /** sets priority of separator */
-extern
 void SCIPsepaSetPriority(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -144,68 +143,82 @@ void SCIPsepaSetPriority(
    );
 
 /** sets copy method of separator */
-extern
 void SCIPsepaSetCopy(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_DECL_SEPACOPY    ((*sepacopy))       /**< copy method of separator or NULL if you don't want to copy your plugin into sub-SCIPs */
    );
 
 /** sets destructor method of separator */
-extern
 void SCIPsepaSetFree(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_DECL_SEPAFREE    ((*sepafree))       /**< destructor of separator */
    );
 
 /** sets initialization method of separator */
-extern
 void SCIPsepaSetInit(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_DECL_SEPAINIT    ((*sepainit))       /**< initialize separator */
    );
 
 /** sets deinitialization method of separator */
-extern
 void SCIPsepaSetExit(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_DECL_SEPAEXIT    ((*sepaexit))       /**< deinitialize separator */
    );
 
 /** sets solving process initialization method of separator */
-extern
 void SCIPsepaSetInitsol(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_DECL_SEPAINITSOL ((*sepainitsol))    /**< solving process initialization method of separator */
    );
 
 /** sets solving process deinitialization method of separator */
-extern
 void SCIPsepaSetExitsol(
    SCIP_SEPA*            sepa,               /**< separator */
    SCIP_DECL_SEPAEXITSOL ((*sepaexitsol))    /**< solving process deinitialization method of separator */
    );
 
+/** declares separator to be a parent separator */
+void SCIPsepaSetIsParentsepa(
+   SCIP_SEPA*            sepa                /**< separator */
+   );
+
+/** sets the parent separator */
+void SCIPsepaSetParentsepa(
+   SCIP_SEPA*            sepa,               /**< separator */
+   SCIP_SEPA*            parentsepa          /**< parent separator */
+   );
+
 /** enables or disables all clocks of \p sepa, depending on the value of the flag */
-extern
 void SCIPsepaEnableOrDisableClocks(
    SCIP_SEPA*            sepa,               /**< the separator for which all clocks should be enabled or disabled */
    SCIP_Bool             enable              /**< should the clocks of the separator be enabled? */
    );
 
-/** increase count of applied cuts */
-extern
-void SCIPsepaIncNAppliedCuts(
-   SCIP_SEPA*            sepa                /**< separator */
+/** increase count of applied cuts by one */
+void SCIPsepaIncNCutsApplied(
+   SCIP_SEPA*            sepa,                /**< separator */
+   SCIP_Bool             fromcutpool          /**< whether the cuts were added from the cutpool to sepastore */
    );
 
-/** increase count of found cuts */
-extern
+/** increase count of found cuts by one */
+void SCIPsepaIncNCutsAdded(
+   SCIP_SEPA*            sepa,                /**< separator */
+   SCIP_Bool             fromcutpool          /**< whether the cuts were added from the cutpool to sepastore */
+   );
+
+/** decrease the count of added cuts by one */
+void SCIPsepaDecNCutsAdded(
+   SCIP_SEPA*            sepa,                /**< separator */
+   SCIP_Bool             fromcutpool          /**< whether the cuts were added from the cutpool to sepastore */
+   );
+
+/** increase count of found cuts by one */
 void SCIPsepaIncNCutsFound(
    SCIP_SEPA*            sepa                /**< separator */
    );
 
-/** increase count of found cuts at current node */
-extern
+/** increase count of found cuts at current node by one */
 void SCIPsepaIncNCutsFoundAtNode(
    SCIP_SEPA*            sepa                /**< separator */
    );

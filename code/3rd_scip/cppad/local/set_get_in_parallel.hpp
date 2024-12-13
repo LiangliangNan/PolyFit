@@ -1,9 +1,9 @@
 // $Id$
-# ifndef CPPAD_SET_GET_IN_PARALLEL_HPP
-# define CPPAD_SET_GET_IN_PARALLEL_HPP
+# ifndef CPPAD_LOCAL_SET_GET_IN_PARALLEL_HPP
+# define CPPAD_LOCAL_SET_GET_IN_PARALLEL_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-16 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -15,7 +15,7 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 
 # include <cassert>
 # include <cppad/configure.hpp>
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 
 /*!
 \file set_get_in_parallel.hpp
@@ -62,6 +62,6 @@ static bool set_get_in_parallel(
 	return in_parallel_user();
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 
 # endif

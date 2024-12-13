@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   prop.c
+ * @ingroup OTHER_CFILES
  * @brief  methods and datastructures for propagators
  * @author Tobias Achterberg
  * @author Timo Berthold
@@ -104,8 +114,9 @@ SCIP_RETCODE SCIPpropCopyInclude(
    return SCIP_OKAY;
 }
 
-/** creates a propagator */
-SCIP_RETCODE SCIPpropCreate(
+/** internal method for creating a propagator */
+static
+SCIP_RETCODE doPropCreate(
    SCIP_PROP**           prop,               /**< pointer to propagator data structure */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -154,6 +165,8 @@ SCIP_RETCODE SCIPpropCreate(
    }
 
    SCIP_ALLOC( BMSallocMemory(prop) );
+   BMSclearMemory(*prop);
+
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*prop)->name, name, strlen(name)+1) );
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*prop)->desc, desc, strlen(desc)+1) );
    (*prop)->priority = priority;
@@ -203,7 +216,7 @@ SCIP_RETCODE SCIPpropCreate(
    (void) SCIPsnprintf(paramdesc, SCIP_MAXSTRLEN, "timing when propagator should be called (%u:BEFORELP, %u:DURINGLPLOOP, %u:AFTERLPLOOP, %u:ALWAYS))",
       SCIP_PROPTIMING_BEFORELP, SCIP_PROPTIMING_DURINGLPLOOP, SCIP_PROPTIMING_AFTERLPLOOP, SCIP_PROPTIMING_ALWAYS);
    SCIP_CALL( SCIPsetAddIntParam(set, messagehdlr, blkmem, paramname, paramdesc,
-         (int*)(&(*prop)->timingmask), TRUE, timingmask, (int) SCIP_PROPTIMING_BEFORELP, (int) SCIP_PROPTIMING_ALWAYS, NULL, NULL) ); /*lint !e713*/
+         (int*)(&(*prop)->timingmask), TRUE, (int) timingmask, (int) SCIP_PROPTIMING_BEFORELP, (int) SCIP_PROPTIMING_ALWAYS, NULL, NULL) ); /*lint !e713*/
 
    (void) SCIPsnprintf(paramname, SCIP_MAXSTRLEN, "propagating/%s/presolpriority", name);
    (void) SCIPsnprintf(paramdesc, SCIP_MAXSTRLEN, "presolving priority of propagator <%s>", name);
@@ -222,6 +235,47 @@ SCIP_RETCODE SCIPpropCreate(
    SCIP_CALL( SCIPsetAddIntParam(set, messagehdlr, blkmem, paramname, paramdesc,
          (int*)&(*prop)->presoltiming, TRUE, (int)presoltiming, (int) SCIP_PRESOLTIMING_NONE, (int) SCIP_PRESOLTIMING_MAX, NULL, NULL) ); /*lint !e740*/
 
+   return SCIP_OKAY;
+}
+
+/** creates a propagator */
+SCIP_RETCODE SCIPpropCreate(
+   SCIP_PROP**           prop,               /**< pointer to propagator data structure */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
+   BMS_BLKMEM*           blkmem,             /**< block memory for parameter settings */
+   const char*           name,               /**< name of propagator */
+   const char*           desc,               /**< description of propagator */
+   int                   priority,           /**< priority of the propagator (>= 0: before, < 0: after constraint handlers) */
+   int                   freq,               /**< frequency for calling propagator */
+   SCIP_Bool             delay,              /**< should propagator be delayed, if other propagators found reductions? */
+   SCIP_PROPTIMING       timingmask,         /**< positions in the node solving loop where propagator should be executed */
+   int                   presolpriority,     /**< priority of the propagator (>= 0: before, < 0: after constraint handlers) */
+   int                   presolmaxrounds,    /**< maximal number of presolving rounds the propagator participates in (-1: no limit) */
+   SCIP_PRESOLTIMING     presoltiming,       /**< timing mask of the propagator's presolving method */
+   SCIP_DECL_PROPCOPY    ((*propcopy)),      /**< copy method of propagator or NULL if you don't want to copy your plugin into sub-SCIPs */
+   SCIP_DECL_PROPFREE    ((*propfree)),      /**< destructor of propagator */
+   SCIP_DECL_PROPINIT    ((*propinit)),      /**< initialize propagator */
+   SCIP_DECL_PROPEXIT    ((*propexit)),      /**< deinitialize propagator */
+   SCIP_DECL_PROPINITPRE ((*propinitpre)),   /**< presolving initialization method of propagator */
+   SCIP_DECL_PROPEXITPRE ((*propexitpre)),   /**< presolving deinitialization method of propagator */
+   SCIP_DECL_PROPINITSOL ((*propinitsol)),   /**< solving process initialization method of propagator */
+   SCIP_DECL_PROPEXITSOL ((*propexitsol)),   /**< solving process deinitialization method of propagator */
+   SCIP_DECL_PROPPRESOL  ((*proppresol)),    /**< presolving method */
+   SCIP_DECL_PROPEXEC    ((*propexec)),      /**< execution method of propagator */
+   SCIP_DECL_PROPRESPROP ((*propresprop)),   /**< propagation conflict resolving method */
+   SCIP_PROPDATA*        propdata            /**< propagator data */
+   )
+{
+   assert(prop != NULL);
+   assert(name != NULL);
+   assert(desc != NULL);
+   assert(freq >= -1);
+   assert(propexec != NULL);
+
+   SCIP_CALL_FINALLY( doPropCreate(prop, set, messagehdlr, blkmem, name, desc, priority, freq, delay, timingmask,
+      presolpriority, presolmaxrounds, presoltiming, propcopy, propfree, propinit, propexit, propinitpre, propexitpre,
+      propinitsol, propexitsol, proppresol, propexec, propresprop, propdata), (void) SCIPpropFree(prop, set) );
 
    return SCIP_OKAY;
 }
@@ -233,7 +287,8 @@ SCIP_RETCODE SCIPpropFree(
    )
 {
    assert(prop != NULL);
-   assert(*prop != NULL);
+   if( *prop == NULL )
+      return SCIP_OKAY;
    assert(!(*prop)->initialized);
    assert(set != NULL);
 
@@ -248,8 +303,8 @@ SCIP_RETCODE SCIPpropFree(
    SCIPclockFree(&(*prop)->sbproptime);
    SCIPclockFree(&(*prop)->proptime);
    SCIPclockFree(&(*prop)->setuptime);
-   BMSfreeMemoryArray(&(*prop)->desc);
-   BMSfreeMemoryArray(&(*prop)->name);
+   BMSfreeMemoryArrayNull(&(*prop)->desc);
+   BMSfreeMemoryArrayNull(&(*prop)->name);
    BMSfreeMemory(prop);
 
    return SCIP_OKAY;
@@ -499,7 +554,7 @@ SCIP_RETCODE SCIPpropPresol(
       return SCIP_OKAY;
 
    /* check number of presolving rounds */
-   if( prop->maxprerounds >= 0 && nrounds >= prop->maxprerounds )
+   if( prop->maxprerounds >= 0 && prop->npresolcalls >= prop->maxprerounds )
       return SCIP_OKAY;
 
    /* check, if presolver should be delayed */
@@ -701,7 +756,6 @@ SCIP_RETCODE SCIPpropResolvePropagation(
 
    if( prop->propresprop != NULL )
    {
-
       /* start timing */
       SCIPclockStart(prop->resproptime, set);
 

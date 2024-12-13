@@ -3,21 +3,29 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   cons_abspower.h
  * @ingroup CONSHDLRS
- * @brief  Constraint handler for absolute power constraints \f$\textrm{lhs} \leq \textrm{sign}(x+a) |x+a|^n + c z \leq \textrm{rhs}\f$
+ * @brief  some API functions of removed constraint handler for absolute power constraints \f$\textrm{lhs} \leq \textrm{sign}(x+a) |x+a|^n + c z \leq \textrm{rhs}\f$
  * @author Stefan Vigerske
- *
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
@@ -25,58 +33,35 @@
 #ifndef __SCIP_CONS_ABSPOWER_H__
 #define __SCIP_CONS_ABSPOWER_H__
 
-#include "scip/scip.h"
+#include "scip/def.h"
+#include "scip/type_cons.h"
+#include "scip/type_retcode.h"
+#include "scip/type_scip.h"
+#include "scip/type_var.h"
+#include "scip/type_nlp.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** creates the handler for absolute power constraints and includes it in SCIP
- *
- * @ingroup ConshdlrIncludes
- * */
-EXTERN
-SCIP_RETCODE SCIPincludeConshdlrAbspower(
-   SCIP*                 scip                /**< SCIP data structure */
-   );
-
 /**@addtogroup CONSHDLRS
  *
  * @{
  *
- * @name Absolute Power Constraints
+ * @name Abspower Constraints (deprecated)
  *
  * @{
  *
- * This constraint handler handles constraints of the form
- * \f[
- *   \textrm{lhs} \leq \textrm{sign}(x+a) |x+a|^n + c z \leq \textrm{rhs}
- * \f]
- * for \f$n > 1.0\f$ a rational number, \f$a\f$ and \f$c\f$ arbitrary, and \f$x\f$ and \f$z\f$ variables.
- * Note that \f$x\f$ can have \f$-a\f$ in the interior of its domain.
- *
- * Constraints are enforced by separation, domain propagation, and spatial branching.
- *
- * Cuts that separate on the convex hull of the graph of \f$\textrm{sign}(x+a) |x+a|^n\f$ are generated as long as they separate the relaxation solution.
- * Otherwise, spatial branching on \f$x\f$ is applied.
- *
- * Further, domain propagation is implemented to propagate bound changes on \f$x\f$ onto \f$z\f$, and vice versa, and
- * repropagation is implemented to allow for conflict analysis.
- * During presolve, a pairwise comparison of absolute power constraints may allow to fix or aggregate some variables.
- * See also
- *
- * @par
- * Stefan Vigerske@n
- * Decomposition of Multistage Stochastic Programs and a Constraint Integer Programming Approach to Mixed-Integer Nonlinear Programming@n
- * PhD Thesis, Humboldt-University Berlin, 2012, submitted.
- *
  */
 
-/** creates and captures a absolute power constraint
+/** creates and captures an absolute power nonlinear constraint
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
+ *
+ *  @deprecated Use SCIPcreateConsNonlinear() instead.
  */
-EXTERN
+SCIP_EXPORT
+SCIP_DEPRECATED
 SCIP_RETCODE SCIPcreateConsAbspower(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -105,7 +90,7 @@ SCIP_RETCODE SCIPcreateConsAbspower(
                                               *   adds coefficients to this constraint. */
    SCIP_Bool             dynamic,            /**< is constraint subject to aging?
                                               *   Usually set to FALSE. Set to TRUE for own cuts which
-                                              *   are seperated as constraints. */
+                                              *   are separated as constraints. */
    SCIP_Bool             removable,          /**< should the relaxation be removed from the LP due to aging or cleanup?
                                               *   Usually set to FALSE. Set to TRUE for 'lazy constraints' and 'user cuts'. */
    SCIP_Bool             stickingatnode      /**< should the constraint always be kept at the node where it was added, even
@@ -113,15 +98,19 @@ SCIP_RETCODE SCIPcreateConsAbspower(
                                               *   Usually set to FALSE. Set to TRUE to for constraints that represent node data. */
    );
 
-/** creates and captures an absolute power constraint
- *  in its most basic version, i. e., all constraint flags are set to their basic value as explained for the
- *  method SCIPcreateConsAbspower(); all flags can be set via SCIPconsSetFLAGNAME-methods in scip.h
+/** creates and captures an absolute power nonlinear constraint
+ *  in its most basic version, i.e., all constraint flags are set to their basic value
+ *
+ *  All flags can be set via SCIPconsSetFLAGNAME-methods.
  *
  *  @see SCIPcreateConsAbspower() for information about the basic constraint flag configuration
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
+ *
+ *  @deprecated Use SCIPcreateConsBasicNonlinear() instead.
  */
-EXTERN
+SCIP_EXPORT
+SCIP_DEPRECATED
 SCIP_RETCODE SCIPcreateConsBasicAbspower(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -135,74 +124,21 @@ SCIP_RETCODE SCIPcreateConsBasicAbspower(
    SCIP_Real             rhs                 /**< right hand side of constraint */
    );
 
-/** gets the absolute power constraint as a nonlinear row representation */
-EXTERN
+/** gets the absolute power constraint as a nonlinear row representation
+ *
+ *  @deprecated Use SCIPgetNlRowNonlinear() instead.
+ */
+SCIP_EXPORT
+SCIP_DEPRECATED
 SCIP_RETCODE SCIPgetNlRowAbspower(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons,               /**< constraint */
    SCIP_NLROW**          nlrow               /**< a buffer where to store pointer to nonlinear row */
    );
 
-/** gets nonlinear variable x in absolute power constraint */
-EXTERN
-SCIP_VAR* SCIPgetNonlinearVarAbspower(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_CONS*            cons                /**< absolute power constraint */
-   );
+/** @} */
 
-/** gets linear variable z in absolute power constraint */
-EXTERN
-SCIP_VAR* SCIPgetLinearVarAbspower(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_CONS*            cons                /**< absolute power constraint */
-   );
-
-/** gets exponent in power term in absolute power constraint */
-EXTERN
-SCIP_Real SCIPgetExponentAbspower(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_CONS*            cons                /**< absolute power constraint */
-   );
-
-/** gets offset in power term in absolute power constraint */
-EXTERN
-SCIP_Real SCIPgetOffsetAbspower(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_CONS*            cons                /**< absolute power constraint */
-   );
-
-/** gets coefficient of linear variable in absolute power constraint */
-EXTERN
-SCIP_Real SCIPgetCoefLinearAbspower(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_CONS*            cons                /**< absolute power constraint */
-   );
-
-/** gets left hand side in absolute power constraint */
-EXTERN
-SCIP_Real SCIPgetLhsAbspower(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_CONS*            cons                /**< absolute power constraint */
-   );
-
-/** gets right hand side in absolute power constraint */
-EXTERN
-SCIP_Real SCIPgetRhsAbspower(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_CONS*            cons                /**< absolute power constraint */
-   );
-
-/** gets the absolute violation of a absolute power constraint by a solution */
-EXTERN
-SCIP_Real SCIPgetViolationAbspower(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_CONS*            cons,               /**< absolute power constraint */
-   SCIP_SOL*             sol                 /**< LP solution */
-   );
-
-/* @} */
-
-/* @} */
+/** @} */
 
 #ifdef __cplusplus
 }

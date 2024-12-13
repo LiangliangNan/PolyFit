@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -25,6 +34,7 @@
 
 #include "scip/scip.h"
 #include "symmetry/type_symmetry.h"
+#include "scip/type_expr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,10 +47,34 @@ struct SYM_Vartype
    SCIP_Real             lb;                 /**< lower bound of variable */
    SCIP_Real             ub;                 /**< upper bound of variable */
    SCIP_VARTYPE          type;               /**< type of variable */
+   int                   nconss;             /**< number of conss a variable is contained in */
    int                   color;              /**< store color */
 };
 
-/** data for symmetry group computation */
+/** data of operators that are considered to be equivalent */
+struct SYM_Optype
+{
+   SCIP_EXPR*            expr;               /**< the underlying expression */
+   int                   level;              /**< level of operator in its expression tree */
+   int                   color;              /**< store color */
+};
+
+/** data of constants that are considered to be equivalent */
+struct SYM_Consttype
+{
+   SCIP_Real             value;              /**< value of constant */
+   int                   color;              /**< store color */
+};
+
+/** data of coefficients that are considered to be equivalent */
+struct SYM_Rhstype
+{
+   SCIP_Real             lhs;                /**< value of left-hand-side */
+   SCIP_Real             rhs;                /**< value of right-hand-side */
+   int                   color;              /**< store color */
+};
+
+/** data for symmetry group computation on linear constraints */
 struct SYM_Matrixdata
 {
    SCIP_Real*            matcoef;            /**< nonzero coefficients appearing in the matrix */
@@ -61,6 +95,14 @@ struct SYM_Matrixdata
    int                   nuniquevars;        /**< number of unique variable types */
    int                   nuniquerhs;         /**< number of unique rhs types */
    int                   nuniquemat;         /**< number of unique matrix coefficients */
+};
+
+/** data for symmetry group computation on nonlinear constraints */
+struct SYM_Exprdata
+{
+   int                   nuniqueconstants;   /**< number of unique constants */
+   int                   nuniqueoperators;   /**< number of unique operators */
+   int                   nuniquecoefs;       /**< number of unique coefficients */
 };
 
 #ifdef __cplusplus

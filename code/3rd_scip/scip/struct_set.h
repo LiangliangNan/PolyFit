@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -46,10 +55,13 @@
 #include "scip/type_reader.h"
 #include "scip/type_relax.h"
 #include "scip/type_sepa.h"
+#include "scip/type_cutsel.h"
 #include "scip/type_table.h"
 #include "scip/type_prop.h"
-#include "nlpi/type_nlpi.h"
+#include "scip/type_nlpi.h"
 #include "scip/type_concsolver.h"
+#include "scip/type_benders.h"
+#include "scip/type_expr.h"
 #include "scip/debug.h"
 
 #ifdef __cplusplus
@@ -74,6 +86,7 @@ struct SCIP_Set
    SCIP_PRESOL**         presols;            /**< presolvers */
    SCIP_RELAX**          relaxs;             /**< relaxators */
    SCIP_SEPA**           sepas;              /**< separators */
+   SCIP_CUTSEL**         cutsels;            /**< cut selectors */
    SCIP_PROP**           props;              /**< propagators */
    SCIP_PROP**           props_presol;       /**< propagators (sorted by presol priority) */
    SCIP_HEUR**           heurs;              /**< primal heuristics */
@@ -85,9 +98,16 @@ struct SCIP_Set
    SCIP_DISP**           disps;              /**< display columns */
    SCIP_TABLE**          tables;             /**< statistics tables */
    SCIP_DIALOG**         dialogs;            /**< dialogs */
+   SCIP_EXPRHDLR**       exprhdlrs;          /**< expression handlers */
+   SCIP_EXPRHDLR*        exprhdlrvar;        /**< expression handler for variables (for quick access) */
+   SCIP_EXPRHDLR*        exprhdlrval;        /**< expression handler for constant values (for quick access) */
+   SCIP_EXPRHDLR*        exprhdlrsum;        /**< expression handler for sums (for quick access) */
+   SCIP_EXPRHDLR*        exprhdlrproduct;    /**< expression handler for products (for quick access) */
+   SCIP_EXPRHDLR*        exprhdlrpow;        /**< expression handler for power (for quick access) */
    SCIP_NLPI**           nlpis;              /**< interfaces to NLP solvers */
    SCIP_CONCSOLVERTYPE** concsolvertypes;    /**< concurrent solver types */
    SCIP_CONCSOLVER**     concsolvers;        /**< the concurrent solvers used for solving */
+   SCIP_BENDERS**        benders;            /**< the data structures managing the Benders' decomposition algorithm */
    SCIP_DEBUGSOLDATA*    debugsoldata;       /**< data for debug solutions */
    SCIP_BANDITVTABLE**   banditvtables;      /**< virtual function tables for bandit algorithms */
    char**                extcodenames;       /**< names of externals codes */
@@ -107,6 +127,8 @@ struct SCIP_Set
    int                   relaxssize;         /**< size of relaxs array */
    int                   nsepas;             /**< number of separators */
    int                   sepassize;          /**< size of sepas array */
+   int                   ncutsels;           /**< number of cut selectors */
+   int                   cutselssize;        /**< size of cutsels array */
    int                   nprops;             /**< number of propagators */
    int                   propssize;          /**< size of props array */
    int                   nheurs;             /**< number of primal heuristics */
@@ -125,12 +147,17 @@ struct SCIP_Set
    int                   tablessize;         /**< size of tables array */
    int                   ndialogs;           /**< number of dialogs */
    int                   dialogssize;        /**< size of dialogs array */
+   int                   nexprhdlrs;         /**< number of expression handlers */
+   int                   exprhdlrssize;      /**< size of expression handlers array */
    int                   nnlpis;             /**< number of NLPIs */
    int                   nlpissize;          /**< size of NLPIs array */
    int                   nconcsolvertypes;   /**< number of concurrent solver types */
    int                   concsolvertypessize;/**< size of concurrent solver types array */
    int                   nconcsolvers;       /**< number of concurrent solvers used for solving */
    int                   concsolverssize;    /**< size of concurrent solvers array */
+   int                   nbenders;           /**< number of Benders' decomposition algorithms */
+   int                   nactivebenders;     /**< number of Benders' decomposition algorithms that are used */
+   int                   benderssize;        /**< size of Benders' decomposition algorithms array */
    int                   nextcodes;          /**< number of external codes */
    int                   extcodessize;       /**< size of external code arrays */
    int                   nbanditvtables;     /**< number of bandit algorithm virtual function tables */
@@ -145,6 +172,7 @@ struct SCIP_Set
    SCIP_Bool             relaxsnamesorted;   /**< are the relaxators sorted by name? */
    SCIP_Bool             sepassorted;        /**< are the separators sorted by priority? */
    SCIP_Bool             sepasnamesorted;    /**< are the separators sorted by name? */
+   SCIP_Bool             cutselssorted;      /**< are the cutsels sorted by priority? */
    SCIP_Bool             propssorted;        /**< are the propagators sorted by priority? */
    SCIP_Bool             propspresolsorted;  /**< are the propagators in prop_presol sorted? */
    SCIP_Bool             propsnamesorted;    /**< are the propagators sorted by name? */
@@ -155,8 +183,12 @@ struct SCIP_Set
    SCIP_Bool             branchrulessorted;  /**< are the branching rules sorted by priority? */
    SCIP_Bool             branchrulesnamesorted;/**< are the branching rules sorted by name? */
    SCIP_Bool             tablessorted;       /**< are the tables sorted by position? */
+   SCIP_Bool             exprhdlrssorted;    /**< are the expression handlers sorted by name? */
    SCIP_Bool             nlpissorted;        /**< are the NLPIs sorted by priority? */
+   SCIP_Bool             benderssorted;      /**< are the Benders' algorithms sorted by activity and priority? */
+   SCIP_Bool             bendersnamesorted;  /**< are the Benders' algorithms sorted by name? */
    SCIP_Bool             limitchanged;       /**< marks whether any of the limit parameters was changed */
+   SCIP_Bool             subscipsoff;        /**< marks whether the sub-SCIPs have been deactivated */
 
    /* branching settings */
    char                  branch_scorefunc;   /**< branching score function ('s'um, 'p'roduct, 'q'uotient) */
@@ -165,6 +197,8 @@ struct SCIP_Set
                                               *   in sum score function */
    SCIP_Bool             branch_preferbinary;/**< should branching on binary variables be preferred? */
    SCIP_Real             branch_clamp;       /**< minimal fractional distance of branching point to a continuous variable' bounds; a value of 0.5 leads to branching always in the middle of a bounded domain */
+   SCIP_Real             branch_midpull;     /**< fraction by which to move branching point of a continuous variable towards the middle of the domain; a value of 1.0 leads to branching always in the middle of the domain */
+   SCIP_Real             branch_midpullreldomtrig; /**< multiply midpull by relative domain width if the latter is below this value */
    char                  branch_lpgainnorm;  /**< strategy for normalizing LP gain when updating pseudo costs of continuous variables */
    SCIP_Bool             branch_delaypscost; /**< whether to delay pseudo costs updates for continuous variables to after separation */
    SCIP_Bool             branch_divingpscost;/**< should pseudo costs be updated also in diving and probing mode? */
@@ -242,6 +276,7 @@ struct SCIP_Set
    SCIP_Real             conf_minimprove;    /**< minimal improvement of primal bound to remove conflicts depending on
                                               *   a previous incumbent.
                                               */
+   SCIP_Bool             conf_uselocalrows;  /**< use local rows to construct infeasibility proofs */
 
    /* constraint settings */
    int                   cons_agelimit;      /**< maximum age an unnecessary constraint can reach before it is deleted
@@ -257,6 +292,10 @@ struct SCIP_Set
    int                   disp_headerfreq;    /**< frequency for displaying header lines (every n'th node information line) */
    SCIP_Bool             disp_lpinfo;        /**< should the LP solver display status messages? */
    SCIP_Bool             disp_allviols;      /**< display all violations of the best solution after the solving process finished? */
+   SCIP_Bool             disp_relevantstats; /**< should the relevant statistics be displayed at the end of solving? */
+
+   /* heuristics settings */
+   SCIP_Bool             heur_useuctsubscip; /**< should setting of common subscip parameters include the activation of the UCT node selector? */
 
    /* history settings */
    SCIP_Bool             history_valuebased; /**< should statistics be collected for variable domain value pairs? */
@@ -310,8 +349,10 @@ struct SCIP_Set
    SCIP_Bool             lp_cleanuprowsroot; /**< should new basic rows be removed after root LP solving? */
    SCIP_Bool             lp_checkstability;  /**< should LP solver's return status be checked for stability? */
    SCIP_Real             lp_conditionlimit;  /**< maximum condition number of LP basis counted as stable (-1.0: no check) */
+   SCIP_Real             lp_markowitz;       /**< minimal Markowitz threshold to control sparsity/stability in LU factorization */
    SCIP_Bool             lp_checkprimfeas;   /**< should LP solutions be checked for primal feasibility, resolving LP when numerical troubles occur? */
    SCIP_Bool             lp_checkdualfeas;   /**< should LP solutions be checked for dual feasibility, resolving LP when numerical troubles occur? */
+   SCIP_Bool             lp_checkfarkas;     /**< should infeasibility proofs from the LP be checked? */
    int                   lp_fastmip;         /**< which FASTMIP setting of LP solver should be used? 0: off, 1: medium, 2: full */
    int                   lp_scaling;         /**< LP scaling (0: none, 1: normal, 2: aggressive) */
    SCIP_Bool             lp_presolving;      /**< should presolving of LP solver be used? */
@@ -329,6 +370,7 @@ struct SCIP_Set
    int                   lp_resolveitermin;  /**< minimum number of iterations that are allowed for LP resolve */
    int                   lp_solutionpolishing;/**< LP solution polishing method (0: disabled, 1: only root, 2: always, 3: auto) */
    int                   lp_refactorinterval;/**< LP refactorization interval (0: automatic) */
+   SCIP_Bool             lp_alwaysgetduals;  /**< should the dual solution always be collected for LP solutions. */
 
    /* NLP settings */
    SCIP_Bool             nlp_disable;        /**< should the NLP be disabled even if a constraint handler enabled it? */
@@ -356,17 +398,22 @@ struct SCIP_Set
    SCIP_Bool             misc_improvingsols; /**< should only solutions be checked which improve the primal bound */
    SCIP_Bool             misc_printreason;   /**< should the reason be printed if a given start solution is infeasible? */
    SCIP_Bool             misc_estimexternmem;/**< should the usage of external memory be estimated? */
+   SCIP_Bool             misc_avoidmemout;   /**< try to avoid running into memory limit by restricting plugins like heuristics? */
    SCIP_Bool             misc_transorigsols; /**< should SCIP try to transfer original solutions to the transformed space (after presolving)? */
    SCIP_Bool             misc_transsolsorig; /**< should SCIP try to transfer transformed solutions to the original space (after solving)? */
    SCIP_Bool             misc_calcintegral;  /**< should SCIP calculate the primal dual integral value which may require
                                               *   a large number of additional clock calls (and decrease the performance)? */
    SCIP_Bool             misc_finitesolstore;/**< should SCIP try to remove infinite fixings from solutions copied to the solution store? */
    SCIP_Bool             misc_outputorigsol; /**< should the best solution be transformed to the orignal space and be output in command line run? */
-   SCIP_Bool             misc_allowdualreds; /**< should dual reductions in propagation methods and presolver be allowed? */
-   SCIP_Bool             misc_allowobjprop;  /**< should propagation to the current objective be allowed in propagation methods? */
+   SCIP_Bool             misc_allowstrongdualreds; /**< should strong dual reductions be allowed in propagation and presolving? */
+   SCIP_Bool             misc_allowweakdualreds;  /**< should weak dual reductions be allowed in propagation and presolving? */
    SCIP_Real             misc_referencevalue;/**< objective value for reference purposes */
-   int                   misc_usesymmetry;   /**< used symmetry handling technique (0: off; 1: polyhedral; 2: orbital fixing) */
+   int                   misc_usesymmetry;   /**< bitset describing used symmetry handling technique (0: off; 1: polyhedral (orbitopes and/or symresacks);
+                                              *   2: orbital fixing; 3: orbitopes and orbital fixing; 4: Schreier Sims cuts; 5: Schreier Sims cuts and
+                                              *   symresacks) */
    char*                 misc_debugsol;      /**< path to a debug solution */
+   SCIP_Bool             misc_scaleobj;      /**< should the objective function be scaled? */
+   SCIP_Bool             misc_showdivingstats;/**< should detailed statistics for diving heuristics be shown? */
 
    /* randomization parameters */
    int                   random_randomseedshift;/**< global shift of all random seeds in the plugins, this will have no impact on the permutation and LP seeds */
@@ -387,7 +434,7 @@ struct SCIP_Set
    SCIP_Real             num_feastol;        /**< feasibility tolerance for constraints */
    SCIP_Real             num_checkfeastolfac;/**< factor to change the feasibility tolerance when testing the best
                                               *   solution for feasibility (after solving process) */
-   SCIP_Real             num_lpfeastol;      /**< primal feasibility tolerance of LP solver (user parameter, see also num_relaxfeastol) */
+   SCIP_Real             num_lpfeastolfactor;/**< factor w.r.t. primal feasibility tolerance that determines default (and maximal) primal feasibility tolerance of LP solver (user parameter, see also num_relaxfeastol) */
    SCIP_Real             num_dualfeastol;    /**< feasibility tolerance for reduced costs */
    SCIP_Real             num_barrierconvtol; /**< convergence tolerance used in barrier algorithm */
    SCIP_Real             num_boundstreps;    /**< minimal improve for strengthening bounds */
@@ -403,6 +450,7 @@ struct SCIP_Set
    SCIP_Real             presol_abortfac;    /**< abort presolve, if l.t. this frac of the problem was changed in last round */
    int                   presol_maxrounds;   /**< maximal number of presolving rounds (-1: unlimited) */
    int                   presol_maxrestarts; /**< maximal number of restarts (-1: unlimited) */
+   SCIP_Real             presol_clqtablefac; /**< limit on number of entries in clique table relative to number of problem nonzeros */
    SCIP_Real             presol_restartfac;  /**< fraction of integer variables that were fixed in the root node
                                               *   triggering a restart with preprocessing after root node evaluation */
    SCIP_Real             presol_immrestartfac;/**< fraction of integer variables that were fixed in the root node triggering an
@@ -412,7 +460,7 @@ struct SCIP_Set
    SCIP_Real             presol_restartminred;/**< minimal fraction of integer variables removed after restart to allow for
                                                *   an additional restart */
    SCIP_Bool             presol_donotmultaggr;/**< should multi-aggregation of variables be forbidden? */
-   SCIP_Bool             presol_donotaggr;   /**< shouldaggregation of variables be forbidden? */
+   SCIP_Bool             presol_donotaggr;    /**< should aggregation of variables be forbidden? */
 
    /* pricing settings */
    SCIP_Real             price_abortfac;     /**< pricing is aborted, if fac * maxpricevars pricing candidates were found */
@@ -422,6 +470,18 @@ struct SCIP_Set
                                               *   in case they are not present in the LP anymore? */
    SCIP_Bool             price_delvarsroot;  /**< should variables created at the root node be deleted when the root is solved
                                               *   in case they are not present in the LP anymore? */
+
+   /* Decomposition settings */
+   SCIP_Bool             decomp_benderslabels; /**< should the variables be labeled for the application of Benders'
+                                                *   decomposition */
+   SCIP_Bool             decomp_applybenders;  /**< if a decomposition exists, should Benders' decomposition be applied*/
+   int                   decomp_maxgraphedge;  /**< maximum number of edges in block graph computation (-1: no limit, 0: disable block graph computation) */
+   SCIP_Bool             decomp_disablemeasures; /**< disable expensive measures */
+
+   /* Benders' decomposition settings */
+   SCIP_Real             benders_soltol;     /**< the tolerance for checking optimality in Benders' decomposition */
+   SCIP_Bool             benders_cutlpsol;   /**< should cuts be generated from the solution to the LP relaxation? */
+   SCIP_Bool             benders_copybenders;/**< should Benders' decomposition be copied for sub-SCIPs? */
 
    /* propagation settings */
    int                   prop_maxrounds;     /**< maximal number of propagation rounds per node (-1: unlimited) */
@@ -478,12 +538,11 @@ struct SCIP_Set
                                               *   compared to best node's dual bound for applying local separation
                                               *   (0.0: only on current best node, 1.0: on all nodes) */
    SCIP_Real             sepa_maxcoefratio;  /**< maximal ratio between coefficients in strongcg, cmir, and flowcover cuts */
+   SCIP_Real             sepa_maxcoefratiofacrowprep; /**< maximal ratio between coefficients (as factor of 1/feastol) to ensure in rowprep cleanup */
    SCIP_Real             sepa_minefficacy;   /**< minimal efficacy for a cut to enter the LP */
    SCIP_Real             sepa_minefficacyroot; /**< minimal efficacy for a cut to enter the LP in the root node */
    SCIP_Real             sepa_minortho;      /**< minimal orthogonality for a cut to enter the LP */
    SCIP_Real             sepa_minorthoroot;  /**< minimal orthogonality for a cut to enter the LP in the root node */
-   SCIP_Real             sepa_objparalfac;   /**< factor to scale objective parallelism of cut in separation score calc. */
-   SCIP_Real             sepa_intsupportfac; /**< factor to scale integral support of cut in separation score calculation */
    SCIP_Real             sepa_minactivityquot; /**< minimum cut activity quotient to convert cuts into constraints
                                                 *   during a restart (0.0: all cuts are converted) */
    char                  sepa_orthofunc;     /**< function used for calc. scalar prod. in orthogonality test ('e'uclidean, 'd'iscrete) */
@@ -491,6 +550,7 @@ struct SCIP_Set
                                               *   'd'iscrete) */
    char                  sepa_cutselrestart; /**< cut selection during restart ('a'ge, activity 'q'uotient) */
    char                  sepa_cutselsubscip; /**< cut selection for sub SCIPs  ('a'ge, activity 'q'uotient) */
+   SCIP_Bool             sepa_filtercutpoolrel; /**< should cutpool separate only cuts with high relative efficacy? */
    int                   sepa_maxruns;       /**< maximal number of runs for which separation is enabled (-1: unlimited) */
    int                   sepa_maxrounds;     /**< maximal number of separation rounds per node (-1: unlimited) */
    int                   sepa_maxroundsroot; /**< maximal number of separation rounds in the root node (-1: unlimited) */
@@ -501,7 +561,6 @@ struct SCIP_Set
                                               *   or integrality improvement (-1: no additional restriction) */
    int                   sepa_maxstallroundsroot;/**< maximal number of consecutive separation rounds without objective
                                               *   or integrality improvement (-1: no additional restriction) */
-   int                   sepa_maxincrounds;  /**< maximal number of consecutive separation rounds that increase the size of the LP relaxation per node (-1: unlimited) */
    int                   sepa_maxcuts;       /**< maximal number of cuts separated per separation round */
    int                   sepa_maxcutsroot;   /**< maximal number of separated cuts at the root node */
    int                   sepa_cutagelimit;   /**< maximum age a cut can reach before it is deleted from the global cut pool */
@@ -536,6 +595,7 @@ struct SCIP_Set
    SCIP_Bool             time_reading;       /**< belongs reading time to solving time? */
    SCIP_Bool             time_rareclockcheck;/**< should clock checks of solving time be performed less frequently (might exceed time limit slightly) */
    SCIP_Bool             time_statistictiming;  /**< should timing for statistic output be enabled? */
+   SCIP_Bool             time_nlpieval;      /**< should time for evaluation in NLP solves be measured? */
 
    /* tree compression parameters (for reoptimization) */
    SCIP_Bool             compr_enable;       /**< should automatic tree compression after presolving be enabled? (only for reoptimization) */
@@ -546,6 +606,7 @@ struct SCIP_Set
    char*                 visual_bakfilename; /**< name of the BAK tool output file, or - if no BAK output should be created */
    SCIP_Bool             visual_realtime;    /**< should the real solving time be used instead of time step counter in visualization? */
    SCIP_Bool             visual_dispsols;    /**< should the node where solutions are found be visualized? */
+   SCIP_Bool             visual_displb;      /**< should lower bound information be visualized? */
    SCIP_Bool             visual_objextern;   /**< should be output the external value of the objective? */
 
    /* Reading */

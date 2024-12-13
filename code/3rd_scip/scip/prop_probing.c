@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   prop_probing.c
+ * @ingroup DEFPLUGINS_PROP
  * @brief  probing propagator
  * @author Tobias Achterberg
  * @author Matthias Miltenberger
@@ -22,12 +32,30 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/prop_probing.h"
+#include "scip/pub_message.h"
 #include "scip/pub_misc.h"
-
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_prop.h"
+#include "scip/pub_tree.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_prop.h"
+#include "scip/scip_randnumgen.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define PROP_NAME               "probing"
 #define PROP_DESC               "probing propagator on binary variables"
@@ -109,7 +137,6 @@ struct SCIP_PropData
 /** initializes the propagator data */
 static
 SCIP_RETCODE initPropdata(
-   SCIP*                 scip,               /**< SCIP data structure */
    SCIP_PROPDATA*        propdata            /**< propagator data */
    )
 {
@@ -222,8 +249,8 @@ SCIP_RETCODE sortVariables(
 
       if( SCIPvarIsActive(var) )
       {
-         nlocksdown = SCIPvarGetNLocksDown(var);
-         nlocksup = SCIPvarGetNLocksUp(var);
+         nlocksdown = SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL);
+         nlocksup = SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL);
          nimplzero = SCIPvarGetNImpls(var, FALSE);
          nimplone = SCIPvarGetNImpls(var, TRUE);
          nclqzero = SCIPvarGetNCliques(var, FALSE);
@@ -272,8 +299,8 @@ SCIP_RETCODE sortVariables(
       if( SCIPvarIsActive(var) )
       {
          SCIP_Real randomoffset;
-         nlocksdown = SCIPvarGetNLocksDown(var);
-         nlocksup = SCIPvarGetNLocksUp(var);
+         nlocksdown = SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL);
+         nlocksup = SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL);
          nimplzero = SCIPvarGetNImpls(var, FALSE);
          nimplone = SCIPvarGetNImpls(var, TRUE);
          nclqzero = SCIPvarGetNCliques(var, FALSE);
@@ -456,7 +483,7 @@ SCIP_RETCODE applyProbing(
 
          /* determine whether one probing should happen */
          probingone = TRUE;
-         if( SCIPvarGetNLocksUp(vars[i]) == 0 )
+         if( SCIPvarGetNLocksUpType(vars[i], SCIP_LOCKTYPE_MODEL) == 0 )
             probingone = FALSE;
 
          if( probingone )
@@ -483,7 +510,8 @@ SCIP_RETCODE applyProbing(
                if( fixed )
                {
                   SCIPdebugMsg(scip, "fixed probing variable <%s> to 0.0, nlocks=(%d/%d)\n",
-                     SCIPvarGetName(vars[i]), SCIPvarGetNLocksDown(vars[i]), SCIPvarGetNLocksUp(vars[i]));
+                     SCIPvarGetName(vars[i]), SCIPvarGetNLocksDownType(vars[i], SCIP_LOCKTYPE_MODEL),
+                     SCIPvarGetNLocksUpType(vars[i], SCIP_LOCKTYPE_MODEL));
                   (*nfixedvars)++;
                   propdata->nfixings++;
                   propdata->nuseless = 0;
@@ -507,7 +535,7 @@ SCIP_RETCODE applyProbing(
 
          /* determine whether zero probing should happen */
          probingzero = TRUE;
-         if( SCIPvarGetNLocksDown(vars[i]) == 0 )
+         if( SCIPvarGetNLocksDownType(vars[i], SCIP_LOCKTYPE_MODEL) == 0 )
             probingzero = FALSE;
 
          if( probingzero )
@@ -533,7 +561,8 @@ SCIP_RETCODE applyProbing(
                if( fixed )
                {
                   SCIPdebugMsg(scip, "fixed probing variable <%s> to 1.0, nlocks=(%d/%d)\n",
-                     SCIPvarGetName(vars[i]), SCIPvarGetNLocksDown(vars[i]), SCIPvarGetNLocksUp(vars[i]));
+                     SCIPvarGetName(vars[i]), SCIPvarGetNLocksDownType(vars[i], SCIP_LOCKTYPE_MODEL),
+                     SCIPvarGetNLocksUpType(vars[i], SCIP_LOCKTYPE_MODEL));
                   (*nfixedvars)++;
                   propdata->nfixings++;
                   propdata->nuseless = 0;
@@ -676,7 +705,6 @@ SCIP_RETCODE applyProbing(
             propdata->lastsortstartidx = 0;
          }
       }
-
    }
    while( i == 0 && !(*cutoff) && !(*delay) && !aborted );
 
@@ -729,7 +757,6 @@ SCIP_DECL_PROPFREE(propFreeProbing)
    assert(propdata->nsortedvars == 0);
    assert(propdata->nsortedbinvars == 0);
 
-
    SCIPfreeBlockMemory(scip, &propdata);
    SCIPpropSetData(prop, NULL);
 
@@ -746,12 +773,11 @@ SCIP_DECL_PROPINIT(propInitProbing)
    propdata = SCIPpropGetData(prop);
    assert(propdata != NULL);
 
-   SCIP_CALL( initPropdata(scip, propdata) );
+   SCIP_CALL( initPropdata(propdata) );
 
    /* create random number generator */
    SCIP_CALL( SCIPcreateRandom(scip, &propdata->randnumgen,
-      DEFAULT_RANDSEED) );
-
+      DEFAULT_RANDSEED, TRUE) );
 
    return SCIP_OKAY;
 }
@@ -983,7 +1009,7 @@ SCIP_DECL_PROPEXEC(propExecProbing)
    int oldnfixedvars;
    int oldnaggrvars;
    int oldnchgbds;
-   int oldnimplications;
+   SCIPdebug( int oldnimplications; )
    int startidx;
    int ntotalvars;
    SCIP_Bool delay;
@@ -1072,7 +1098,8 @@ SCIP_DECL_PROPEXEC(propExecProbing)
 
    /* start probing on found variables */
    SCIP_CALL( applyProbing(scip, propdata, binvars, nbinvars, nbinvars, &startidx, &nfixedvars, &naggrvars, &nchgbds, oldnfixedvars, oldnaggrvars, &delay, &cutoff) );
-   SCIPdebugMsg(scip, "probing propagation found %d fixings, %d aggregation, %d nchgbds, and %d implications\n", nfixedvars, naggrvars, nchgbds, (propdata->nimplications) - oldnimplications);
+   SCIPdebug( SCIPdebugMsg(scip, "probing propagation found %d fixings, %d aggregation, %d nchgbds, and %d implications\n",
+      nfixedvars, naggrvars, nchgbds, (propdata->nimplications) - oldnimplications); )
 
    if( delay )
    {
@@ -1089,7 +1116,7 @@ SCIP_DECL_PROPEXEC(propExecProbing)
  TERMINATE:
    SCIPfreeBufferArray(scip, &binvars);
 
-   return SCIP_OKAY;
+   return SCIP_OKAY; /*lint !e438*/
 }
 
 
@@ -1117,7 +1144,7 @@ SCIP_RETCODE SCIPincludePropProbing(
 
    /* create probing propagator data */
    SCIP_CALL( SCIPallocBlockMemory(scip, &propdata) );
-   SCIP_CALL( initPropdata(scip, propdata) );
+   SCIP_CALL( initPropdata(propdata) );
 
    /* include propagator */
    SCIP_CALL( SCIPincludePropBasic(scip, &prop, PROP_NAME, PROP_DESC, PROP_PRIORITY, PROP_FREQ, PROP_DELAY, PROP_TIMING,
@@ -1198,7 +1225,8 @@ SCIP_RETCODE SCIPapplyProbingVar(
 
    SCIPdebugMsg(scip, "applying probing on variable <%s> %s %g (nlocks=%d/%d, impls=%d/%d, clqs=%d/%d)\n",
       SCIPvarGetName(vars[probingpos]), boundtype == SCIP_BOUNDTYPE_UPPER ? "<=" : ">=", bound,
-      SCIPvarGetNLocksDown(vars[probingpos]), SCIPvarGetNLocksUp(vars[probingpos]),
+      SCIPvarGetNLocksDownType(vars[probingpos], SCIP_LOCKTYPE_MODEL),
+      SCIPvarGetNLocksUpType(vars[probingpos], SCIP_LOCKTYPE_MODEL),
       SCIPvarGetNImpls(vars[probingpos], FALSE), SCIPvarGetNImpls(vars[probingpos], TRUE),
       SCIPvarGetNCliques(vars[probingpos], FALSE), SCIPvarGetNCliques(vars[probingpos], TRUE));
 
@@ -1426,7 +1454,8 @@ SCIP_RETCODE SCIPanalyzeDeductionsProbing(
          {
             SCIPdebugMsg(scip, "fixed variable <%s> to %g due to probing on <%s> with nlocks=(%d/%d)\n",
                SCIPvarGetName(var), fixval,
-               SCIPvarGetName(probingvar), SCIPvarGetNLocksDown(probingvar), SCIPvarGetNLocksUp(probingvar));
+               SCIPvarGetName(probingvar), SCIPvarGetNLocksDownType(probingvar, SCIP_LOCKTYPE_MODEL),
+               SCIPvarGetNLocksUpType(probingvar, SCIP_LOCKTYPE_MODEL));
             (*nfixedvars)++;
          }
          else if( *cutoff )
@@ -1471,7 +1500,8 @@ SCIP_RETCODE SCIPanalyzeDeductionsProbing(
             {
                SCIPdebugMsg(scip, "tightened lower bound of variable <%s>[%g,%g] to %g due to probing on <%s> with nlocks=(%d/%d)\n",
                   SCIPvarGetName(var), oldlb, oldub, newlb,
-                  SCIPvarGetName(probingvar), SCIPvarGetNLocksDown(probingvar), SCIPvarGetNLocksUp(probingvar));
+                  SCIPvarGetName(probingvar), SCIPvarGetNLocksDownType(probingvar, SCIP_LOCKTYPE_MODEL),
+                  SCIPvarGetNLocksUpType(probingvar, SCIP_LOCKTYPE_MODEL));
                (*nchgbds)++;
             }
             else if( *cutoff )
@@ -1489,7 +1519,8 @@ SCIP_RETCODE SCIPanalyzeDeductionsProbing(
             {
                SCIPdebugMsg(scip, "tightened upper bound of variable <%s>[%g,%g] to %g due to probing on <%s> with nlocks=(%d/%d)\n",
                   SCIPvarGetName(var), oldlb, oldub, newub,
-                  SCIPvarGetName(probingvar), SCIPvarGetNLocksDown(probingvar), SCIPvarGetNLocksUp(probingvar));
+                  SCIPvarGetName(probingvar), SCIPvarGetNLocksDownType(probingvar, SCIP_LOCKTYPE_MODEL),
+                  SCIPvarGetNLocksUpType(probingvar, SCIP_LOCKTYPE_MODEL));
                (*nchgbds)++;
             }
             else if( *cutoff )
@@ -1539,7 +1570,8 @@ SCIP_RETCODE SCIPanalyzeDeductionsProbing(
                   rightlb - leftub, SCIPvarGetName(var),
                   rightproplbs[j] - leftproplbs[j], SCIPvarGetName(probingvar),
                   leftproplbs[j] * rightlb - rightproplbs[j] * leftub,
-                  SCIPvarGetNLocksDown(var), SCIPvarGetNLocksUp(probingvar));
+                  SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL),
+                  SCIPvarGetNLocksUpType(probingvar, SCIP_LOCKTYPE_MODEL));
                (*naggrvars)++;
             }
             if( *cutoff )

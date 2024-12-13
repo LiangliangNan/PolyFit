@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -26,6 +35,7 @@
 #define __SCIP_PUB_MESSAGE_H__
 
 #include <stdarg.h>
+#include <string.h>
 
 #include "scip/def.h"
 #include "scip/type_message.h"
@@ -41,8 +51,17 @@ extern "C" {
 /** define to identify SCIP version with thread-safe version of message handlers */
 #define SCIP_THREADSAFE_MESSAGEHDLRS
 
+/** define to get the filename of __FILE__ */
+#if defined(_WIN32) || defined(_WIN64)
+/*lint -e613*/
+#define __FILENAME__ (strrchr("\\" __FILE__, '\\') + 1)
+#else
+/*lint -e613*/
+#define __FILENAME__ (strrchr("/" __FILE__, '/') + 1)
+#endif
+
 /** prints an error message */
-#define SCIPerrorMessage                SCIPmessagePrintErrorHeader(__FILE__, __LINE__); \
+#define SCIPerrorMessage                SCIPmessagePrintErrorHeader(__FILENAME__, __LINE__); \
                                         SCIPmessagePrintError
 
 /** define used in blockmemshell/memory.c */
@@ -55,7 +74,7 @@ extern "C" {
 #define SCIPdebug(x)                        x
 
 /** prints a debugging message if SCIP_DEBUG flag is set - also consider using SCIPdebugMsg/SCIPsetDebugMsg */
-#define SCIPdebugMessage                printf("[%s:%d] debug: ", __FILE__, __LINE__), printf
+#define SCIPdebugMessage                printf("[%s:%d] debug: ", __FILENAME__, __LINE__), printf
 
 /** executes printf command only if SCIP_DEBUG flag is set */
 #define SCIPdebugPrintf                 printf
@@ -90,7 +109,7 @@ extern "C" {
 #define SCIPstatistic(x)                        x
 
 /** prints a statistic message if SCIP_STATISTIC flag is set */
-#define SCIPstatisticMessage                printf("[%s:%d] statistic: ", __FILE__, __LINE__), printf
+#define SCIPstatisticMessage                printf("[%s:%d] statistic: ", __FILENAME__, __LINE__), printf
 
 /** executes printf command only if SCIP_STATISTIC flag is set */
 #define SCIPstatisticPrintf                 printf
@@ -115,7 +134,7 @@ extern "C" {
  *  @note The message handler does not handle error messages. For that see SCIPmessageSetErrorPrinting()
  *  @note Creating a message handler automatically captures it.
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPmessagehdlrCreate(
    SCIP_MESSAGEHDLR**    messagehdlr,        /**< pointer to store the message handler */
    SCIP_Bool             bufferedoutput,     /**< should the output be buffered up to the next newline? */
@@ -129,40 +148,43 @@ SCIP_RETCODE SCIPmessagehdlrCreate(
    );
 
 /** captures message handler */
-EXTERN
+SCIP_EXPORT
 void SCIPmessagehdlrCapture(
    SCIP_MESSAGEHDLR*     messagehdlr         /**< message handler, or NULL */
    );
 
 /** releases message handler */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPmessagehdlrRelease(
    SCIP_MESSAGEHDLR**    messagehdlr         /**< pointer to the message handler */
    );
 
 /** sets the user data of the message handler */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPmessagehdlrSetData(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler; must not be NULL */
    SCIP_MESSAGEHDLRDATA* messagehdlrdata     /**< new message handler data to attach to the handler */
    );
 
 /** sets the log file name for the message handler */
-EXTERN
+SCIP_EXPORT
 void SCIPmessagehdlrSetLogfile(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           filename            /**< log file name where to copy messages into, or NULL */
    );
 
 /** sets the messages handler to be quiet */
-EXTERN
+SCIP_EXPORT
 void SCIPmessagehdlrSetQuiet(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    SCIP_Bool             quiet               /**< should screen messages be suppressed? */
    );
 
 /** prints a message, acting like the printf() command */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 2, 3)))
+#endif
+SCIP_EXPORT
 void SCIPmessagePrintInfo(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -170,7 +192,7 @@ void SCIPmessagePrintInfo(
    );
 
 /** prints a message, acting like the vprintf() command */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVPrintInfo(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -178,7 +200,10 @@ void SCIPmessageVPrintInfo(
    );
 
 /** prints a message into a file, acting like the fprintf() command */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 3, 4)))
+#endif
+SCIP_EXPORT
 void SCIPmessageFPrintInfo(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    FILE*                 file,               /**< file stream to print into, or NULL for stdout */
@@ -187,7 +212,7 @@ void SCIPmessageFPrintInfo(
    );
 
 /** prints a message into a file, acting like the vfprintf() command */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVFPrintInfo(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    FILE*                 file,               /**< file stream to print into, or NULL for stdout */
@@ -196,7 +221,10 @@ void SCIPmessageVFPrintInfo(
    );
 
 /** prints a warning message, acting like the printf() command */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 2, 3)))
+#endif
+SCIP_EXPORT
 void SCIPmessagePrintWarning(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -204,7 +232,7 @@ void SCIPmessagePrintWarning(
    );
 
 /** prints a warning message, acting like the vprintf() command */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVPrintWarning(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -212,7 +240,10 @@ void SCIPmessageVPrintWarning(
    );
 
 /** prints a warning message into a file, acting like the fprintf() command */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 2, 3)))
+#endif
+SCIP_EXPORT
 void SCIPmessageFPrintWarning(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -220,7 +251,7 @@ void SCIPmessageFPrintWarning(
    );
 
 /** prints a warning message into a file, acting like the vfprintf() command */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVFPrintWarning(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -228,7 +259,10 @@ void SCIPmessageVFPrintWarning(
    );
 
 /** prints a dialog message that requests user interaction, acting like the printf() command */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 2, 3)))
+#endif
+SCIP_EXPORT
 void SCIPmessagePrintDialog(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -236,7 +270,7 @@ void SCIPmessagePrintDialog(
    );
 
 /** prints a dialog message that requests user interaction, acting like the vprintf() command */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVPrintDialog(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -244,7 +278,10 @@ void SCIPmessageVPrintDialog(
    );
 
 /** prints a dialog message that requests user interaction into a file, acting like the fprintf() command */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 3, 4)))
+#endif
+SCIP_EXPORT
 void SCIPmessageFPrintDialog(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    FILE*                 file,               /**< file stream to print into, or NULL for stdout */
@@ -253,7 +290,7 @@ void SCIPmessageFPrintDialog(
    );
 
 /** prints a dialog message that requests user interaction into a file, acting like the vfprintf() command */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVFPrintDialog(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    FILE*                 file,               /**< file stream to print into, or NULL for stdout */
@@ -262,7 +299,10 @@ void SCIPmessageVFPrintDialog(
    );
 
 /** prints a message depending on the verbosity level, acting like the printf() command */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 4, 5)))
+#endif
+SCIP_EXPORT
 void SCIPmessagePrintVerbInfo(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    SCIP_VERBLEVEL        verblevel,          /**< current verbosity level */
@@ -272,7 +312,7 @@ void SCIPmessagePrintVerbInfo(
    );
 
 /** prints a message depending on the verbosity level, acting like the vprintf() command */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVPrintVerbInfo(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    SCIP_VERBLEVEL        verblevel,          /**< current verbosity level */
@@ -282,7 +322,10 @@ void SCIPmessageVPrintVerbInfo(
    );
 
 /** prints a message into a file depending on the verbosity level, acting like the fprintf() command */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 5, 6)))
+#endif
+SCIP_EXPORT
 void SCIPmessageFPrintVerbInfo(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    SCIP_VERBLEVEL        verblevel,          /**< current verbosity level */
@@ -293,7 +336,7 @@ void SCIPmessageFPrintVerbInfo(
    );
 
 /** prints a message into a file depending on the verbosity level, acting like the vfprintf() command */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVFPrintVerbInfo(
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
    SCIP_VERBLEVEL        verblevel,          /**< current verbosity level */
@@ -304,21 +347,24 @@ void SCIPmessageVFPrintVerbInfo(
    );
 
 /** prints the header with source file location for an error message using the static message handler */
-EXTERN
+SCIP_EXPORT
 void SCIPmessagePrintErrorHeader(
    const char*           sourcefile,         /**< name of the source file that called the function */
    int                   sourceline          /**< line in the source file where the function was called */
    );
 
 /** prints an error message, acting like the printf() command using the static message handler */
-EXTERN
+#ifdef __GNUC__
+__attribute__((format(printf, 1, 2)))
+#endif
+SCIP_EXPORT
 void SCIPmessagePrintError(
    const char*           formatstr,          /**< format string like in printf() function */
    ...                                       /**< format arguments line in printf() function */
    );
 
 /** prints an error message, acting like the vprintf() command using the static message handler */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageVPrintError(
    const char*           formatstr,          /**< format string like in printf() function */
    va_list               ap                  /**< variable argument list */
@@ -328,7 +374,7 @@ void SCIPmessageVPrintError(
  *
  *  @note The error printing method is a static variable. This means that all occurring errors are handled via this method.
  */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageSetErrorPrinting(
    SCIP_DECL_ERRORPRINTING((*errorPrinting)),/**< error message print method of message handler, or NULL */
    void*                 data                /**< data pointer which will be passed to the error printing method, or NULL */
@@ -338,26 +384,26 @@ void SCIPmessageSetErrorPrinting(
  *
  *  @note The error printing method is a static variable. This means that all occurring errors are handled via this method.
  */
-EXTERN
+SCIP_EXPORT
 void SCIPmessageSetErrorPrintingDefault(
    void
    );
 
 
 /** returns the user data of the message handler */
-EXTERN
+SCIP_EXPORT
 SCIP_MESSAGEHDLRDATA* SCIPmessagehdlrGetData(
    SCIP_MESSAGEHDLR*     messagehdlr         /**< message handler */
    );
 
 /** returns the log file or NULL for stdout */
-EXTERN
+SCIP_EXPORT
 FILE* SCIPmessagehdlrGetLogfile(
    SCIP_MESSAGEHDLR*     messagehdlr         /**< message handler */
    );
 
 /** returns TRUE if the message handler is set to be quiet */
-EXTERN
+SCIP_EXPORT
 SCIP_Bool SCIPmessagehdlrIsQuiet(
    SCIP_MESSAGEHDLR*     messagehdlr         /**< message handler */
    );

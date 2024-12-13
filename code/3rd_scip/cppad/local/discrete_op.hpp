@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_DISCRETE_OP_HPP
-# define CPPAD_DISCRETE_OP_HPP
+# ifndef CPPAD_LOCAL_DISCRETE_OP_HPP
+# define CPPAD_LOCAL_DISCRETE_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,7 +13,7 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file discrete_op.hpp
 Forward mode for z = f(x) where f is piecewise constant.
@@ -114,9 +113,9 @@ inline void forward_dis_op(
 	}
 	for(size_t ell = 0; ell < r; ell++)
 		for(size_t k = p; k <= q; k++)
-			z[ (k-1) * r + 1 + ell ] = Base(0);
+			z[ (k-1) * r + 1 + ell ] = Base(0.0);
 }
 
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

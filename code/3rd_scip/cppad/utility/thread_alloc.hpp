@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_THREAD_ALLOC_HPP
-# define CPPAD_THREAD_ALLOC_HPP
+# ifndef CPPAD_UTILITY_THREAD_ALLOC_HPP
+# define CPPAD_UTILITY_THREAD_ALLOC_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -25,8 +24,8 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 # pragma warning(disable:4345)
 # endif
 
-# include <cppad/local/cppad_assert.hpp>
-# include <cppad/local/define.hpp>
+# include <cppad/core/cppad_assert.hpp>
+# include <cppad/core/define.hpp>
 # include <cppad/local/set_get_in_parallel.hpp>
 namespace CppAD { // BEGIN_CPPAD_NAMESPACE
 /*!
@@ -139,9 +138,12 @@ private:
 		size_t  count_available_;
 		/// root of available list for this thread and each capacity
 		block_t root_available_[CPPAD_MAX_NUM_CAPACITY];
-		/// root of inuse list for this thread and each capacity
-		/// If NDEBUG is true, this memory is not used, but it still
-		/// helps separate this structure from one for the next thread.
+		/*!
+		root of inuse list for this thread and each capacity
+		If NDEBUG or CPPAD_DEBUG_AND_RELEASE is defined, this memory is not
+		used, but it still helps to separate this structure from the structure
+		for the next thread.
+		*/
 		block_t root_inuse_[CPPAD_MAX_NUM_CAPACITY];
 	};
 	// ---------------------------------------------------------------------
@@ -518,7 +520,7 @@ $end
 		{	bool set = true;
 			set_get_num_threads(num_threads);
 			// emphasize that this routine is outside thread_alloc class
-			CppAD::set_get_in_parallel(CPPAD_NULL, set);
+			CppAD::local::set_get_in_parallel(CPPAD_NULL, set);
 			set_get_thread_num(CPPAD_NULL, set);
 			return;
 		}
@@ -558,7 +560,7 @@ $end
 		{	bool set = true;
 			set_get_num_threads(num_threads);
 			// emphasize that this routine is outside thread_alloc class
-			CppAD::set_get_in_parallel(in_parallel, set);
+			CppAD::local::set_get_in_parallel(in_parallel, set);
 			set_get_thread_num(thread_num, set);
 		}
 	}
@@ -636,7 +638,7 @@ $end
 	/// other threads are currently executing.
 	static bool in_parallel(void)
 	{	// emphasize that this routine is outside thread_alloc class
-		return CppAD::set_get_in_parallel(0);
+		return CppAD::local::set_get_in_parallel(0);
 	}
 /* -----------------------------------------------------------------------
 $begin ta_thread_num$$
@@ -802,9 +804,11 @@ $end
 				first_trace = false;
 		}
 
+# ifndef CPPAD_DEBUG_AND_RELEASE
 		// Root nodes for both lists. Note these are different for different
 		// threads because tc_index is different for different threads.
 		block_t* inuse_root     = info->root_inuse_ + c_index;
+# endif
 # endif
 		block_t* available_root = info->root_available_ + c_index;
 
@@ -820,9 +824,11 @@ $end
 			// return value for get_memory
 			void* v_ptr = reinterpret_cast<void*>(node + 1);
 # ifndef NDEBUG
+# ifndef CPPAD_DEBUG_AND_RELEASE
 			// add node to inuse list
 			node->next_           = inuse_root->next_;
 			inuse_root->next_     = v_node;
+# endif
 
 			// trace allocation
 			if(	cap_bytes == CPPAD_TRACE_CAPACITY &&
@@ -847,9 +853,11 @@ $end
 		void* v_ptr     = reinterpret_cast<void*>(node + 1);
 
 # ifndef NDEBUG
+# ifndef CPPAD_DEBUG_AND_RELEASE
 		// add node to inuse list
 		node->next_       = inuse_root->next_;
 		inuse_root->next_ = v_node;
+# endif
 
 		// trace allocation
 		if( cap_bytes == CPPAD_TRACE_CAPACITY &&
@@ -943,6 +951,7 @@ $end
 
 		thread_alloc_info* info = thread_info(thread);
 # ifndef NDEBUG
+# ifndef CPPAD_DEBUG_AND_RELEASE
 		// remove node from inuse list
 		void* v_node         = reinterpret_cast<void*>(node);
 		block_t* inuse_root  = info->root_inuse_ + c_index;
@@ -969,13 +978,13 @@ $end
 			const char* msg_char_star = msg_str.c_str();
 			CPPAD_ASSERT_KNOWN(false, msg_char_star );
 		}
-
+		// remove v_ptr from inuse list
+		previous->next_  = node->next_;
+# endif
 		// trace option
 		if( capacity==CPPAD_TRACE_CAPACITY && thread==CPPAD_TRACE_THREAD )
 		{	std::cout << "return_memory: v_ptr = " << v_ptr << std::endl; }
 
-		// remove v_ptr from inuse list
-		previous->next_  = node->next_;
 # endif
 		// capacity bytes are removed from the inuse pool
 		dec_inuse(capacity, thread);

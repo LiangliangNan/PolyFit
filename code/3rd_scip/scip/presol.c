@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   presol.c
+ * @ingroup OTHER_CFILES
  * @brief  methods for presolvers
  * @author Tobias Achterberg
  * @author Timo Berthold
@@ -88,8 +98,9 @@ SCIP_RETCODE SCIPpresolCopyInclude(
    return SCIP_OKAY;
 }
 
-/** creates a presolver */
-SCIP_RETCODE SCIPpresolCreate(
+/** internal method for creating a presolver */
+static
+SCIP_RETCODE doPresolCreate(
    SCIP_PRESOL**         presol,             /**< pointer to store presolver */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -128,6 +139,8 @@ SCIP_RETCODE SCIPpresolCreate(
    }
 
    SCIP_ALLOC( BMSallocMemory(presol) );
+   BMSclearMemory(*presol);
+
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*presol)->name, name, strlen(name)+1) );
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*presol)->desc, desc, strlen(desc)+1) );
    (*presol)->presolcopy = presolcopy;
@@ -163,6 +176,38 @@ SCIP_RETCODE SCIPpresolCreate(
    return SCIP_OKAY;
 }
 
+/** creates a presolver */
+SCIP_RETCODE SCIPpresolCreate(
+   SCIP_PRESOL**         presol,             /**< pointer to store presolver */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
+   BMS_BLKMEM*           blkmem,             /**< block memory for parameter settings */
+   const char*           name,               /**< name of presolver */
+   const char*           desc,               /**< description of presolver */
+   int                   priority,           /**< priority of the presolver (>= 0: before, < 0: after constraint handlers) */
+   int                   maxrounds,          /**< maximal number of presolving rounds the presolver participates in (-1: no limit) */
+   SCIP_PRESOLTIMING     timing,             /**< timing mask of the presolver */
+   SCIP_DECL_PRESOLCOPY  ((*presolcopy)),    /**< copy method of presolver or NULL if you don't want to copy your plugin into sub-SCIPs */
+   SCIP_DECL_PRESOLFREE  ((*presolfree)),    /**< destructor of presolver to free user data (called when SCIP is exiting) */
+   SCIP_DECL_PRESOLINIT  ((*presolinit)),    /**< initialization method of presolver (called after problem was transformed) */
+   SCIP_DECL_PRESOLEXIT  ((*presolexit)),    /**< deinitialization method of presolver (called before transformed problem is freed) */
+   SCIP_DECL_PRESOLINITPRE((*presolinitpre)),/**< presolving initialization method of presolver (called when presolving is about to begin) */
+   SCIP_DECL_PRESOLEXITPRE((*presolexitpre)),/**< presolving deinitialization method of presolver (called after presolving has been finished) */
+   SCIP_DECL_PRESOLEXEC  ((*presolexec)),    /**< execution method of presolver */
+   SCIP_PRESOLDATA*      presoldata          /**< presolver data */
+   )
+{
+   assert(presol != NULL);
+   assert(name != NULL);
+   assert(desc != NULL);
+
+   SCIP_CALL_FINALLY( doPresolCreate(presol, set, messagehdlr, blkmem, name, desc, priority, maxrounds, timing,
+      presolcopy, presolfree, presolinit, presolexit, presolinitpre, presolexitpre, presolexec, presoldata),
+      (void) SCIPpresolFree(presol, set) );
+
+   return SCIP_OKAY;
+}
+
 /** frees memory of presolver */
 SCIP_RETCODE SCIPpresolFree(
    SCIP_PRESOL**         presol,             /**< pointer to presolver data structure */
@@ -170,7 +215,8 @@ SCIP_RETCODE SCIPpresolFree(
    )
 {
    assert(presol != NULL);
-   assert(*presol != NULL);
+   if( *presol == NULL )
+      return SCIP_OKAY;
    assert(!(*presol)->initialized);
    assert(set != NULL);
 
@@ -182,8 +228,8 @@ SCIP_RETCODE SCIPpresolFree(
 
    SCIPclockFree(&(*presol)->presolclock);
    SCIPclockFree(&(*presol)->setuptime);
-   BMSfreeMemoryArray(&(*presol)->name);
-   BMSfreeMemoryArray(&(*presol)->desc);
+   BMSfreeMemoryArrayNull(&(*presol)->name);
+   BMSfreeMemoryArrayNull(&(*presol)->desc);
    BMSfreeMemory(presol);
 
    return SCIP_OKAY;
@@ -386,7 +432,7 @@ SCIP_RETCODE SCIPpresolExec(
    *result = SCIP_DIDNOTRUN;
 
    /* check number of presolving rounds */
-   if( presol->maxrounds >= 0 && nrounds >= presol->maxrounds )
+   if( presol->maxrounds >= 0 && presol->ncalls >= presol->maxrounds )
       return SCIP_OKAY;
 
    /* calculate the number of changes since last call */

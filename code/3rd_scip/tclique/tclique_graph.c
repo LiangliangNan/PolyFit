@@ -1,19 +1,29 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                           */
-/*                        This file is part of the program                   */
-/*                    TCLIQUE --- Algorithm for Maximum Cliques              */
+/*                  This file is part of the program                         */
+/*              TCLIQUE --- Algorithm for Maximum Cliques                    */
 /*                                                                           */
-/*    Copyright (C) 1996-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 1996-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  TCLIQUE is distributed under the terms of the ZIB Academic License.      */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with TCLIQUE; see the file COPYING.                                */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with TCLIQUE; see the file LICENSE.                                */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   tclique_graph.c
+ * @ingroup OTHER_CFILES
  * @brief  graph data part of algorithm for maximum cliques
  * @author Tobias Achterberg
  * @author Ralf Borndoerfer
@@ -53,7 +63,7 @@ struct TCLIQUE_Graph
    int*                  cacheddests;        /**< destination nodes of cached edges */
    int                   ncachededges;       /**< number of cached edges (not yet inserted in all data structures) */
    int                   sizecachededges;    /**< size of arrays concerning cached edges */
-}; 
+};
 
 
 
@@ -103,15 +113,15 @@ TCLIQUE_ISEDGE(tcliqueIsEdge)
    if( currentadjedge > lastadjedge || *lastadjedge < node2 )
       return FALSE;
 
-   /* checks if node2 is contained in adjacency list of node1 
+   /* checks if node2 is contained in adjacency list of node1
     * (list is ordered by adjacent nodes) */
-   while( currentadjedge <= lastadjedge ) 
+   while( currentadjedge <= lastadjedge )
    {
       if( *currentadjedge >= node2 )
       {
          if( *currentadjedge == node2 )
             return TRUE;
-         else 
+         else
             break;
       }
       currentadjedge++;
@@ -139,7 +149,7 @@ TCLIQUE_SELECTADJNODES(tcliqueSelectAdjnodes)
    currentadjedge = tcliqueGetFirstAdjedge(tcliquegraph, node);
    lastadjedge = tcliqueGetLastAdjedge(tcliquegraph, node);
 
-   /* checks for each node in given set nodes, if it is adjacent to given node 
+   /* checks for each node in given set nodes, if it is adjacent to given node
     * (adjacent nodes are ordered by node index)
     */
    for( i = 0; i < nnodes; i++ )
@@ -153,11 +163,11 @@ TCLIQUE_SELECTADJNODES(tcliqueSelectAdjnodes)
             /* current node is adjacent to given node */
             if( *currentadjedge == nodes[i] )
             {
-               adjnodes[nadjnodes] = nodes[i]; 
+               adjnodes[nadjnodes] = nodes[i];
                nadjnodes++;
             }
             break;
-         } 
+         }
       }
    }
 
@@ -361,7 +371,7 @@ void tcliqueChangeWeight(
    tcliquegraph->weights[node] = weight;
 }
 
-/** adds edge (node1, node2) to graph data structure (node1 and node2 have to be contained in 
+/** adds edge (node1, node2) to graph data structure (node1 and node2 have to be contained in
  *  graph data structure)
  *
  *  New edges are cached, s.t. the graph data structures are not correct until a call to tcliqueFlush();
@@ -532,7 +542,7 @@ TCLIQUE_Bool tcliqueFlush(
          pos = tcliquegraph->adjedges[n].last;
       }
       assert(pos == tcliquegraph->nedges);
-   }   
+   }
 #endif
 
    return TRUE;
@@ -555,87 +565,71 @@ TCLIQUE_Bool tcliqueLoadFile(
    int i;
    int result;
    char* charresult;
-   char* tmp;
 
    assert(tcliquegraph != NULL);
    assert(scaleval > 0.0);
+   assert(sizeofprobname >= 2);
 
    /* open file */
    if( (file = fopen(filename, "r")) == NULL )
    {
       if( (file = fopen("default.dat", "r")) == NULL )
       {
-         infoMessage("\nCan't open file: %s", filename);
+         infoMessage("Cannot open file: %s.\n", filename);
          return FALSE;
       }
    }
 
    if( !tcliqueCreate(tcliquegraph) )
    {
-      fclose(file);
+      (void) fclose(file);
       return FALSE;
    }
 
-   /* set name of problem, copies 'sizeofprobname' characters into probname */
-   charresult = fgets(probname, sizeofprobname, file);
-   if( charresult == NULL )
+   /* read name of problem (if line is longer than sizeofprobname continue reading until end of line) */
+   do
    {
-      infoMessage("Error while reading probname in file %s", filename);
-      fclose(file);
-      return FALSE;
-   }
-
-   /* allocate temporary memory for skipping rest of problem name */
-   BMSallocMemoryArray(&tmp, sizeofprobname +1 );
-   if( tmp == NULL )
-   {
-      infoMessage("[%s:%d] No memory in function call", __FILE__, __LINE__);
-      fclose(file);
-      return FALSE;
-   }
-
-   BMScopyMemoryArray(tmp, probname, sizeofprobname);
-   probname[sizeofprobname-1] = '\0';
-   tmp[sizeofprobname] = '\0';
-
-   /* continue reading until we reach the end of the problem name */
-   while( (int) strlen(tmp) == sizeofprobname && tmp[strlen(tmp)-1] != '\n' )
-   {
-      charresult = fgets(tmp, sizeofprobname, file);
-
+      probname[sizeofprobname-2] = '\0';
+      charresult = fgets(probname, sizeofprobname, file);
       if( charresult == NULL )
       {
-         infoMessage("Error while reading probname in file %s", filename);
-         fclose(file);
+         infoMessage("Error while reading probname in file %s.\n", filename);
+         (void) fclose(file);
          return FALSE;
       }
    }
-
-   /* free temporary memory */
-   BMSfreeMemoryArray(&tmp);
+   while( probname[sizeofprobname-2] != '\0' );
 
    /* set number of nodes and number of edges in graph */
+   /* coverity[tainted_data] */
    result = fscanf(file, "%d", &(*tcliquegraph)->nnodes);
    if( result <= 0 )
    {
-      infoMessage("Error while reading number of nodes in file %s", filename); 
-      fclose(file);
+      infoMessage("Error while reading number of nodes in file %s.\n", filename);
+      (void) fclose(file);
       return FALSE;
    }
 
+   if( (*tcliquegraph)->nnodes < 0 )
+   {
+      infoMessage("Invalid number of nodes (%d) in file: %s.\n", (*tcliquegraph)->nnodes, filename);
+      (void) fclose(file);
+      return FALSE;
+   }
+
+   /* coverity[tainted_data] */
    result = fscanf(file, "%d", &(*tcliquegraph)->nedges);
    if( result <= 0 )
    {
-      infoMessage("Error while reading number of edges in file %s", filename); 
-      fclose(file);
+      infoMessage("Error while reading number of edges in file %s.\n", filename);
+      (void) fclose(file);
       return FALSE;
    }
 
-   if( (*tcliquegraph)->nnodes < 0 || (*tcliquegraph)->nedges < 0 )
+   if( (*tcliquegraph)->nedges < 0 )
    {
-      infoMessage("\nInvalid number of %s (%d) in file: %s", (*tcliquegraph)->nnodes < 0 ? "nodes" : "edges", 
-         (*tcliquegraph)->nnodes < 0 ? (*tcliquegraph)->nnodes : (*tcliquegraph)->nedges, filename);
-      fclose(file);
+      infoMessage("Invalid number of edges (%d) in file: %s.\n", (*tcliquegraph)->nedges, filename);
+      (void) fclose(file);
       return FALSE;
    }
 
@@ -643,40 +637,44 @@ TCLIQUE_Bool tcliqueLoadFile(
     * if an error occured, close the file before returning */
    if( BMSallocMemoryArray(&(*tcliquegraph)->weights, (*tcliquegraph)->nnodes) == NULL )
    {
-      infoMessage("Run out of memory while reading file %s", filename); 
+      infoMessage("Run out of memory while reading file %s.\n", filename);
       (void) fclose(file);
       return FALSE;
    }
 
+   /* coverity[tainted_data] */
    if( BMSallocMemoryArray(&(*tcliquegraph)->degrees, (*tcliquegraph)->nnodes) == NULL )   
    {
-      infoMessage("Run out of memory while reading file %s", filename); 
+      infoMessage("Run out of memory while reading file %s.\n", filename);
       (void) fclose(file);
       return FALSE;
    }
 
+   /* coverity[tainted_data] */
    if( BMSallocMemoryArray(&(*tcliquegraph)->adjnodes, (*tcliquegraph)->nedges) == NULL )
    {
-      infoMessage("Run out of memory while reading file %s", filename); 
+      infoMessage("Run out of memory while reading file %s.\n", filename);
       (void) fclose(file);
       return FALSE;
    }
 
+   /* coverity[tainted_data] */
    if( BMSallocMemoryArray(&(*tcliquegraph)->adjedges, (*tcliquegraph)->nnodes) == NULL )
    {
-      infoMessage("Run out of memory while reading file %s", filename); 
+      infoMessage("Run out of memory while reading file %s.\n", filename);
       (void) fclose(file);
       return FALSE;
    }
 
    /* set weights of all nodes (scaled!) */
+   /* coverity[tainted_data] */
    for( i = 0; i < (*tcliquegraph)->nnodes; i++ )
    {
       result = fscanf(file, "%lf", &weight);
       if( result <= 0 )
       {
-         infoMessage("Error while reading weights of nodes in file %s", filename); 
-         fclose(file);
+         infoMessage("Error while reading weights of nodes in file %s.\n", filename);
+         (void) fclose(file);
          return FALSE;
       }
 
@@ -686,28 +684,31 @@ TCLIQUE_Bool tcliqueLoadFile(
 
    /* set adjacent edges and degree of all nodes */
    currentnode = -1;
+   /* coverity[tainted_data] */
    for( i = 0; i < (*tcliquegraph)->nedges; i++ )
    {
       /* read edge (node1, node2) */
+      /* coverity[secure_coding] */
       result = fscanf(file, "%d%d", &node1, &node2);
       if( result <= 1 )
       {
-         infoMessage("Error while reading edges in file %s", filename); 
-         fclose(file);
+         infoMessage("Error while reading edges in file %s.\n", filename);
+         (void) fclose(file);
          return FALSE;
       }
 
-      if( node1 < 0 || node2 < 0 )
+      if( node1 < 0 || node2 < 0 || node1 >= (*tcliquegraph)->nnodes || node2 >= (*tcliquegraph)->nnodes )
       {
-         infoMessage("\nInvalid node index (%d) in file: %s", node1 < 0 ? node1 : node2, filename);
-         fclose(file);
+         infoMessage("Invalid node index (%d) in file: %s.\n", node1 < 0 ? node1 : node2, filename);
+         (void) fclose(file);
          return FALSE;
-      } 
+      }
 
       /* (node1, node2) is the first adjacent edge of node1 */
       if( node1 != currentnode )
       {
          currentnode = node1;
+         /* coverity[tainted_data] */
          (*tcliquegraph)->degrees[currentnode] = 0;
          (*tcliquegraph)->adjedges[currentnode].first = i;
          (*tcliquegraph)->adjedges[currentnode].last = (*tcliquegraph)->adjedges[currentnode].first;
@@ -718,7 +719,7 @@ TCLIQUE_Bool tcliqueLoadFile(
    }
 
    /* close file */
-   fclose(file);
+   (void) fclose(file);
 
    return TRUE;
 }
@@ -741,7 +742,7 @@ TCLIQUE_Bool tcliqueSaveFile(
    /* create file */
    if( (file = fopen(filename, "w")) == NULL )
    {
-      infoMessage("\nCan't create file: %s", filename);
+      infoMessage("Can't create file: %s.\n", filename);
       return FALSE;
    }
 
@@ -876,7 +877,7 @@ void tcliquePrintGraph(
       int* currentadjedge;
       int* lastadjedge;
 
-      infoMessage("node %d: weight=%d, degree=%d, adjnodes=\n[ ", i, weights[i], degrees[i]);  
+      infoMessage("node %d: weight=%d, degree=%d, adjnodes=\n[ ", i, weights[i], degrees[i]);
 
       currentadjedge = tcliqueGetFirstAdjedge(tcliquegraph, i);
       lastadjedge = tcliqueGetLastAdjedge(tcliquegraph, i);

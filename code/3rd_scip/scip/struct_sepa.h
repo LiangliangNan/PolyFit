@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -38,9 +47,15 @@ struct SCIP_Sepa
 {
    SCIP_Longint          lastsepanode;       /**< last (total) node where this separator was called */
    SCIP_Longint          ncalls;             /**< number of times, this separator was called */
+   SCIP_Longint          nrootcalls;         /**< number of times, this separator was called at the root */
    SCIP_Longint          ncutoffs;           /**< number of cutoffs found so far by this separator */
    SCIP_Longint          ncutsfound;         /**< number of cutting planes found so far by this separator */
-   SCIP_Longint          ncutsapplied;       /**< number of cutting planes applied to LP */
+   SCIP_Longint          ncutsadded;         /**< number of cutting planes added to sepastore equal to
+                                              *   the sum of added cuts via pool and direct.*/
+   SCIP_Longint          ncutsaddedviapool;  /**< number of cutting planes added from cutpool */
+   SCIP_Longint          ncutsaddeddirect;   /**< number of cutting planes added directly */
+   SCIP_Longint          ncutsappliedviapool;/**< number of cutting planes applied to LP via cutpool */
+   SCIP_Longint          ncutsapplieddirect; /**< number of cutting planes applied to LP directly from sepastore */
    SCIP_Longint          nconssfound;        /**< number of additional constraints added by this separator */
    SCIP_Longint          ndomredsfound;      /**< number of domain reductions found so far by this separator */
    SCIP_Real             maxbounddist;       /**< maximal relative distance from current node's dual bound to primal bound compared
@@ -68,6 +83,8 @@ struct SCIP_Sepa
    SCIP_Bool             lpwasdelayed;       /**< was the LP separation delayed at the last call? */
    SCIP_Bool             solwasdelayed;      /**< was the solution separation delayed at the last call? */
    SCIP_Bool             initialized;        /**< is separator initialized? */
+   SCIP_Bool             isparentsepa;       /**< is separator a parent separator that create cuts of child separators? */
+   struct SCIP_Sepa*     parentsepa;         /**< pointer to parent separator or NULL */
 };
 
 #ifdef __cplusplus

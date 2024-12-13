@@ -3,26 +3,39 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   table_default.c
+ * @ingroup DEFPLUGINS_TABLE
  * @brief  default statistics tables
  * @author Tristan Gally
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-
+#include "scip/pub_message.h"
+#include "scip/pub_table.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_table.h"
 #include "scip/table_default.h"
+
 
 #define TABLE_NAME_STATUS                "status"
 #define TABLE_DESC_STATUS                "status statistics table"
@@ -74,6 +87,11 @@
 #define TABLE_POSITION_SEPA              9000                   /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_SEPA        SCIP_STAGE_SOLVING     /**< output of the statistics table is only printed from this stage onwards */
 
+#define TABLE_NAME_CUTSEL                "cutsel"
+#define TABLE_DESC_CUTSEL                "cutsel statistics table"
+#define TABLE_POSITION_CUTSEL            9500                  /**< the position of the statistics table */
+#define TABLE_EARLIEST_STAGE_CUTSEL      SCIP_STAGE_SOLVING     /**< output of the statistics table is only printed from this stage onwards */
+
 #define TABLE_NAME_PRICER                "pricer"
 #define TABLE_DESC_PRICER                "pricer statistics table"
 #define TABLE_POSITION_PRICER            10000                  /**< the position of the statistics table */
@@ -94,39 +112,54 @@
 #define TABLE_POSITION_COMPRESSION       13000                  /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_COMPRESSION SCIP_STAGE_PRESOLVING  /**< output of the statistics table is only printed from this stage onwards */
 
+#define TABLE_NAME_BENDERS               "benders"
+#define TABLE_DESC_BENDERS               "benders' decomposition statistics table"
+#define TABLE_POSITION_BENDERS           14000                  /**< the position of the statistics table */
+#define TABLE_EARLIEST_STAGE_BENDERS     SCIP_STAGE_SOLVING     /**< output of the statistics table is only printed from this stage onwards */
+
+#define TABLE_NAME_EXPRHDLRS             "exprhdlr"
+#define TABLE_DESC_EXPRHDLRS             "expression handlers statistics table"
+#define TABLE_POSITION_EXPRHDLRS         14500                  /**< the position of the statistics table */
+#define TABLE_EARLIEST_STAGE_EXPRHDLRS   SCIP_STAGE_TRANSFORMED /**< output of the statistics table is only printed from this stage onwards */
+
 #define TABLE_NAME_LP                    "lp"
 #define TABLE_DESC_LP                    "lp statistics table"
-#define TABLE_POSITION_LP                14000                  /**< the position of the statistics table */
+#define TABLE_POSITION_LP                15000                  /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_LP          SCIP_STAGE_SOLVING     /**< output of the statistics table is only printed from this stage onwards */
 
 #define TABLE_NAME_NLP                   "nlp"
 #define TABLE_DESC_NLP                   "nlp statistics table"
-#define TABLE_POSITION_NLP               15000                  /**< the position of the statistics table */
+#define TABLE_POSITION_NLP               16000                  /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_NLP         SCIP_STAGE_SOLVING     /**< output of the statistics table is only printed from this stage onwards */
+
+#define TABLE_NAME_NLPIS                 "nlpi"
+#define TABLE_DESC_NLPIS                 "NLP solver interfaces statistics table"
+#define TABLE_POSITION_NLPIS             16500                  /**< the position of the statistics table */
+#define TABLE_EARLIEST_STAGE_NLPIS       SCIP_STAGE_TRANSFORMED /**< output of the statistics table is only printed from this stage onwards */
 
 #define TABLE_NAME_RELAX                 "relaxator"
 #define TABLE_DESC_RELAX                 "relaxator statistics table"
-#define TABLE_POSITION_RELAX             16000                  /**< the position of the statistics table */
+#define TABLE_POSITION_RELAX             17000                  /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_RELAX       SCIP_STAGE_SOLVING     /**< output of the statistics table is only printed from this stage onwards */
 
 #define TABLE_NAME_TREE                  "tree"
 #define TABLE_DESC_TREE                  "tree statistics table"
-#define TABLE_POSITION_TREE              17000                  /**< the position of the statistics table */
+#define TABLE_POSITION_TREE              18000                  /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_TREE        SCIP_STAGE_SOLVING     /**< output of the statistics table is only printed from this stage onwards */
 
 #define TABLE_NAME_ROOT                  "root"
 #define TABLE_DESC_ROOT                  "root statistics table"
-#define TABLE_POSITION_ROOT              18000                  /**< the position of the statistics table */
+#define TABLE_POSITION_ROOT              19000                  /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_ROOT        SCIP_STAGE_SOLVING     /**< output of the statistics table is only printed from this stage onwards */
 
 #define TABLE_NAME_SOL                   "solution"
 #define TABLE_DESC_SOL                   "solution statistics table"
-#define TABLE_POSITION_SOL               19000                  /**< the position of the statistics table */
+#define TABLE_POSITION_SOL               20000                  /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_SOL         SCIP_STAGE_PRESOLVING  /**< output of the statistics table is only printed from this stage onwards */
 
 #define TABLE_NAME_CONC                  "concurrentsolver"
 #define TABLE_DESC_CONC                  "concurrent solver statistics table"
-#define TABLE_POSITION_CONC              20000                  /**< the position of the statistics table */
+#define TABLE_POSITION_CONC              21000                  /**< the position of the statistics table */
 #define TABLE_EARLIEST_STAGE_CONC        SCIP_STAGE_TRANSFORMED /**< output of the statistics table is only printed from this stage onwards */
 
 /*
@@ -271,6 +304,18 @@ SCIP_DECL_TABLEOUTPUT(tableOutputSepa)
 
 /** output method of statistics table to output file stream 'file' */
 static
+SCIP_DECL_TABLEOUTPUT(tableOutputCutsel)
+{  /*lint --e{715}*/
+   assert(scip != NULL);
+   assert(table != NULL);
+
+   SCIPprintCutselectorStatistics(scip, file);
+
+   return SCIP_OKAY;
+}
+
+/** output method of statistics table to output file stream 'file' */
+static
 SCIP_DECL_TABLEOUTPUT(tableOutputPricer)
 {  /*lint --e{715}*/
    assert(scip != NULL);
@@ -401,6 +446,42 @@ SCIP_DECL_TABLEOUTPUT(tableOutputConc)
    return SCIP_OKAY;
 }
 
+/** output method of statistics table to output file stream 'file' */
+static
+SCIP_DECL_TABLEOUTPUT(tableOutputBenders)
+{  /*lint --e{715}*/
+   assert(scip != NULL);
+   assert(table != NULL);
+
+   SCIPprintBendersStatistics(scip, file);
+
+   return SCIP_OKAY;
+}
+
+/** output method of statistics table to output file stream 'file' */
+static
+SCIP_DECL_TABLEOUTPUT(tableOutputExprhdlrs)
+{  /*lint --e{715}*/
+   assert(scip != NULL);
+   assert(table != NULL);
+
+   SCIPprintExpressionHandlerStatistics(scip, file);
+
+   return SCIP_OKAY;
+}
+
+/** output method of statistics table to output file stream 'file' */
+static
+SCIP_DECL_TABLEOUTPUT(tableOutputNlpis)
+{  /*lint --e{715}*/
+   assert(scip != NULL);
+   assert(table != NULL);
+
+   SCIPprintNLPIStatistics(scip, file);
+
+   return SCIP_OKAY;
+}
+
 
 /*
  * statistics table specific interface methods
@@ -439,6 +520,9 @@ SCIP_RETCODE SCIPincludeTableDefault(
       assert(SCIPfindTable(scip, TABLE_NAME_ROOT) != NULL );
       assert(SCIPfindTable(scip, TABLE_NAME_SOL) != NULL );
       assert(SCIPfindTable(scip, TABLE_NAME_CONC) != NULL );
+      assert(SCIPfindTable(scip, TABLE_NAME_BENDERS) != NULL );
+      assert(SCIPfindTable(scip, TABLE_NAME_EXPRHDLRS) != NULL );
+      assert(SCIPfindTable(scip, TABLE_NAME_NLPIS) != NULL );
 
       return SCIP_OKAY;
    }
@@ -492,6 +576,11 @@ SCIP_RETCODE SCIPincludeTableDefault(
          tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputSepa,
          NULL, TABLE_POSITION_SEPA, TABLE_EARLIEST_STAGE_SEPA) );
 
+   assert(SCIPfindTable(scip, TABLE_NAME_CUTSEL) == NULL);
+   SCIP_CALL( SCIPincludeTable(scip, TABLE_NAME_CUTSEL, TABLE_DESC_CUTSEL, TRUE,
+         tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputCutsel,
+         NULL, TABLE_POSITION_CUTSEL, TABLE_EARLIEST_STAGE_CUTSEL) );
+
    assert(SCIPfindTable(scip, TABLE_NAME_PRICER) == NULL);
    SCIP_CALL( SCIPincludeTable(scip, TABLE_NAME_PRICER, TABLE_DESC_PRICER, TRUE,
          tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputPricer,
@@ -512,6 +601,16 @@ SCIP_RETCODE SCIPincludeTableDefault(
          tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputCompression,
          NULL, TABLE_POSITION_COMPRESSION, TABLE_EARLIEST_STAGE_COMPRESSION) );
 
+   assert(SCIPfindTable(scip, TABLE_NAME_BENDERS) == NULL);
+   SCIP_CALL( SCIPincludeTable(scip, TABLE_NAME_BENDERS, TABLE_DESC_BENDERS, TRUE,
+         tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputBenders,
+         NULL, TABLE_POSITION_BENDERS, TABLE_EARLIEST_STAGE_BENDERS) );
+
+   assert(SCIPfindTable(scip, TABLE_NAME_EXPRHDLRS) == NULL);
+   SCIP_CALL( SCIPincludeTable(scip, TABLE_NAME_EXPRHDLRS, TABLE_DESC_EXPRHDLRS, TRUE,
+         tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputExprhdlrs,
+         NULL, TABLE_POSITION_EXPRHDLRS, TABLE_EARLIEST_STAGE_EXPRHDLRS) );
+
    assert(SCIPfindTable(scip, TABLE_NAME_LP) == NULL);
    SCIP_CALL( SCIPincludeTable(scip, TABLE_NAME_LP, TABLE_DESC_LP, TRUE,
          tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputLP,
@@ -521,6 +620,11 @@ SCIP_RETCODE SCIPincludeTableDefault(
    SCIP_CALL( SCIPincludeTable(scip, TABLE_NAME_NLP, TABLE_DESC_NLP, TRUE,
          tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputNLP,
          NULL, TABLE_POSITION_NLP, TABLE_EARLIEST_STAGE_NLP) );
+
+   assert(SCIPfindTable(scip, TABLE_NAME_NLPIS) == NULL);
+   SCIP_CALL( SCIPincludeTable(scip, TABLE_NAME_NLPIS, TABLE_DESC_NLPIS, TRUE,
+         tableCopyDefault, NULL, NULL, NULL, NULL, NULL, tableOutputNlpis,
+         NULL, TABLE_POSITION_NLPIS, TABLE_EARLIEST_STAGE_NLPIS) );
 
    assert(SCIPfindTable(scip, TABLE_NAME_RELAX) == NULL);
    SCIP_CALL( SCIPincludeTable(scip, TABLE_NAME_RELAX, TABLE_DESC_RELAX, TRUE,

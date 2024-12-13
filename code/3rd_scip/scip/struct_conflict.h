@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -73,6 +82,7 @@ struct SCIP_ConflictSet
    unsigned int          depthcalced:1;      /**< are the conflict and repropagation depth calculated? */
    unsigned int          sorted:1;           /**< is the conflict set sorted */
    unsigned int          usescutoffbound:1;  /**< is the conflict based on the cutoff bound? */
+   unsigned int          hasrelaxonlyvar:1;  /**< is one of the bound change informations using a relaxation-only variable */
    SCIP_CONFTYPE         conflicttype;       /**< conflict type: unknown, infeasible LP, bound exceeding LP, propagation */
 };
 
@@ -84,6 +94,7 @@ struct SCIP_ProofSet
    SCIP_Real             rhs;
    int                   nnz;
    int                   size;
+   int                   validdepth;
    SCIP_CONFTYPE         conflicttype;       /**< conflict type: unknown, infeasible LP, bound exceeding LP */
 };
 
@@ -148,12 +159,14 @@ struct SCIP_Conflict
    SCIP_Longint          npseudoconfliterals;/**< total number of literals in valid pseudo solution conflict constraints */
    SCIP_Longint          npseudoreconvconss; /**< number of reconvergence constraints detected in pseudo sol conflict analysis */
    SCIP_Longint          npseudoreconvliterals;/**< total number of literals in valid pseudo solution reconvergence constraints */
-   SCIP_Longint          ndualrayinfglobal;  /**< number of dual ray constraints added globally */
-   SCIP_Longint          ndualrayinfsuccess; /**< number of successfully dual ray analysis calls for infeasible LPs */
-   SCIP_Longint          dualrayinfnnonzeros;/**< number of non-zeros over all accepted dual rays */
-   SCIP_Longint          ndualraybndglobal;  /**< number of dual proof constraints of boundexceeding added globally */
-   SCIP_Longint          ndualraybndsuccess; /**< number of successfully dual proof analysis calls for boundexceeding LPs */
-   SCIP_Longint          dualraybndnnonzeros;/**< number of non-zeros over all accepted dual proof of boundexceeding LPs */
+   SCIP_Longint          ndualproofsinfglobal;/**< number of globally added dual proof constraints derived from infeasible LP */
+   SCIP_Longint          ndualproofsinflocal;/**< number of locally added dual proof constraints derived from infeasible LP */
+   SCIP_Longint          ndualproofsinfsuccess;/**< number of successfully dual proof analysis calls for infeasible LPs */
+   SCIP_Longint          dualproofsinfnnonzeros;/**< number of non-zeros over all accepted dual proof constraints derived from infeasible LP */
+   SCIP_Longint          ndualproofsbndglobal;/**< number of globally added dual proof constraints derived from bound exceeding LP */
+   SCIP_Longint          ndualproofsbndlocal;/**< number of locally added dual proof constraints derived from bound exceeding LP */
+   SCIP_Longint          ndualproofsbndsuccess;/**< number of successfully dual proof analysis calls for bound exceeding LPs */
+   SCIP_Longint          dualproofsbndnnonzeros;/**< number of non-zeros over all accepted dual proof constraints derived from bound exceeding LPs */
 
    SCIP_CLOCK*           dIBclock;           /**< time used for detect implied bounds */
 

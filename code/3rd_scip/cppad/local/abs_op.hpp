@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_ABS_OP_HPP
-# define CPPAD_ABS_OP_HPP
+# ifndef CPPAD_LOCAL_ABS_OP_HPP
+# define CPPAD_LOCAL_ABS_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,10 +13,10 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file abs_op.hpp
-Forward and reverse mode calculations for z = abs(x).
+Forward and reverse mode calculations for z = fabs(x).
 */
 
 /*!
@@ -25,10 +24,10 @@ Compute forward mode Taylor coefficient for result of op = AbsOp.
 
 The C++ source code corresponding to this operation is
 \verbatim
-	z = abs(x)
+	z = fabs(x)
 \endverbatim
 
-\copydetails forward_unary1_op
+\copydetails CppAD::local::forward_unary1_op
 */
 template <class Base>
 inline void forward_abs_op(
@@ -58,10 +57,10 @@ Multiple directions forward mode Taylor coefficient for op = AbsOp.
 
 The C++ source code corresponding to this operation is
 \verbatim
-	z = abs(x)
+	z = fabs(x)
 \endverbatim
 
-\copydetails forward_unary1_op_dir
+\copydetails CppAD::local::forward_unary1_op_dir
 */
 template <class Base>
 inline void forward_abs_op_dir(
@@ -93,10 +92,10 @@ Compute zero order forward mode Taylor coefficient for result of op = AbsOp.
 
 The C++ source code corresponding to this operation is
 \verbatim
-	z = abs(x)
+	z = fabs(x)
 \endverbatim
 
-\copydetails forward_unary1_op_0
+\copydetails CppAD::local::forward_unary1_op_0
 */
 template <class Base>
 inline void forward_abs_op_0(
@@ -115,17 +114,17 @@ inline void forward_abs_op_0(
 	Base x0 = *(taylor + i_x * cap_order);
 	Base* z = taylor + i_z * cap_order;
 
-	z[0] = abs(x0);
+	z[0] = fabs(x0);
 }
 /*!
 Compute reverse mode partial derivatives for result of op = AbsOp.
 
 The C++ source code corresponding to this operation is
 \verbatim
-	z = abs(x)
+	z = fabs(x)
 \endverbatim
 
-\copydetails reverse_unary1_op
+\copydetails CppAD::local::reverse_unary1_op
 */
 
 template <class Base>
@@ -152,10 +151,10 @@ inline void reverse_abs_op(
 	// Taylor coefficients and partials corresponding to result
 	Base* pz       = partial +    i_z * nc_partial;
 
-	// do not need azmul becasue sign is either +1, -1, or zero
+	// do not need azmul because sign is either +1, -1, or zero
 	for(j = 0; j <= d; j++)
 		px[j] += sign(x[0]) * pz[j];
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

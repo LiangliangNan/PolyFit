@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -42,11 +51,16 @@ struct SCIP_SparseSol
    int                   nvars;              /**< number of variables */
 };
 
+typedef union {
+   void*                 ptr;                /**< pointer element */
+   unsigned int          uinteger;           /**< unsigned integer element */
+} SCIP_QUEUEELEMENT;
+
 /** (circular) Queue data structure */
 struct SCIP_Queue
 {
    SCIP_Real             sizefac;            /**< memory growing factor */
-   void**                slots;              /**< array of element slots */
+   SCIP_QUEUEELEMENT*    slots;              /**< array of element slots */
    int                   firstfree;          /**< first free slot */
    int                   firstused;          /**< first used slot */
    int                   size;               /**< total number of available element slots */
@@ -55,16 +69,17 @@ struct SCIP_Queue
 /** priority queue data structure
  *  Elements are stored in an array, which grows dynamically in size as new elements are added to the queue.
  *  The ordering is done through a pointer comparison function.
- *  The array is organized as follows. The root element (that is the "best" element $r$ with $r <= x$ for all $x$)
- *  is stored in position 0. The children of an element at position $p$ are stored at positions $q_1 = 2*p+1$ and
- *  $q_2 = 2*p+2$. That means, the parent of the element at position $q$ is at position $p = (q-1)/2$.
- *  At any time, the condition holds that $p <= q$ for each parent $p$ and its children $q$.
- *  Insertion and removal of single elements needs time $O(log n)$.
+ *  The array is organized as follows. The root element (that is the "best" element \f$ r \f$ with \f$ r \leq x \f$ for all \f$ x \f$ )
+ *  is stored in position 0. The children of an element at position \f$ p \f$ are stored at positions \f$ q_1 = 2*p+1 \f$ and
+ *  \f$ q_2 = 2*p+2 \f$ . That means, the parent of the element at position \f$ q \f$ is at position \f$ p = (q-1)/2 \f$ .
+ *  At any time, the condition holds that \f$ p \leq q \f$ for each parent \f$ p \f$ and its children \f$ q \f$ .
+ *  Insertion and removal of single elements needs time \f$ O(log n) \f$ .
  */
 struct SCIP_PQueue
 {
    SCIP_Real             sizefac;            /**< memory growing factor */
    SCIP_DECL_SORTPTRCOMP((*ptrcomp));        /**< compares two data elements */
+   SCIP_DECL_PQUEUEELEMCHGPOS((*elemchgpos));/**< callback to act on position change of elem in priority queue, or NULL */
    void**                slots;              /**< array of element slots */
    int                   len;                /**< number of used element slots */
    int                   size;               /**< total number of available element slots */
@@ -107,6 +122,7 @@ struct SCIP_MultiHash
 
 typedef union {
    void*                 ptr;                /**< pointer image */
+   int                   integer;            /**< integer image */
    SCIP_Real             real;               /**< real image */
 } SCIP_HASHMAPIMAGE;
 
@@ -126,6 +142,7 @@ struct SCIP_HashMap
    uint32_t              shift;              /**< power such that 2^(32-shift) == nslots */
    uint32_t              mask;               /**< mask used for fast modulo, i.e. nslots - 1 */
    uint32_t              nelements;          /**< number of elements in the hashtable */
+   SCIP_HASHMAPTYPE      hashmaptype;        /**< type of entries */
 };
 
 /** lightweight hash set data structure to map pointers on pointers */
@@ -209,9 +226,12 @@ struct SCIP_Digraph
    int*                  nsuccessors;        /**< number of successors stored in the adjacency lists of the nodes */
    int*                  components;         /**< array to store the node indices of the components, one component after the other */
    int*                  componentstarts;    /**< array to store the start indices of the components in the components array */
+   int*                  articulations;      /**< array  of size narticulations to store the node indices of the articulation points */
    int                   ncomponents;        /**< number of undirected components stored */
    int                   componentstartsize; /**< size of array componentstarts */
    int                   nnodes;             /**< number of nodes, nodes should be numbered from 0 to nnodes-1 */
+   int                   narticulations;     /**< number of articulation points among the graph nodes */
+   SCIP_Bool             articulationscheck; /**< TRUE if the (computed) articulation nodes are up-to-date and FALSE otherwise */
 };
 
 /** binary node data structure for binary tree */
@@ -260,6 +280,25 @@ struct SCIP_DisjointSet
    int*                  sizes;              /**< array to store the size of the subtree rooted at each vertex */
    int                   size;               /**< the number of vertices in the graph */
    int                   componentcount;     /**< counter for the number of connected components of the graph */
+};
+
+/** a linear inequality row in preparation to become a SCIP_ROW */
+struct SCIP_RowPrep
+{
+   SCIP_VAR**            vars;               /**< variables */
+   SCIP_Real*            coefs;              /**< coefficients of variables */
+   int                   nvars;              /**< number of variables (= number of coefficients) */
+   int                   varssize;           /**< length of variables array (= lengths of coefficients array) */
+   SCIP_Real             side;               /**< side */
+   SCIP_SIDETYPE         sidetype;           /**< type of side */
+   SCIP_Bool             local;              /**< whether the row is only locally valid (i.e., for the current node) */
+   char                  name[SCIP_MAXSTRLEN]; /**< row name */
+
+   SCIP_Bool             recordmodifications;/**< whether to remember variables which coefficients were modified during cleanup */
+   SCIP_VAR**            modifiedvars;       /**< variables which coefficient were modified by cleanup */
+   int                   nmodifiedvars;      /**< number of variables which coefficient was modified */
+   int                   modifiedvarssize;   /**< length of `modifiedvars` array */
+   SCIP_Bool             modifiedside;       /**< whether the side was modified (relaxed) by cleanup */
 };
 
 #ifdef __cplusplus

@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -43,31 +52,26 @@ extern "C" {
 #endif
 
 /** creates pricing storage */
-extern
 SCIP_RETCODE SCIPpricestoreCreate(
    SCIP_PRICESTORE**     pricestore          /**< pointer to store pricing storage */
    );
 
 /** frees pricing storage */
-extern
 SCIP_RETCODE SCIPpricestoreFree(
    SCIP_PRICESTORE**     pricestore          /**< pointer to store pricing storage */
    );
 
 /** informs pricing storage, that the setup of the initial LP starts now */
-extern
 void SCIPpricestoreStartInitialLP(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );
 
 /** informs pricing storage, that the setup of the initial LP is now finished */
-extern
 void SCIPpricestoreEndInitialLP(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );
 
 /** adds variable to pricing storage and capture it */
-extern
 SCIP_RETCODE SCIPpricestoreAddVar(
    SCIP_PRICESTORE*      pricestore,         /**< pricing storage */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -80,7 +84,6 @@ SCIP_RETCODE SCIPpricestoreAddVar(
    );
 
 /** adds variable where zero violates the bounds to pricing storage, capture it */
-extern
 SCIP_RETCODE SCIPpricestoreAddBdviolvar(
    SCIP_PRICESTORE*      pricestore,         /**< pricing storage */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -93,7 +96,6 @@ SCIP_RETCODE SCIPpricestoreAddBdviolvar(
    );
 
 /** adds problem variables with negative reduced costs to pricing storage */
-extern
 SCIP_RETCODE SCIPpricestoreAddProbVars(
    SCIP_PRICESTORE*      pricestore,         /**< pricing storage */
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
@@ -107,7 +109,6 @@ SCIP_RETCODE SCIPpricestoreAddProbVars(
    );
 
 /** adds priced variables to the LP */
-extern
 SCIP_RETCODE SCIPpricestoreApplyVars(
    SCIP_PRICESTORE*      pricestore,         /**< pricing storage */
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
@@ -120,7 +121,6 @@ SCIP_RETCODE SCIPpricestoreApplyVars(
    );
 
 /** reset variables' bounds violated by zero to its original value */
-extern
 SCIP_RETCODE SCIPpricestoreResetBounds(
    SCIP_PRICESTORE*      pricestore,         /**< pricing storage */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -132,43 +132,36 @@ SCIP_RETCODE SCIPpricestoreResetBounds(
    );
 
 /** gets number of variables in pricing storage */
-extern
 int SCIPpricestoreGetNVars(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );
 
 /** gets number of variables in pricing storage whose bounds must be reset */
-extern
 int SCIPpricestoreGetNBoundResets(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );
 
 /** gets time needed to price existing problem variables */
-extern
 SCIP_Real SCIPpricestoreGetProbPricingTime(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );
 
 /** gets total number of calls to problem variable pricing */
-extern
 int SCIPpricestoreGetNProbPricings(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );
 
 /** gets total number of times, a problem variable was priced in */
-extern
 int SCIPpricestoreGetNProbvarsFound(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );
 
 /** get total number of variables found so far in pricing */
-extern
 int SCIPpricestoreGetNVarsFound(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );
 
 /** get total number of variables priced into the LP so far */
-extern
 int SCIPpricestoreGetNVarsApplied(
    SCIP_PRICESTORE*      pricestore          /**< pricing storage */
    );

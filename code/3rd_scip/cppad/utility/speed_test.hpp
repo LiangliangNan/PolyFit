@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_SPEED_TEST_HPP
-# define CPPAD_SPEED_TEST_HPP
+# ifndef CPPAD_UTILITY_SPEED_TEST_HPP
+# define CPPAD_UTILITY_SPEED_TEST_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -179,7 +178,9 @@ inline Vector speed_test(
 			test(size, repeat);
 			s1     = elapsed_seconds();
 		}
-		rate_vec[i] = (size_t)(.5 + repeat / (s1 - s0));
+		double rate = .5 + double(repeat) / (s1 - s0);
+		// first convert to float to avoid warning with g++ -Wconversion
+		rate_vec[i] = static_cast<size_t>( static_cast<float>(rate) );
 	}
 	return rate_vec;
 }
@@ -343,7 +344,7 @@ $end
 # include <string>
 # include <iostream>
 # include <iomanip>
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 
 namespace CppAD { // BEGIN CppAD namespace
 
@@ -419,8 +420,9 @@ inline void SpeedTest(
 			name   = Test(size, repeat);
 			s1     = elapsed_seconds();
 		}
-		rate = (size_t)(.5 + repeat / (s1 - s0));
-
+		double r = .5 + double(repeat) / (s1 - s0);
+		// first convert to float to avoid warning with g++ -Wconversion
+		rate     = static_cast<size_t>( static_cast<float>( r ) );
 
 		if( size == first && name != "" )
 			cout << name << endl;

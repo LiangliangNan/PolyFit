@@ -3,31 +3,53 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   presol_gateextraction.c
+ * @ingroup DEFPLUGINS_PRESOL
  * @brief  gateextraction presolver
  * @author Michael Winkler
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
-#include "scip/presol_gateextraction.h"
-#include "scip/cons_setppc.h"
-#include "scip/cons_logicor.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_and.h"
-
+#include "scip/cons_logicor.h"
+#include "scip/cons_setppc.h"
+#include "scip/presol_gateextraction.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_presol.h"
+#include "scip/pub_var.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_param.h"
+#include "scip/scip_presol.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define PRESOL_NAME            "gateextraction"
 #define PRESOL_DESC            "presolver extracting gate(and)-constraints"
@@ -182,7 +204,7 @@ SCIP_DECL_HASHKEYVAL(hashdataKeyValCons)
    assert(hashdata->nvars == 2);
 
    /* if we have only two variables we store at each 16 bits of the hash value the index of a variable */
-   hashval = ((unsigned int)SCIPvarGetIndex(hashdata->vars[1]) << 16) + SCIPvarGetIndex(hashdata->vars[0]); /*lint !e701*/
+   hashval = ((unsigned int)SCIPvarGetIndex(hashdata->vars[1]) << 16) + (unsigned int) SCIPvarGetIndex(hashdata->vars[0]); /*lint !e701*/
 
    return hashval;
 }
@@ -244,9 +266,9 @@ SCIP_DECL_HASHKEYVAL(setppcHashdataKeyValCons)
    assert(hashdata->vars != NULL);
    assert(hashdata->nvars >= 2);
 
-   return SCIPhashTwo(SCIPcombineTwoInt(hashdata->nvars, SCIPvarGetIndex(hashdata->vars[0])), \
-                      SCIPcombineTwoInt(SCIPvarGetIndex(hashdata->vars[hashdata->nvars/2]), \
-                                        SCIPvarGetIndex(hashdata->vars[hashdata->nvars-1])));
+   return SCIPhashFour(hashdata->nvars, SCIPvarGetIndex(hashdata->vars[0]), \
+                     SCIPvarGetIndex(hashdata->vars[hashdata->nvars/2]), \
+                     SCIPvarGetIndex(hashdata->vars[hashdata->nvars-1]));
 }
 
 /** initialize gateextraction presolver data */
@@ -850,24 +872,24 @@ SCIP_RETCODE extractGates(
       {
          assert(SCIPvarIsActive(SCIPvarGetNegatedVar(activevars[d])));
 
-         if( SCIPvarGetNLocksDown(SCIPvarGetNegatedVar(activevars[d])) >= nlogicorvars - 1 )
+         if( SCIPvarGetNLocksDownType(SCIPvarGetNegatedVar(activevars[d]), SCIP_LOCKTYPE_MODEL) >= nlogicorvars - 1 )
          {
             posresultants[nposresultants] = activevars[d];
             ++nposresultants;
          }
-         else if( SCIPvarGetNLocksDown(SCIPvarGetNegatedVar(activevars[d])) == 0 )
+         else if( SCIPvarGetNLocksDownType(SCIPvarGetNegatedVar(activevars[d]), SCIP_LOCKTYPE_MODEL) == 0 )
             return SCIP_OKAY;
       }
       else
       {
          assert(SCIPvarIsActive(activevars[d]));
 
-         if( SCIPvarGetNLocksUp(activevars[d]) >= nlogicorvars - 1 )
+         if( SCIPvarGetNLocksUpType(activevars[d], SCIP_LOCKTYPE_MODEL) >= nlogicorvars - 1 )
          {
             posresultants[nposresultants] = activevars[d];
             ++nposresultants;
          }
-         else if( SCIPvarGetNLocksUp(activevars[d]) == 0 )
+         else if( SCIPvarGetNLocksUpType(activevars[d], SCIP_LOCKTYPE_MODEL) == 0 )
             return SCIP_OKAY;
       }
    }
@@ -1184,7 +1206,6 @@ SCIP_DECL_PRESOLEXIT(presolExitGateextraction)
          assert(SCIPhashtableExists(presoldata->setppchashtable, (void*) presoldata->setppchashdatas[c].cons));
          SCIP_CALL( SCIPhashtableRemove(presoldata->setppchashtable, (void*) presoldata->setppchashdatas[c].cons) );
 
-
          /* remove hashdata entry from hashtable */
          SCIP_CALL( SCIPhashtableRemove(presoldata->hashdatatable, (void*) &presoldata->setppchashdatas[c]) );
 
@@ -1362,7 +1383,7 @@ SCIP_DECL_PRESOLEXEC(presolExecGateextraction)
    {
       if( paramvalue )
       {
-	 SCIPwarningMessage(scip, "Gate-presolving is the 'counterpart' of linearizing all and-constraints, so enabling both presolving steps at ones does not make sense.\n");
+	 SCIPwarningMessage(scip, "Gate-presolving is the 'counterpart' of linearizing all and-constraints, so enabling both presolving steps simultaneously does not make sense.\n");
       }
    }
    *result = SCIP_DIDNOTFIND;
@@ -1732,11 +1753,11 @@ SCIP_DECL_PRESOLEXEC(presolExecGateextraction)
           *
           * find set-packing constraints:  (~x + ~y >= 1 and ~x + ~z >= 1)  <=>  (x + y <= 1 and x + z <= 1)
           *
-          * - these three constraints are aquivalent to: x = ~y * ~z (x = AND(~y,~z))
+          * - these three constraints are equivalent to: x = ~y * ~z (x = AND(~y,~z))
           *
           * if an additional set-packing constraint exists: y + z <= 1
           *
-          * - these four constraints are aquivalent to: x + y + z = 1
+          * - these four constraints are equivalent to: x + y + z = 1
           */
          SCIP_CALL( extractGates(scip, presoldata, c, varmap, gateconss, activevars, posresultants, &hashdata, ndelconss, naddconss) );
       }

@@ -3,36 +3,70 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_lpface.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  lpface primal heuristic that searches the optimal LP face inside a sub-MIP
  * @author Gregor Hendel
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-#include <stdio.h>
-#include "scip/scip.h"
-#include "scip/scipdefplugins.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_linear.h"
+#include "scip/scipdefplugins.h"
 #include "scip/heur_lpface.h"
+#include "scip/pub_event.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
 #include "scip/pub_misc.h"
+#include "scip/pub_sol.h"
+#include "scip/pub_tree.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_nodesel.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define HEUR_NAME             "lpface"
 #define HEUR_DESC             "LNS heuristic that searches the optimal LP face inside a sub-MIP"
-#define HEUR_DISPCHAR         '_'
-#define HEUR_PRIORITY         -1104000
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_LNS
+#define HEUR_PRIORITY         -1104010
 #define HEUR_FREQ             15
 #define HEUR_FREQOFS          0
 #define HEUR_MAXDEPTH         -1
@@ -107,13 +141,14 @@ struct SCIP_HeurData
  * Local methods
  */
 
-/** fixes variables of the subproblem considering their reduced costs */
+/** determine variable fixings for sub-SCIP based on reduced costs */
 static
-SCIP_RETCODE fixVariables(
-   SCIP*                 scip,               /**< original SCIP data structure */
-   SCIP*                 subscip,            /**< SCIP data structure for the subproblem */
-   SCIP_VAR**            subvars,            /**< the variables of the subproblem */
+SCIP_RETCODE determineVariableFixings(
+   SCIP*                 scip,               /**< SCIP data structure */
    SCIP_HEURDATA*        heurdata,           /**< primal heuristic data */
+   SCIP_VAR**            fixvars,            /**< buffer to store variables that should be fixed */
+   SCIP_Real*            fixvals,            /**< buffer to store corresponding fixing values */
+   int*                  nfixvars,           /**< pointer to store number of variables that should be fixed */
    SCIP_Bool*            success             /**< pointer to store whether enough integer variables were fixed */
    )
 {
@@ -132,6 +167,7 @@ SCIP_RETCODE fixVariables(
 
    assert(nvars >= nbinvars + nintvars);
 
+   *nfixvars = 0;
    /* loop over problem variables and fix all with nonzero reduced costs to their solution value */
    for( i = 0; i < nvars; i++ )
    {
@@ -148,6 +184,10 @@ SCIP_RETCODE fixVariables(
       if( SCIPvarGetStatus(var) != SCIP_VARSTATUS_COLUMN )
          continue;
 
+      /* skip relaxation only variables */
+      if( SCIPvarIsRelaxationOnly(var) )
+         continue;
+
       solval = SCIPgetSolVal(scip, NULL, var);
       col = SCIPvarGetCol(vars[i]);
       assert(col != NULL);
@@ -162,18 +202,18 @@ SCIP_RETCODE fixVariables(
       {
          /* fix variable based on reduced cost information, respecting global bounds */
          if( (redcost > 0 && SCIPisFeasEQ(scip, solval, lbglobal)) ||
-             (redcost < 0 && SCIPisFeasEQ(scip, solval, ubglobal)) )
+                  (redcost < 0 && SCIPisFeasEQ(scip, solval, ubglobal)) )
          {
-            SCIPdebugMsg(scip, "Fixing variable <%s> (obj: %g), local bounds [%.1g, %.1g], redcost %9.5g, LP sol val %9.5g\n",
-                  SCIPvarGetName(var), SCIPvarGetObj(var), SCIPvarGetLbLocal(var), SCIPvarGetUbLocal(var), redcost, solval);
-            assert(! SCIPisInfinity(scip, solval));
-            assert(! SCIPisInfinity(scip, -solval));
-            SCIP_CALL( SCIPchgVarLbGlobal(subscip, subvars[i], solval) );
-            SCIP_CALL( SCIPchgVarUbGlobal(subscip, subvars[i], solval) );
+            assert(! SCIPisInfinity(scip, REALABS(solval)));
+
+            fixvars[*nfixvars] = var;
+            fixvals[*nfixvars] = solval;
+
             if( SCIPvarIsIntegral(var) )
                ++fixingcounter;
-         }
 
+            ++(*nfixvars);
+         }
       }
    }
 
@@ -208,7 +248,7 @@ SCIP_RETCODE createRows(
    /* get the rows and their number */
    SCIP_CALL( SCIPgetLPRowsData(scip, &rows, &nrows) );
 
-   /* copy all rows to linear constraints */
+   /* copy all global rows to linear constraints, unless they contain relaxation-only variables */
    for( i = 0; i < nrows; i++ )
    {
       SCIP_VAR** consvars;                   /* new constraint's variables               */
@@ -249,7 +289,17 @@ SCIP_RETCODE createRows(
       /* allocate memory array to be filled with the corresponding subproblem variables */
       SCIP_CALL( SCIPallocBufferArray(scip, &consvars, nnonz) );
       for( j = 0; j < nnonz; j++ )
+      {
          consvars[j] = subvars[SCIPvarGetProbindex(SCIPcolGetVar(cols[j]))];
+         if( consvars[j] == NULL )
+            break;
+      }
+      /* skip row if not all variables are in sub-SCIP, i.e., relaxation-only variables */
+      if( j < nnonz )
+      {
+         SCIPfreeBufferArray(scip, &consvars);
+         continue;
+      }
 
       dualsol = SCIProwGetDualsol(rows[i]);
       rowsolactivity = SCIPgetRowActivity(scip, rows[i]);
@@ -276,14 +326,13 @@ SCIP_RETCODE createRows(
    return SCIP_OKAY;
 }
 
-/** creates the LP face subproblem by fixing nonbasic variables with nonzero reduced costs */
+/** create the LP face subproblem constraints */
 static
 SCIP_RETCODE setupSubproblem(
    SCIP*                 scip,               /**< original SCIP data structure */
    SCIP*                 subscip,            /**< SCIP data structure for the subproblem */
    SCIP_VAR**            subvars,            /**< the variables of the subproblem */
-   SCIP_HEURDATA*        heurdata,           /**< primal heuristic data */
-   SCIP_Bool*            success             /**< pointer to store whether the problem was created successfully */
+   SCIP_HEURDATA*        heurdata            /**< primal heuristic data */
    )
 {
    SCIP_VAR** vars = SCIPgetVars(scip);
@@ -295,14 +344,8 @@ SCIP_RETCODE setupSubproblem(
    int nobjvars = 0;
 #endif
 
-   /* fix variables in subproblem with nonzero reduced costs */
-   SCIP_CALL( fixVariables(scip, subscip, subvars, heurdata, success) );
-
-   if( ! (*success) )
-      return SCIP_OKAY;
-
    /* we copy the rows of the LP, if enough variables could be fixed and we work on the MIP relaxation of the problem */
-   if( *success && heurdata->uselprows )
+   if( heurdata->uselprows )
    {
       SCIP_CALL( createRows(scip, subscip, subvars, heurdata->dualbasisequations) );
    }
@@ -317,6 +360,7 @@ SCIP_RETCODE setupSubproblem(
    {
       if( ! SCIPisZero(subscip, SCIPvarGetObj(vars[i])) )
       {
+         assert(subvars[i] != NULL);  /* a relaxation-only variable cannot have an objective coefficient */
          SCIP_CALL( SCIPaddCoefLinear(subscip, origobjcons, subvars[i], SCIPvarGetObj(vars[i])) );
 #ifndef NDEBUG
          nobjvars++;
@@ -327,69 +371,6 @@ SCIP_RETCODE setupSubproblem(
 
    SCIP_CALL( SCIPaddCons(subscip, origobjcons) );
    SCIP_CALL( SCIPreleaseCons(subscip, &origobjcons) );
-
-   return SCIP_OKAY;
-}
-
-/** creates a new solution for the original problem by copying the solution of the subproblem */
-static
-SCIP_RETCODE createNewSol(
-   SCIP*                 scip,               /**< original SCIP data structure */
-   SCIP*                 subscip,            /**< SCIP structure of the subproblem */
-   SCIP_VAR**            subvars,            /**< the variables of the subproblem */
-   SCIP_HEUR*            heur,               /**< lpface heuristic structure */
-   SCIP_SOL*             subsol,             /**< solution of the subproblem */
-   int*                  solindex,           /**< pointer to store index of the solution */
-   SCIP_Bool*            success             /**< pointer to store whether new solution was found or not */
-   )
-{
-   SCIP_VAR** vars;                          /* the original problem's variables                */
-   int        nvars;
-   SCIP_SOL*  newsol;                        /* solution to be created for the original problem */
-   SCIP_Real* subsolvals;                    /* solution values of the subproblem               */
-   SCIP_Bool printreason;
-   SCIP_Bool completely;
-
-   assert(scip != NULL);
-   assert(subscip != NULL);
-   assert(subvars != NULL);
-   assert(subsol != NULL);
-
-   /* get variables' data */
-   SCIP_CALL( SCIPgetVarsData(scip, &vars, &nvars, NULL, NULL, NULL, NULL) );
-
-   /* sub-SCIP may have more variables than the number of active (transformed) variables in the main SCIP
-    * since constraint copying may have required the copy of variables that are fixed in the main SCIP
-    */
-   assert(nvars <= SCIPgetNOrigVars(subscip));
-
-   SCIP_CALL( SCIPallocBufferArray(scip, &subsolvals, nvars) );
-
-   /* copy the solution */
-   SCIP_CALL( SCIPgetSolVals(subscip, subsol, nvars, subvars, subsolvals) );
-
-   /* create new solution for the original problem */
-   SCIP_CALL( SCIPcreateSol(scip, &newsol, heur) );
-   SCIP_CALL( SCIPsetSolVals(scip, newsol, nvars, vars, subsolvals) );
-   *solindex = SCIPsolGetIndex(newsol);
-
-#ifdef SCIP_DEBUG
-   printreason = TRUE;
-   completely = TRUE;
-   SCIPdebugMsg(scip, "trying to transfer LP face solution with solution value %16.9g to main problem\n",
-      SCIPretransformObj(scip, SCIPgetSolTransObj(scip, newsol)));
-#else
-   printreason = FALSE;
-   completely = FALSE;
-#endif
-
-   /* try to add new solution to scip and free it immediately */
-   *success = FALSE;
-   SCIP_CALL( SCIPtrySolFree(scip, &newsol, printreason, completely, TRUE, TRUE, TRUE, success) );
-
-   SCIPdebugMsg(scip, "Transfer was %s successful\n", *success ? "" : "not");
-
-   SCIPfreeBufferArray(scip, &subsolvals);
 
    return SCIP_OKAY;
 }
@@ -453,12 +434,14 @@ SCIP_RETCODE setSubscipLimits(
    SCIP_Real timelimit;
    SCIP_Real memorylimit;
    SCIP_Longint nodelimit;
+   SCIP_Bool avoidmemout;
 
    *success = TRUE;
 
    /* check whether there is enough time and memory left */
    SCIP_CALL( SCIPgetRealParam(scip, "limits/time", &timelimit) );
    SCIP_CALL( SCIPgetRealParam(scip, "limits/memory", &memorylimit) );
+   SCIP_CALL( SCIPgetBoolParam(scip, "misc/avoidmemout", &avoidmemout) );
 
    if( ! SCIPisInfinity(scip, timelimit) )
       timelimit -= SCIPgetSolvingTime(scip);
@@ -470,8 +453,9 @@ SCIP_RETCODE setSubscipLimits(
       memorylimit -= SCIPgetMemExternEstim(scip)/1048576.0;
    }
 
-   /* abort if no time is left or not enough memory to create a copy of SCIP, including external memory usage */
-   if( timelimit <= 0.0 || memorylimit <= 2.0 * SCIPgetMemExternEstim(scip) / 1048576.0 )
+   /* abort if no time is left or not enough memory (we don't abort in this case if misc_avoidmemout == FALSE)
+    * to create a copy of SCIP, including external memory usage */
+   if( timelimit <= 0.0 || (avoidmemout && memorylimit <= 2.0 * SCIPgetMemExternEstim(scip) / 1048576.0) )
    {
       *success = FALSE;
       return SCIP_OKAY;
@@ -498,11 +482,9 @@ SCIP_RETCODE setSubscipLimits(
 /** sets all one-time parameter settings like search strategy, but no limits */
 static
 SCIP_RETCODE setSubscipParameters(
-   SCIP*                 scip,               /**< original SCIP data structure */
    SCIP*                 subscip             /**< data structure of the sub-problem */
    )
 {
-
    /* do not abort subproblem on CTRL-C */
    SCIP_CALL( SCIPsetBoolParam(subscip, "misc/catchctrlc", FALSE) );
 
@@ -534,17 +516,6 @@ SCIP_RETCODE setSubscipParameters(
    if( SCIPfindBranchrule(subscip, "inference") != NULL && ! SCIPisParamFixed(subscip, "branching/inference/priority") )
    {
       SCIP_CALL( SCIPsetIntParam(subscip, "branching/inference/priority", INT_MAX/4) );
-   }
-
-   /* employ a limit on the number of enforcement rounds in the quadratic constraint handler; this fixes the issue that
-    * sometimes the quadratic constraint handler needs hundreds or thousands of enforcement rounds to determine the
-    * feasibility status of a single node without fractional branching candidates by separation (namely for uflquad
-    * instances); however, the solution status of the sub-SCIP might get corrupted by this; hence no deductions shall be
-    * made for the original SCIP
-    */
-   if( SCIPfindConshdlr(subscip, "quadratic") != NULL && ! SCIPisParamFixed(subscip, "constraints/quadratic/enfolplimit") )
-   {
-      SCIP_CALL( SCIPsetIntParam(subscip, "constraints/quadratic/enfolplimit", 500) );
    }
 
    /* enable conflict analysis, disable analysis of boundexceeding LPs, and restrict conflict pool */
@@ -761,8 +732,9 @@ SCIP_RETCODE setupSubscipLpface(
    SCIP_HEURDATA*        heurdata,           /**< heuristics data */
    SCIP_VAR**            subvars,            /**< subproblem's variables */
    SCIP_VAR**            vars,               /**< original problem's variables */
-   SCIP_RESULT*          result,             /**< pointer to store the result */
-   SCIP_Bool*            keepthisscip,       /**< should the subscip be kept or deleted? */
+   SCIP_VAR**            fixvars,            /**< variables that should be fixed */
+   SCIP_Real*            fixvals,            /**< corresponding fixing values */
+   int                   nfixvars,           /**< number of variables that should be fixed */
    int                   nvars               /**< number of original problem's variables */
    )
 {
@@ -771,7 +743,7 @@ SCIP_RETCODE setupSubscipLpface(
    int i;
 
    assert( subscip != NULL );
-   assert( heurdata!= NULL );
+   assert( heurdata != NULL );
    assert( vars != NULL );
 
    /* create the variable hash map */
@@ -780,26 +752,28 @@ SCIP_RETCODE setupSubscipLpface(
 
    if( heurdata->uselprows )
    {
+      SCIP_Bool valid;
       char probname[SCIP_MAXSTRLEN];
 
       /* copy all plugins */
-      SCIP_CALL( SCIPincludeDefaultPlugins(subscip) );
-
+      SCIP_CALL( SCIPcopyPlugins(scip, subscip, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE,
+            TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, &valid) );
       /* get name of the original problem and add the string "_lpfacesub" */
       (void) SCIPsnprintf(probname, SCIP_MAXSTRLEN, "%s_lpfacesub", SCIPgetProbName(scip));
 
       /* create the subproblem */
       SCIP_CALL( SCIPcreateProbBasic(subscip, probname) );
+      SCIPsetSubscipDepth(subscip, SCIPgetSubscipDepth(scip) + 1);
 
       /* copy all variables */
-      SCIP_CALL( SCIPcopyVars(scip, subscip, varmapfw, NULL, NULL, NULL, 0, TRUE) );
+      SCIP_CALL( SCIPcopyVars(scip, subscip, varmapfw, NULL, fixvars, fixvals, nfixvars, TRUE) );
 
       /* copy parameter settings */
       SCIP_CALL( SCIPcopyParamSettings(scip, subscip) );
    }
    else
    {
-      SCIP_CALL( SCIPcopy(scip, subscip, varmapfw, NULL, "lpface", TRUE, FALSE, TRUE, &success) );
+      SCIP_CALL( SCIPcopyConsCompression(scip, subscip, varmapfw, NULL, "lpface", fixvars, fixvals, nfixvars, TRUE, FALSE, FALSE, TRUE, &success) );
 
       if( heurdata->copycuts )
       {
@@ -813,37 +787,23 @@ SCIP_RETCODE setupSubscipLpface(
    {
       subvars[i] = (SCIP_VAR*) SCIPhashmapGetImage(varmapfw, vars[i]);
 
-      SCIP_CALL( changeSubvariableObjective(scip, subscip, vars[i], subvars[i], heurdata) );
-
+      if( subvars[i] != NULL )
+      {
+         SCIP_CALL( changeSubvariableObjective(scip, subscip, vars[i], subvars[i], heurdata) );
+      }
    }
+
    /* free hash map */
    SCIPhashmapFree(&varmapfw);
-
-   success = FALSE;
 
    /* disable output to console */
    SCIP_CALL( SCIPsetIntParam(subscip, "display/verblevel", 0) );
 
    /* fix variables that are at their bounds and have nonzero reduced costs  */
-   SCIP_CALL( setupSubproblem(scip, subscip, subvars, heurdata, &success) );
+   SCIP_CALL( setupSubproblem(scip, subscip, subvars, heurdata) );
 
-   /* if creation of sub-SCIP was aborted (e.g. due to number of fixings), free sub-SCIP and abort */
-   if( ! success )
-   {
-      *result = SCIP_DIDNOTRUN;
-
-      /* this run will be counted as a failure since no new solution tuple could be generated or the neighborhood of the
-       * solution was not fruitful in the sense that it was too big
-       */
-      updateFailureStatistic(scip, heurdata);
-
-      /* we do not want to keep this SCIP */
-      *keepthisscip = FALSE;
-
-      return SCIP_OKAY;
-   }
    /* set up sub-SCIP parameters */
-   SCIP_CALL( setSubscipParameters(scip, subscip) );
+   SCIP_CALL( setSubscipParameters(subscip) );
 
    return SCIP_OKAY;
 }
@@ -863,7 +823,6 @@ SCIP_RETCODE solveSubscipLpface(
 {
    SCIP_EVENTHDLR* eventhdlr;
    SCIP_Bool success;
-   int i;
 
    assert( scip != NULL );
    assert( subscip != NULL );
@@ -937,21 +896,13 @@ SCIP_RETCODE solveSubscipLpface(
    }
    else if( SCIPgetNSols(subscip) > 0 )
    {
-      SCIP_SOL** subsols;
-      int nsubsols;
       int solindex;
 
       /* check, whether a solution was found;
        * due to numerics, it might happen that not all solutions are feasible -> try all solutions until one is accepted
        */
-      nsubsols = SCIPgetNSols(subscip);
-      subsols = SCIPgetSols(subscip);
-      success = FALSE;
-      solindex = -1;
-      for( i = 0; i < nsubsols && !success; ++i )
-      {
-         SCIP_CALL( createNewSol(scip, subscip, subvars, heur, subsols[i], &solindex, &success) );
-      }
+      SCIP_CALL( SCIPtranslateSubSols(scip, subscip, heur, subvars, &success, &solindex) );
+      SCIPdebugMsg(scip, "Transfer was %s successful\n", success ? "" : "not");
 
       /* we found an optimal solution and are done. Thus, we free the subscip immediately */
       if( success )
@@ -1081,7 +1032,6 @@ SCIP_DECL_HEUREXITSOL(heurExitsolLpface)
    {
       /* free kept data structures first */
       SCIP_CALL( subscipdataFreeSubscip(scip, heurdata->subscipdata) );
-
    }
 
    /* free the sub-SCIP data structure */
@@ -1261,7 +1211,6 @@ SCIP_DECL_HEUREXEC(heurExecLpface)
       SCIP_CALL( subscipdataFreeSubscip(scip, heurdata->subscipdata) );
    }
 
-
    /* retrieve the sub-SCIP from the heuristic data structure */
    if( heurdata->subscipdata->subscip != NULL )
    {
@@ -1276,28 +1225,46 @@ SCIP_DECL_HEUREXEC(heurExecLpface)
    }
    else
    {
+      SCIP_VAR** fixvars;
+      SCIP_Real* fixvals;
+      int nfixvars;
+      SCIP_Bool success;
+
       assert(heurdata->subscipdata->subscip == NULL);
-      SCIPdebugMsg(scip, "Creating new sub-Problem for LP face heuristic\n");
 
       /* allocate memory to hold sub-SCIP variables */
       SCIP_CALL( SCIPallocBufferArray(scip, &subvars, nvars) );
 
+      SCIP_CALL( SCIPallocBufferArray(scip, &fixvars, nvars) );
+      SCIP_CALL( SCIPallocBufferArray(scip, &fixvals, nvars) );
+
+      SCIP_CALL( determineVariableFixings(scip, heurdata, fixvars, fixvals, &nfixvars, &success) );
+
+      if( ! success )
+      {
+         SCIPfreeBufferArray(scip, &fixvals);
+         SCIPfreeBufferArray(scip, &fixvars);
+         SCIPfreeBufferArray(scip, &subvars);
+
+         *result = SCIP_DIDNOTRUN;
+         return SCIP_OKAY;
+      }
+
+      SCIPdebugMsg(scip, "Creating new sub-Problem for LP face heuristic\n");
+
       /* initialize the subproblem */
       SCIP_CALL( SCIPcreate(&subscip) );
 
-      retcode = setupSubscipLpface(scip, subscip, heurdata, subvars, vars, result, &keepthisscip, nvars);
+      SCIP_CALL( setupSubscipLpface(scip, subscip, heurdata, subvars, vars, fixvars, fixvals, nfixvars, nvars) );
 
-      SCIP_CALL( retcode );
-
-      if( *result == SCIP_DIDNOTRUN )
-         goto TERMINATE;
+      SCIPfreeBufferArray(scip, &fixvals);
+      SCIPfreeBufferArray(scip, &fixvars);
    }
 
    retcode = solveSubscipLpface(scip, subscip, heur, heurdata, subvars, result, focusnodelb, &keepthisscip);
 
    SCIP_CALL( retcode );
 
-TERMINATE:
    /* free subproblem or store it for the next run of the heuristic */
    if( ! keepthisscip )
    {

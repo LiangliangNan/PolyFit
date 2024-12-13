@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_dins.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  DINS primal heuristic (according to Ghosh)
  * @author Timo Berthold
  * @author Robert Waniek
@@ -21,15 +31,37 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-#include "scip/scip.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_linear.h"
 #include "scip/heur_dins.h"
+#include "scip/heuristics.h"
+#include "scip/pub_event.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_nodesel.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define HEUR_NAME             "dins"
 #define HEUR_DESC             "distance induced neighborhood search by Ghosh"
-#define HEUR_DISPCHAR         'D'
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_LNS
 #define HEUR_PRIORITY         -1105000
 #define HEUR_FREQ             -1
 #define HEUR_FREQOFS          0
@@ -122,7 +154,6 @@ void computeIntegerVariableBounds(
    /* get the current MIP solution for each variable */
    bestsol = SCIPgetBestSol(scip);
    mipsol = SCIPgetSolVal(scip, bestsol, var);
-
 
    /* if the solution values differ by 0.5 or more, the variable is rebounded, otherwise it is just copied */
    if( REALABS(lpsol - mipsol) >= 0.5 )
@@ -317,6 +348,10 @@ SCIP_RETCODE reboundIntegerVariables(
    {
       SCIP_Real lb;
       SCIP_Real ub;
+
+      if( subvars[i] == NULL )
+         continue;
+
       computeIntegerVariableBounds(scip, vars[i], &lb, &ub);
 
       /* change variable bounds in the DINS subproblem; if bounds coincide, variable should already be fixed */
@@ -347,6 +382,7 @@ SCIP_RETCODE addLocalBranchingConstraint(
    SCIP_VAR** vars;
    SCIP_SOL* bestsol;
 
+   SCIP_VAR** consvars;
    SCIP_Real* consvals;
    SCIP_Real solval;
    SCIP_Real lhs;
@@ -356,6 +392,7 @@ SCIP_RETCODE addLocalBranchingConstraint(
 
    int nbinvars;
    int i;
+   int nconsvars;
 
    (void) SCIPsnprintf(consname, SCIP_MAXSTRLEN, "%s_dinsLBcons", SCIPgetProbName(scip));
 
@@ -366,6 +403,8 @@ SCIP_RETCODE addLocalBranchingConstraint(
 
    /* memory allocation */
    SCIP_CALL( SCIPallocBufferArray(scip, &consvals, nbinvars) );
+   SCIP_CALL( SCIPallocBufferArray(scip, &consvars, nbinvars) );
+   nconsvars = 0;
 
    /* set initial left and right hand sides of local branching constraint */
    lhs = 0.0;
@@ -374,12 +413,12 @@ SCIP_RETCODE addLocalBranchingConstraint(
    /* create the distance function of the binary variables (to incumbent solution) */
    for( i = 0; i < nbinvars; i++ )
    {
+      if( subvars[i] == NULL )
+         continue;
+
       assert(SCIPvarGetType(subvars[i]) == SCIP_VARTYPE_BINARY);
       if( SCIPvarGetUbGlobal(subvars[i]) - SCIPvarGetLbGlobal(subvars[i]) < 0.5 )
-      {
-         consvals[i]=0.0;
          continue;
-      }
 
       solval = SCIPgetSolVal(scip, bestsol, vars[i]);
       assert(SCIPisFeasIntegral(scip, solval));
@@ -387,72 +426,25 @@ SCIP_RETCODE addLocalBranchingConstraint(
       /* is variable i part of the binary support of the current solution? */
       if( SCIPisFeasEQ(scip, solval, 1.0) )
       {
-         consvals[i] = -1.0;
+         consvals[nconsvars] = -1.0;
          rhs -= 1.0;
          lhs -= 1.0;
       }
       else
-         consvals[i] = 1.0;
+         consvals[nconsvars] = 1.0;
+      consvars[nconsvars++] = subvars[i];
    }
 
    /* creates local branching constraint and adds it to subscip */
-   SCIP_CALL( SCIPcreateConsLinear(subscip, &cons, consname, nbinvars, subvars, consvals,
+   SCIP_CALL( SCIPcreateConsLinear(subscip, &cons, consname, nconsvars, consvars, consvals,
          lhs, rhs, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE) );
    SCIP_CALL( SCIPaddCons(subscip, cons) );
    SCIP_CALL( SCIPreleaseCons(subscip, &cons) );
 
    /* free local memory */
+   SCIPfreeBufferArray(scip, &consvars);
    SCIPfreeBufferArray(scip, &consvals);
 
-   return SCIP_OKAY;
-}
-
-/** creates a new solution for the original problem by copying the solution of the subproblem */
-static
-SCIP_RETCODE createNewSol(
-   SCIP*                 scip,               /**< original SCIP data structure                        */
-   SCIP*                 subscip,            /**< SCIP structure of the subproblem                    */
-   SCIP_VAR**            subvars,            /**< the variables of the subproblem                     */
-   SCIP_HEUR*            heur,               /**< DINS heuristic structure                            */
-   SCIP_SOL*             subsol,             /**< solution of the subproblem                          */
-   SCIP_Bool*            success             /**< used to store whether new solution was found or not */
-   )
-{
-   SCIP_VAR** vars;                          /* the original problem's variables                */
-   int        nvars;
-   SCIP_Real* subsolvals;                    /* solution values of the subproblem               */
-   SCIP_SOL*  newsol;                        /* solution to be created for the original problem */
-
-   assert(scip != NULL);
-   assert(heur != NULL);
-   assert(subscip != NULL);
-   assert(subvars != NULL);
-   assert(subsol != NULL);
-
-   /* get variables' data */
-   SCIP_CALL( SCIPgetVarsData(scip, &vars, &nvars, NULL, NULL, NULL, NULL) );
-   /* sub-SCIP may have more variables than the number of active (transformed) variables in the main SCIP
-    * since constraint copying may have required the copy of variables that are fixed in the main SCIP
-    */
-   assert(nvars <= SCIPgetNOrigVars(subscip));
-
-   SCIP_CALL( SCIPallocBufferArray(scip, &subsolvals, nvars) );
-
-   /* copy the solution */
-   SCIP_CALL( SCIPgetSolVals(subscip, subsol, nvars, subvars, subsolvals) );
-
-   /* create new solution for the original problem */
-   SCIP_CALL( SCIPcreateSol(scip, &newsol, heur) );
-   SCIP_CALL( SCIPsetSolVals(scip, newsol, nvars, vars, subsolvals) );
-
-   /* try to add new solution to scip and free it immediately */
-   SCIP_CALL( SCIPtrySolFree(scip, &newsol, FALSE, FALSE, TRUE, TRUE, TRUE, success) );
-   if( *success )
-   {
-      SCIPdebugMsg(scip, "DINS successfully found new solution\n");
-   }
-
-   SCIPfreeBufferArray(scip, &subsolvals);
    return SCIP_OKAY;
 }
 
@@ -597,17 +589,6 @@ SCIP_RETCODE wrapperDins(
    /* speed up sub-SCIP by not checking dual LP feasibility */
    SCIP_CALL( SCIPsetBoolParam(subscip, "lp/checkdualfeas", FALSE) );
 
-   /* employ a limit on the number of enforcement rounds in the quadratic constraint handler; this fixes the issue that
-    * sometimes the quadratic constraint handler needs hundreds or thousands of enforcement rounds to determine the
-    * feasibility status of a single node without fractional branching candidates by separation (namely for uflquad
-    * instances); however, the solution status of the sub-SCIP might get corrupted by this; hence no deductions shall be
-    * made for the original SCIP
-    */
-   if( SCIPfindConshdlr(subscip, "quadratic") != NULL && !SCIPisParamFixed(subscip, "constraints/quadratic/enfolplimit") )
-   {
-      SCIP_CALL( SCIPsetIntParam(subscip, "constraints/quadratic/enfolplimit", 500) );
-   }
-
    /* add an objective cutoff */
    assert(!SCIPisInfinity(scip, SCIPgetUpperbound(scip)));
 
@@ -663,17 +644,13 @@ SCIP_RETCODE wrapperDins(
    /* check, whether a  (new) solution was found */
    if( nsubsols > 0 )
    {
-      SCIP_SOL** subsols;
-
       /* check, whether a solution was found; due to numerics, it might happen that not all solutions are feasible -> try all solutions until one was accepted */
-      subsols = SCIPgetSols(subscip);
-      success = FALSE;
-      for( i = 0; i < nsubsols && !success; ++i )
-      {
-         SCIP_CALL( createNewSol(scip, subscip, subvars, heur, subsols[i], &success) );
-      }
+      SCIP_CALL( SCIPtranslateSubSols(scip, subscip, heur, subvars, &success, NULL) );
       if( success )
+      {
+         SCIPdebugMsg(scip, "DINS successfully found new solution\n");
          *result = SCIP_FOUNDSOL;
+      }
    }
 
    /* free subproblem */
@@ -919,7 +896,6 @@ SCIP_DECL_HEUREXEC(heurExecDins)
 
    /* initialize the subproblem */
    SCIP_CALL( SCIPcreate(&subscip) );
-
 
    retcode = wrapperDins(scip, subscip, heur, heurdata, vars, fixedvars, fixedvals, result, nvars, nbinvars, nintvars, binfixings, intfixings, nsubnodes);
    SCIP_CALL( SCIPfree(&subscip) );

@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   set.c
+ * @ingroup OTHER_CFILES
  * @brief  methods for global SCIP settings
  * @author Tobias Achterberg
  * @author Timo Berthold
@@ -51,9 +61,13 @@
 #include "scip/reader.h"
 #include "scip/relax.h"
 #include "scip/sepa.h"
+#include "scip/cutsel.h"
 #include "scip/table.h"
 #include "scip/prop.h"
-#include "nlpi/nlpi.h"
+#include "scip/benders.h"
+#include "scip/expr.h"
+#include "scip/nlpi.h"
+#include "scip/pub_nlpi.h"
 #include "scip/struct_scip.h" /* for SCIPsetPrintDebugMessage() */
 
 /*
@@ -69,6 +83,8 @@
 #define SCIP_DEFAULT_BRANCH_PREFERBINARY  FALSE /**< should branching on binary variables be preferred? */
 #define SCIP_DEFAULT_BRANCH_CLAMP           0.2 /**< minimal fractional distance of branching point to a continuous variable'
                                                  *   bounds; a value of 0.5 leads to branching always in the middle of a bounded domain */
+#define SCIP_DEFAULT_BRANCH_MIDPULL        0.75 /**< fraction by which to move branching point of a continuous variable towards the middle of the domain */
+#define SCIP_DEFAULT_BRANCH_MIDPULLRELDOMTRIG 0.5 /**< multiply midpull by relative domain width if the latter is below this value */
 #define SCIP_DEFAULT_BRANCH_LPGAINNORMALIZE 's' /**< strategy for normalizing LP gain when updating pseudo costs of continuous variables */
 #define SCIP_DEFAULT_BRANCH_DELAYPSCOST    TRUE /**< should updating pseudo costs of continuous variables be delayed to after separation */
 #define SCIP_DEFAULT_BRANCH_DIVINGPSCOST   TRUE /**< should pseudo costs be updated also in diving and probing mode? */
@@ -149,6 +165,7 @@
 /* Conflict Analysis (dual ray) */
 
 #define SCIP_DEFAULT_CONF_SEPAALTPROOFS   FALSE /**< apply cut generating functions to construct alternative proofs */
+#define SCIP_DEFAULT_CONF_USELOCALROWS    TRUE  /**< use local rows to construct infeasibility proofs */
 
 /* Constraints */
 
@@ -162,11 +179,16 @@
 /* Display */
 
 #define SCIP_DEFAULT_DISP_VERBLEVEL SCIP_VERBLEVEL_HIGH /**< verbosity level of output */
-#define SCIP_DEFAULT_DISP_WIDTH             139 /**< maximal number of characters in a node information line */
+#define SCIP_DEFAULT_DISP_WIDTH             143 /**< maximal number of characters in a node information line */
 #define SCIP_DEFAULT_DISP_FREQ              100 /**< frequency for displaying node information lines */
 #define SCIP_DEFAULT_DISP_HEADERFREQ         15 /**< frequency for displaying header lines (every n'th node info line) */
 #define SCIP_DEFAULT_DISP_LPINFO          FALSE /**< should the LP solver display status messages? */
 #define SCIP_DEFAULT_DISP_ALLVIOLS        FALSE /**< display all violations of the best solution after the solving process finished? */
+#define SCIP_DEFAULT_DISP_RELEVANTSTATS    TRUE /**< should the relevant statistics be displayed at the end of solving? */
+
+/* Heuristics */
+
+#define SCIP_DEFAULT_HEUR_USEUCTSUBSCIP  FALSE  /**< should setting of common subscip parameters include the activation of the UCT node selector? */
 
 /* History */
 
@@ -220,8 +242,10 @@
 #define SCIP_DEFAULT_LP_CLEANUPROWSROOT    TRUE /**< should new basic rows be removed after root LP solving? */
 #define SCIP_DEFAULT_LP_CHECKSTABILITY     TRUE /**< should LP solver's return status be checked for stability? */
 #define SCIP_DEFAULT_LP_CONDITIONLIMIT     -1.0 /**< maximum condition number of LP basis counted as stable (-1.0: no limit) */
+#define SCIP_DEFAULT_LP_MARKOWITZ          0.01 /**< minimal Markowitz threshold to control sparsity/stability in LU factorization */
 #define SCIP_DEFAULT_LP_CHECKPRIMFEAS      TRUE /**< should LP solutions be checked for primal feasibility to resolve LP at numerical troubles? */
 #define SCIP_DEFAULT_LP_CHECKDUALFEAS      TRUE /**< should LP solutions be checked for dual feasibility to resolve LP at numerical troubles? */
+#define SCIP_DEFAULT_LP_CHECKFARKAS        TRUE /**< should infeasibility proofs from the LP be checked? */
 #define SCIP_DEFAULT_LP_FASTMIP               1 /**< should FASTMIP setting of LP solver be used? */
 #define SCIP_DEFAULT_LP_SCALING               1 /**< LP scaling (0: none, 1: normal, 2: aggressive) */
 #define SCIP_DEFAULT_LP_PRESOLVING         TRUE /**< should presolving of LP solver be used? */
@@ -239,6 +263,7 @@
 #define SCIP_DEFAULT_LP_RESOLVEITERMIN     1000 /**< minimum number of iterations that are allowed for LP resolve */
 #define SCIP_DEFAULT_LP_SOLUTIONPOLISHING     3 /**< LP solution polishing method (0: disabled, 1: only root, 2: always, 3: auto) */
 #define SCIP_DEFAULT_LP_REFACTORINTERVAL      0 /**< LP refactorization interval (0: automatic) */
+#define SCIP_DEFAULT_LP_ALWAYSGETDUALS    FALSE /**< should the dual solution always be collected */
 
 /* NLP */
 
@@ -264,22 +289,27 @@
 #define SCIP_DEFAULT_MISC_EXACTSOLVE      FALSE /**< should the problem be solved exactly (with proven dual bounds)? */
 #define SCIP_DEFAULT_MISC_RESETSTAT        TRUE /**< should the statistics be reset if the transformed problem is
                                                  *   freed otherwise the statistics get reset after original problem is
-                                                 *   freed (in case of Benders decomposition this parameter should be set
+                                                 *   freed (in case of Benders' decomposition this parameter should be set
                                                  *   to FALSE and therefore can be used to collect statistics over all
                                                  *   runs) */
 #define SCIP_DEFAULT_MISC_IMPROVINGSOLS   FALSE /**< should only solutions be checked which improve the primal bound */
 #define SCIP_DEFAULT_MISC_PRINTREASON      TRUE /**< should the reason be printed if a given start solution is infeasible? */
 #define SCIP_DEFAULT_MISC_ESTIMEXTERNMEM   TRUE /**< should the usage of external memory be estimated? */
+#define SCIP_DEFAULT_MISC_AVOIDMEMOUT      TRUE /**< try to avoid running into memory limit by restricting plugins like heuristics? */
 #define SCIP_DEFAULT_MISC_TRANSORIGSOLS    TRUE /**< should SCIP try to transfer original solutions to the transformed space (after presolving)? */
 #define SCIP_DEFAULT_MISC_TRANSSOLSORIG    TRUE /**< should SCIP try to transfer transformed solutions to the original space (after solving)? */
 #define SCIP_DEFAULT_MISC_CALCINTEGRAL     TRUE /**< should SCIP calculate the primal dual integral? */
 #define SCIP_DEFAULT_MISC_FINITESOLSTORE  FALSE /**< should SCIP try to remove infinite fixings from solutions copied to the solution store? */
 #define SCIP_DEFAULT_MISC_OUTPUTORIGSOL    TRUE /**< should the best solution be transformed to the orignal space and be output in command line run? */
-#define SCIP_DEFAULT_MISC_ALLOWDUALREDS    TRUE /**< should dual reductions in propagation methods and presolver be allowed? */
-#define SCIP_DEFAULT_MISC_ALLOWOBJPROP     TRUE /**< should propagation to the current objective be allowed in propagation methods? */
+#define SCIP_DEFAULT_MISC_ALLOWSTRONGDUALREDS TRUE /**< should strong dual reductions be allowed in propagation and presolving? */
+#define SCIP_DEFAULT_MISC_ALLOWWEAKDUALREDS   TRUE /**< should weak dual reductions be allowed in propagation and presolving? */
 #define SCIP_DEFAULT_MISC_REFERENCEVALUE   1e99 /**< objective value for reference purposes */
-#define SCIP_DEFAULT_MISC_USESYMMETRY         2 /**< used symmetry handling technique (0: off; 1: polyhedral; 2: orbital fixing) */
-
+#define SCIP_DEFAULT_MISC_USESYMMETRY         7 /**< bitset describing used symmetry handling technique (0: off; 1: polyhedral (orbitopes and/or symresacks)
+                                                 *   2: orbital fixing; 3: orbitopes and orbital fixing; 4: Schreier Sims cuts; 5: Schreier Sims cuts and
+                                                 *   orbitopes); 6: Schreier Sims cuts and orbital fixing; 7: Schreier Sims cuts, orbitopes, and orbital
+                                                 *   fixing, see type_symmetry.h */
+#define SCIP_DEFAULT_MISC_SCALEOBJ         TRUE /**< should the objective function be scaled? */
+#define SCIP_DEFAULT_MISC_SHOWDIVINGSTATS FALSE /**< should detailed statistics for diving heuristics be shown? */
 
 #ifdef WITH_DEBUG_SOLUTION
 #define SCIP_DEFAULT_MISC_DEBUGSOLUTION     "-" /**< path to a debug solution */
@@ -305,6 +335,7 @@
                                                  *   in last presolve round */
 #define SCIP_DEFAULT_PRESOL_MAXROUNDS        -1 /**< maximal number of presolving rounds (-1: unlimited, 0: off) */
 #define SCIP_DEFAULT_PRESOL_MAXRESTARTS      -1 /**< maximal number of restarts (-1: unlimited) */
+#define SCIP_DEFAULT_PRESOL_CLQTABLEFAC     2.0 /**< limit on number of entries in clique table relative to number of problem nonzeros */
 #define SCIP_DEFAULT_PRESOL_RESTARTFAC    0.025 /**< fraction of integer variables that were fixed in the root node
                                                  *   triggering a restart with preprocessing after root node evaluation */
 #define SCIP_DEFAULT_PRESOL_IMMRESTARTFAC  0.10 /**< fraction of integer variables that were fixed in the root node triggering an
@@ -327,6 +358,17 @@
                                                  *   in case they are not present in the LP anymore? */
 #define SCIP_DEFAULT_PRICE_DELVARSROOT    FALSE /**< should variables created at the root node be deleted when the root is solved
                                                  *   in case they are not present in the LP anymore? */
+
+/* Decomposition */
+#define SCIP_DEFAULT_DECOMP_BENDERSLABELS FALSE /**< should the variables be labelled for the application of Benders' decomposition */
+#define SCIP_DEFAULT_DECOMP_APPLYBENDERS  FALSE /**< if a decomposition exists, should Benders' decomposition be applied? */
+#define SCIP_DEFAULT_DECOMP_MAXGRAPHEDGE  10000 /**< maximum number of edges in block graph computation (-1: no limit, 0: disable block graph computation) */
+#define SCIP_DEFAULT_DECOMP_DISABLEMEASURES FALSE /**< disable expensive measures */
+
+/* Benders' decomposition */
+#define SCIP_DEFAULT_BENDERS_SOLTOL        1e-6 /**< the tolerance used to determine optimality in Benders' decomposition */
+#define SCIP_DEFAULT_BENDERS_CUTLPSOL      TRUE /**< should Benders' cuts be generated from the LP solution? */
+#define SCIP_DEFAULT_BENDERS_COPYBENDERS   TRUE /**< should Benders' decomposition be copied for sub-SCIPs? */
 
 /* Reoptimization */
 
@@ -389,17 +431,15 @@
                                                  *   bound compared to best node's dual bound for applying local separation
                                                  *   (0.0: only on current best node, 1.0: on all nodes) */
 #define SCIP_DEFAULT_SEPA_MAXCOEFRATIO     1e+4 /**< maximal ratio between coefficients in strongcg, cmir, and flowcover cuts */
+#define SCIP_DEFAULT_SEPA_MAXCOEFRATIOFACROWPREP 10.0 /**< maximal ratio between coefficients (as factor of 1/feastol) to ensure in rowprep cleanup */
 #define SCIP_DEFAULT_SEPA_MINEFFICACY      1e-4 /**< minimal efficacy for a cut to enter the LP */
 #define SCIP_DEFAULT_SEPA_MINEFFICACYROOT  1e-4 /**< minimal efficacy for a cut to enter the LP in the root node */
-#define SCIP_DEFAULT_SEPA_MINORTHO         0.90 /**< minimal orthogonality for a cut to enter the LP */
-#define SCIP_DEFAULT_SEPA_MINORTHOROOT     0.90 /**< minimal orthogonality for a cut to enter the LP in the root node */
-#define SCIP_DEFAULT_SEPA_OBJPARALFAC       0.1 /**< factor to scale objective parallelism of cut in score calculation */
-#define SCIP_DEFAULT_SEPA_INTSUPPORTFAC     0.1 /**< factor to scale integral support of cut in score calculation */
 #define SCIP_DEFAULT_SEPA_ORTHOFUNC         'e' /**< function used for calc. scalar prod. in orthogonality test ('e'uclidean, 'd'iscrete) */
 #define SCIP_DEFAULT_SEPA_EFFICACYNORM      'e' /**< row norm to use for efficacy calculation ('e'uclidean, 'm'aximum,
                                                  *   's'um, 'd'iscrete) */
 #define SCIP_DEFAULT_SEPA_CUTSELRESTART     'a' /**< cut selection during restart ('a'ge, activity 'q'uotient) */
 #define SCIP_DEFAULT_SEPA_CUTSELSUBSCIP     'a' /**< cut selection for sub SCIPs  ('a'ge, activity 'q'uotient) */
+#define SCIP_DEFAULT_SEPA_FILTERCUTPOOLREL TRUE /**< should cutpool separate only cuts with high relative efficacy? */
 #define SCIP_DEFAULT_SEPA_MAXRUNS            -1 /**< maximal number of runs for which separation is enabled (-1: unlimited) */
 #define SCIP_DEFAULT_SEPA_MAXROUNDS          -1 /**< maximal number of separation rounds per node (-1: unlimited) */
 #define SCIP_DEFAULT_SEPA_MAXROUNDSROOT      -1 /**< maximal number of separation rounds in the root node (-1: unlimited) */
@@ -410,7 +450,6 @@
                                                  *   or integrality improvement in the root node (-1: no additional restriction) */
 #define SCIP_DEFAULT_SEPA_MAXSTALLROUNDS      1 /**< maximal number of consecutive separation rounds without objective
                                                  *   or integrality improvement in local nodes (-1: no additional restriction) */
-#define SCIP_DEFAULT_SEPA_MAXINCROUNDS       20 /**< maximal number of consecutive separation rounds that increase the size of the LP relaxation per node (-1: unlimited) */
 #define SCIP_DEFAULT_SEPA_MAXCUTS           100 /**< maximal number of cuts separated per separation round */
 #define SCIP_DEFAULT_SEPA_MAXCUTSROOT      2000 /**< maximal separated cuts at the root node */
 #define SCIP_DEFAULT_SEPA_CUTAGELIMIT        80 /**< maximum age a cut can reach before it is deleted from global cut pool
@@ -447,11 +486,12 @@
 
 /* Timing */
 
-#define SCIP_DEFAULT_TIME_CLOCKTYPE  SCIP_CLOCKTYPE_CPU  /**< default clock type for timing */
+#define SCIP_DEFAULT_TIME_CLOCKTYPE  SCIP_CLOCKTYPE_WALL  /**< default clock type for timing */
 #define SCIP_DEFAULT_TIME_ENABLED          TRUE /**< is timing enabled? */
 #define SCIP_DEFAULT_TIME_READING         FALSE /**< belongs reading time to solving time? */
 #define SCIP_DEFAULT_TIME_RARECLOCKCHECK  FALSE /**< should clock checks of solving time be performed less frequently (might exceed time limit slightly) */
 #define SCIP_DEFAULT_TIME_STATISTICTIMING  TRUE /**< should timing for statistic output be enabled? */
+#define SCIP_DEFAULT_TIME_NLPIEVAL        FALSE /**< should time for evaluation in NLP solves be measured? */
 
 
 /* visualization output */
@@ -460,6 +500,7 @@
 #define SCIP_DEFAULT_VISUAL_BAKFILENAME     "-" /**< name of the BAK tool output file, or "-" if no BAK tool output should be created */
 #define SCIP_DEFAULT_VISUAL_REALTIME       TRUE /**< should the real solving time be used instead of a time step counter in visualization? */
 #define SCIP_DEFAULT_VISUAL_DISPSOLS      FALSE /**< should the node where solutions are found be visualized? */
+#define SCIP_DEFAULT_VISUAL_DISPLB        FALSE /**< should lower bound information be visualized? */
 #define SCIP_DEFAULT_VISUAL_OBJEXTERN      TRUE /**< should be output the external value of the objective? */
 
 
@@ -533,24 +574,27 @@ SCIP_DECL_PARAMCHGD(paramChgdFeastol)
 
    newfeastol = SCIPparamGetReal(param);
 
-   /* change the feastol through the SCIP call in order to adjust lpfeastol if necessary */
+   /* change the feastol through the SCIP call in order to adjust LP's feastol if necessary */
    SCIP_CALL( SCIPchgFeastol(scip, newfeastol) );
 
    return SCIP_OKAY;
 }
 
-/** information method for a parameter change of lpfeastol */
+/** information method for a parameter change of lpfeastolfactor */
 static
-SCIP_DECL_PARAMCHGD(paramChgdLpfeastol)
+SCIP_DECL_PARAMCHGD(paramChgdLPFeastolFactor)
 {  /*lint --e{715}*/
-   SCIP_Real newlpfeastol;
+   SCIP_Real newlpfeastolfactor;
 
-   newlpfeastol = SCIPparamGetReal(param);
+   newlpfeastolfactor = SCIPparamGetReal(param);
 
-   /* change the lpfeastol through the SCIP call in order to mark the LP unsolved and control that it does not exceed
-    * SCIP's feastol
-    */
-   SCIP_CALL( SCIPchgLpfeastol(scip, newlpfeastol, FALSE) );
+   if( SCIPgetStage(scip) == SCIP_STAGE_SOLVING && SCIPgetLPFeastol(scip) > newlpfeastolfactor * SCIPfeastol(scip) )
+   {
+      /* reset the LP feastol to ensure that it does not exceed newlpfeastolfactor * SCIP's feastol
+       * this also marks the LP unsolved
+       */
+      SCIPresetLPFeastol(scip);
+   }
 
    return SCIP_OKAY;
 }
@@ -585,7 +629,7 @@ SCIP_DECL_PARAMCHGD(paramChgdBarrierconvtol)
 
 /** information method for a parameter change of infinity value */
 static
-SCIP_DECL_PARAMCHGD(paramChgInfinity)
+SCIP_DECL_PARAMCHGD(paramChgdInfinity)
 {  /*lint --e{715}*/
    SCIP_Real infinity;
 
@@ -616,7 +660,6 @@ SCIP_DECL_PARAMCHGD(SCIPparamChgdDispWidth)
 static
 SCIP_DECL_PARAMCHGD(SCIPparamChgdLimit)
 {  /*lint --e{715}*/
-
    SCIPmarkLimitChanged(scip);
    return SCIP_OKAY;
 }
@@ -655,10 +698,17 @@ SCIP_DECL_PARAMCHGD(paramChgdArraygrowinit)
 static
 SCIP_DECL_PARAMCHGD(paramChgdEnableReopt)
 {  /*lint --e{715}*/
+   SCIP_RETCODE retcode;
+
+   assert( scip != NULL );
+   assert( param != NULL );
 
    /* create or deconstruct the reoptimization data structures */
+   retcode = SCIPenableReoptimization(scip, SCIPparamGetBool(param));
 
-   SCIP_CALL( SCIPenableReoptimization(scip, SCIPparamGetBool(param)) );
+   /* an appropriate error message is already printed in the above method */
+   if( retcode == SCIP_INVALIDCALL )
+      return SCIP_PARAMETERWRONGVAL;
 
    return SCIP_OKAY;
 }
@@ -667,12 +717,15 @@ SCIP_DECL_PARAMCHGD(paramChgdEnableReopt)
 static
 SCIP_DECL_PARAMCHGD(paramChgdUsesymmetry)
 {  /*lint --e{715}*/
+   assert( scip != NULL );
+   assert( param != NULL );
 
    if ( SCIPgetStage(scip) >= SCIP_STAGE_INITPRESOLVE && SCIPgetStage(scip) <= SCIP_STAGE_SOLVED )
    {
       if ( SCIPparamGetInt(param) > 0 )
       {
-         SCIPerrorMessage("Cannot turn on symmetry handling during (pre)solving.\n");
+         SCIPerrorMessage("Cannot turn on symmetry handling during (pre)solving or change method.\n");
+         return SCIP_PARAMETERWRONGVAL;
       }
    }
 
@@ -781,6 +834,9 @@ void SCIPsetEnableOrDisablePluginClocks(
    for( i = set->nnodesels - 1; i >= 0; --i )
       SCIPnodeselEnableOrDisableClocks(set->nodesels[i], enabled);
 
+   for ( i = set->ncutsels - 1; i >= 0; --i )
+      SCIPcutselEnableOrDisableClocks(set->cutsels[i], enabled);
+
    for( i = set->nbranchrules - 1; i >= 0; --i )
       SCIPbranchruleEnableOrDisableClocks(set->branchrules[i], enabled);
 }
@@ -808,6 +864,7 @@ SCIP_RETCODE SCIPsetCopyPlugins(
    SCIP_Bool             copypresolvers,     /**< should the presolvers be copied */
    SCIP_Bool             copyrelaxators,     /**< should the relaxators be copied */
    SCIP_Bool             copyseparators,     /**< should the separators be copied */
+   SCIP_Bool             copycutselectors,   /**< should the cut selectors be copied */
    SCIP_Bool             copypropagators,    /**< should the propagators be copied */
    SCIP_Bool             copyheuristics,     /**< should the heuristics be copied */
    SCIP_Bool             copyeventhdlrs,     /**< should the event handlers be copied */
@@ -816,6 +873,7 @@ SCIP_RETCODE SCIPsetCopyPlugins(
    SCIP_Bool             copydisplays,       /**< should the display columns be copied */
    SCIP_Bool             copydialogs,        /**< should the dialogs be copied */
    SCIP_Bool             copytables,         /**< should the statistics tables be copied */
+   SCIP_Bool             copyexprhdlrs,      /**< should the expression handlers be copied */
    SCIP_Bool             copynlpis,          /**< should the NLP interfaces be copied */
    SCIP_Bool*            allvalid            /**< pointer to store whether all plugins were validly copied */
    )
@@ -829,6 +887,16 @@ SCIP_RETCODE SCIPsetCopyPlugins(
    assert(allvalid != NULL);
 
    *allvalid = TRUE;
+
+   /* copy all dialog plugins */
+   if( copydialogs && sourceset->dialogs != NULL )
+   {
+      for( p = sourceset->ndialogs - 1; p >= 0; --p )
+      {
+         /* @todo: the copying process of dialog handlers is currently not checked for consistency */
+         SCIP_CALL( SCIPdialogCopyInclude(sourceset->dialogs[p], targetset) );
+      }
+   }
 
    /* copy all reader plugins */
    if( copyreaders && sourceset->readers != NULL )
@@ -898,7 +966,6 @@ SCIP_RETCODE SCIPsetCopyPlugins(
       }
    }
 
-
    /* copy all relaxator plugins */
    if( copyrelaxators && sourceset->relaxs != NULL )
    {
@@ -908,13 +975,21 @@ SCIP_RETCODE SCIPsetCopyPlugins(
       }
    }
 
-
    /* copy all separator plugins */
    if( copyseparators && sourceset->sepas != NULL )
    {
       for( p = sourceset->nsepas - 1; p >= 0; --p )
       {
          SCIP_CALL( SCIPsepaCopyInclude(sourceset->sepas[p], targetset) );
+      }
+   }
+
+   /* copy all cut selector plugins */
+   if( copycutselectors && sourceset->cutsels != NULL )
+   {
+      for( p = sourceset->ncutsels - 1; p >= 0; --p )
+      {
+         SCIP_CALL( SCIPcutselCopyInclude(sourceset->cutsels[p], targetset) );
       }
    }
 
@@ -946,7 +1021,6 @@ SCIP_RETCODE SCIPsetCopyPlugins(
       }
    }
 
-
    /* copy all node selector plugins */
    if( copynodeselectors && sourceset->nodesels != NULL )
    {
@@ -965,24 +1039,12 @@ SCIP_RETCODE SCIPsetCopyPlugins(
       }
    }
 
-
    /* copy all display plugins */
    if( copydisplays && sourceset->disps != NULL )
    {
       for( p = sourceset->ndisps - 1; p >= 0; --p )
       {
          SCIP_CALL( SCIPdispCopyInclude(sourceset->disps[p], targetset) );
-      }
-   }
-
-
-   /* copy all dialog plugins */
-   if( copydialogs && sourceset->dialogs != NULL )
-   {
-      for( p = sourceset->ndialogs - 1; p >= 0; --p )
-      {
-         /* @todo: the copying process of dialog handlers is currently not checked for consistency */
-         SCIP_CALL( SCIPdialogCopyInclude(sourceset->dialogs[p], targetset) );
       }
    }
 
@@ -995,20 +1057,27 @@ SCIP_RETCODE SCIPsetCopyPlugins(
       }
    }
 
+   /* copy all expression handlers */
+   if( copyexprhdlrs && sourceset->exprhdlrs != NULL )
+   {
+      for( p = sourceset->nexprhdlrs - 1; p >= 0; --p )
+      {
+         SCIP_CALL( SCIPexprhdlrCopyInclude(sourceset->exprhdlrs[p], targetset) );
+      }
+   }
+
    /* copy all NLP interfaces */
    if( copynlpis && sourceset->nlpis != NULL )
    {
       for( p = sourceset->nnlpis - 1; p >= 0; --p )
       {
-         SCIP_NLPI* nlpicopy;
-
-         SCIP_CALL( SCIPnlpiCopy(SCIPblkmem(targetset->scip), sourceset->nlpis[p], &nlpicopy) );
-         SCIP_CALL( SCIPincludeNlpi(targetset->scip, nlpicopy) );
+         SCIP_CALL( SCIPnlpiCopyInclude(sourceset->nlpis[p], targetset) );
       }
    }
 
    return SCIP_OKAY;
 }
+
 
 /** copies parameters from sourcescip to targetscip */
 SCIP_RETCODE SCIPsetCopyParams(
@@ -1067,6 +1136,12 @@ SCIP_RETCODE SCIPsetCreate(
    (*set)->conflicthdlrssize = 0;
    (*set)->conflicthdlrssorted = FALSE;
    (*set)->conflicthdlrsnamesorted = FALSE;
+   (*set)->benders = NULL;
+   (*set)->nbenders = 0;
+   (*set)->nactivebenders = 0;
+   (*set)->benderssize = 0;
+   (*set)->benderssorted = FALSE;
+   (*set)->bendersnamesorted = FALSE;
 
    (*set)->debugsoldata = NULL;
    SCIP_CALL( SCIPdebugSolDataCreate(&(*set)->debugsoldata) ); /*lint !e506 !e774*/
@@ -1100,6 +1175,10 @@ SCIP_RETCODE SCIPsetCreate(
    (*set)->nconcsolvers = 0;
    (*set)->concsolverssize = 0;
    (*set)->concurrent_paramsetprefix = NULL;
+   (*set)->cutsels = NULL;
+   (*set)->ncutsels = 0;
+   (*set)->cutselssize = 0;
+   (*set)->cutselssorted = FALSE;
    (*set)->heurs = NULL;
    (*set)->nheurs = 0;
    (*set)->heurssize = 0;
@@ -1135,11 +1214,21 @@ SCIP_RETCODE SCIPsetCreate(
    (*set)->dialogs = NULL;
    (*set)->ndialogs = 0;
    (*set)->dialogssize = 0;
+   (*set)->exprhdlrs = NULL;
+   (*set)->exprhdlrvar = NULL;
+   (*set)->exprhdlrval = NULL;
+   (*set)->exprhdlrsum = NULL;
+   (*set)->exprhdlrproduct = NULL;
+   (*set)->exprhdlrpow = NULL;
+   (*set)->nexprhdlrs = 0;
+   (*set)->exprhdlrssize = 0;
+   (*set)->exprhdlrssorted = FALSE;
    (*set)->nlpis = NULL;
    (*set)->nnlpis = 0;
    (*set)->nlpissize = 0;
    (*set)->nlpissorted = FALSE;
    (*set)->limitchanged = FALSE;
+   (*set)->subscipsoff = FALSE;
    (*set)->extcodenames = NULL;
    (*set)->extcodedescs = NULL;
    (*set)->nextcodes = 0;
@@ -1174,6 +1263,16 @@ SCIP_RETCODE SCIPsetCreate(
          "branching/clamp",
          "minimal relative distance of branching point to bounds when branching on a continuous variable",
          &(*set)->branch_clamp, FALSE, SCIP_DEFAULT_BRANCH_CLAMP, 0.0, 0.5,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
+         "branching/midpull",
+         "fraction by which to move branching point of a continuous variable towards the middle of the domain; a value of 1.0 leads to branching always in the middle of the domain",
+         &(*set)->branch_midpull, FALSE, SCIP_DEFAULT_BRANCH_MIDPULL, 0.0, 1.0,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
+         "branching/midpullreldomtrig",
+         "multiply midpull by relative domain width if the latter is below this value",
+         &(*set)->branch_midpullreldomtrig, FALSE, SCIP_DEFAULT_BRANCH_MIDPULLRELDOMTRIG, 0.0, 1.0,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddCharParam(*set, messagehdlr, blkmem,
          "branching/lpgainnormalize",
@@ -1233,6 +1332,11 @@ SCIP_RETCODE SCIPsetCreate(
          "conflict/cleanboundexceedings",
          "should conflicts based on an old cutoff bound be removed from the conflict pool after improving the primal bound?",
          &(*set)->conf_cleanbnddepend, TRUE, SCIP_DEFAULT_CONF_CLEANBNDDEPEND,
+         NULL, NULL) );
+      SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "conflict/uselocalrows",
+         "use local rows to construct infeasibility proofs",
+         &(*set)->conf_uselocalrows, TRUE, SCIP_DEFAULT_CONF_USELOCALROWS,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
          "conflict/useprop",
@@ -1449,7 +1553,7 @@ SCIP_RETCODE SCIPsetCreate(
          NULL, NULL) );
 
    /* display parameters */
-   assert(sizeof(int) == sizeof(SCIP_VERBLEVEL));
+   assert(sizeof(int) == sizeof(SCIP_VERBLEVEL)); /*lint !e506*/
    SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
          "display/verblevel",
          "verbosity level of output",
@@ -1481,6 +1585,17 @@ SCIP_RETCODE SCIPsetCreate(
          "display all violations for a given start solution / the best solution after the solving process?",
          &(*set)->disp_allviols, FALSE, SCIP_DEFAULT_DISP_ALLVIOLS,
          NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "display/relevantstats",
+         "should the relevant statistics be displayed at the end of solving?",
+         &(*set)->disp_relevantstats, FALSE, SCIP_DEFAULT_DISP_RELEVANTSTATS,
+         NULL, NULL) );
+
+   /* heuristic parameters */
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "heuristics/useuctsubscip",
+         "should setting of common subscip parameters include the activation of the UCT node selector?",
+         &(*set)->heur_useuctsubscip, TRUE, SCIP_DEFAULT_HEUR_USEUCTSUBSCIP, NULL, NULL) );
 
    /* history parameters */
    SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
@@ -1523,11 +1638,11 @@ SCIP_RETCODE SCIPsetCreate(
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
          "limits/memory",
          "maximal memory usage in MB; reported memory usage is lower than real memory usage!",
-         &(*set)->limit_memory, FALSE, SCIP_DEFAULT_LIMIT_MEMORY, 0.0, SCIP_MEM_NOLIMIT,
+         &(*set)->limit_memory, FALSE, (SCIP_Real)SCIP_DEFAULT_LIMIT_MEMORY, 0.0, (SCIP_Real)SCIP_MEM_NOLIMIT,
          SCIPparamChgdLimit, NULL) );
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
          "limits/gap",
-         "solving stops, if the relative gap = |primal - dual|/MIN(|dual|,|primal|) is below the given value",
+         "solving stops, if the relative gap = |primal - dual|/MIN(|dual|,|primal|) is below the given value, the gap is 'Infinity', if primal and dual bound have opposite signs",
          &(*set)->limit_gap, FALSE, SCIP_DEFAULT_LIMIT_GAP, 0.0, SCIP_REAL_MAX,
          SCIPparamChgdLimit, NULL) );
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
@@ -1658,6 +1773,11 @@ SCIP_RETCODE SCIPsetCreate(
          "maximum condition number of LP basis counted as stable (-1.0: no limit)",
          &(*set)->lp_conditionlimit, TRUE, SCIP_DEFAULT_LP_CONDITIONLIMIT, -1.0, SCIP_REAL_MAX,
          NULL, NULL) );
+   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
+         "lp/minmarkowitz",
+         "minimal Markowitz threshold to control sparsity/stability in LU factorization",
+         &(*set)->lp_markowitz, TRUE, SCIP_DEFAULT_LP_MARKOWITZ, 1e-4, 0.9999,
+         NULL, NULL) );
    SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
          "lp/checkprimfeas",
          "should LP solutions be checked for primal feasibility, resolving LP when numerical troubles occur?",
@@ -1667,6 +1787,11 @@ SCIP_RETCODE SCIPsetCreate(
          "lp/checkdualfeas",
          "should LP solutions be checked for dual feasibility, resolving LP when numerical troubles occur?",
          &(*set)->lp_checkdualfeas, TRUE, SCIP_DEFAULT_LP_CHECKDUALFEAS,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "lp/checkfarkas",
+         "should infeasibility proofs from the LP be checked?",
+         &(*set)->lp_checkfarkas, TRUE, SCIP_DEFAULT_LP_CHECKFARKAS,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
          "lp/fastmip",
@@ -1744,6 +1869,11 @@ SCIP_RETCODE SCIPsetCreate(
          "lp/refactorinterval",
          "LP refactorization interval (0: auto)",
          &(*set)->lp_refactorinterval, TRUE, SCIP_DEFAULT_LP_REFACTORINTERVAL, 0, INT_MAX,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "lp/alwaysgetduals",
+         "should the Farkas duals always be collected when an LP is found to be infeasible?",
+         &(*set)->lp_alwaysgetduals, FALSE, SCIP_DEFAULT_LP_ALWAYSGETDUALS,
          NULL, NULL) );
 
    /* NLP parameters */
@@ -1828,7 +1958,7 @@ SCIP_RETCODE SCIPsetCreate(
 
    SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
          "misc/resetstat",
-         "should the statistics be reset if the transformed problem is freed (in case of a Benders decomposition this parameter should be set to FALSE)",
+         "should the statistics be reset if the transformed problem is freed (in case of a Benders' decomposition this parameter should be set to FALSE)",
          &(*set)->misc_resetstat, FALSE, SCIP_DEFAULT_MISC_RESETSTAT,
          NULL, NULL) );
 
@@ -1846,6 +1976,11 @@ SCIP_RETCODE SCIPsetCreate(
          "misc/estimexternmem",
          "should the usage of external memory be estimated?",
          &(*set)->misc_estimexternmem, FALSE, SCIP_DEFAULT_MISC_ESTIMEXTERNMEM,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "misc/avoidmemout",
+         "try to avoid running into memory limit by restricting plugins like heuristics?",
+         &(*set)->misc_avoidmemout, FALSE, SCIP_DEFAULT_MISC_AVOIDMEMOUT,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
          "misc/transorigsols",
@@ -1873,14 +2008,24 @@ SCIP_RETCODE SCIPsetCreate(
             &(*set)->misc_outputorigsol, FALSE, SCIP_DEFAULT_MISC_OUTPUTORIGSOL,
             NULL, NULL) );
    SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
-            "misc/allowdualreds",
-            "should dual reductions in propagation methods and presolver be allowed?",
-            &(*set)->misc_allowdualreds, FALSE, SCIP_DEFAULT_MISC_ALLOWDUALREDS,
+            "misc/allowstrongdualreds",
+            "should strong dual reductions be allowed in propagation and presolving?",
+            &(*set)->misc_allowstrongdualreds, FALSE, SCIP_DEFAULT_MISC_ALLOWSTRONGDUALREDS,
             NULL, NULL) );
    SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
-            "misc/allowobjprop",
-            "should propagation to the current objective be allowed in propagation methods?",
-            &(*set)->misc_allowobjprop, FALSE, SCIP_DEFAULT_MISC_ALLOWOBJPROP,
+            "misc/allowweakdualreds",
+            "should weak dual reductions be allowed in propagation and presolving?",
+            &(*set)->misc_allowweakdualreds, FALSE, SCIP_DEFAULT_MISC_ALLOWWEAKDUALREDS,
+            NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+            "misc/scaleobj",
+            "should the objective function be scaled so that it is always integer?",
+            &(*set)->misc_scaleobj, FALSE, SCIP_DEFAULT_MISC_SCALEOBJ,
+            NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+            "misc/showdivingstats",
+            "should detailed statistics for diving heuristics be shown?",
+            &(*set)->misc_showdivingstats, FALSE, SCIP_DEFAULT_MISC_SHOWDIVINGSTATS,
             NULL, NULL) );
 
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
@@ -1899,8 +2044,11 @@ SCIP_RETCODE SCIPsetCreate(
 
    SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
          "misc/usesymmetry",
-         "used symmetry handling technique (0: off; 1: polyhedral; 2: orbital fixing)",
-         &(*set)->misc_usesymmetry, FALSE, SCIP_DEFAULT_MISC_USESYMMETRY, 0, 2,
+         "bitset describing used symmetry handling technique (0: off; 1: polyhedral (orbitopes and/or symresacks);" \
+         " 2: orbital fixing; 3: orbitopes and orbital fixing; 4: Schreier Sims cuts; 5: Schreier Sims cuts and " \
+         "orbitopes); 6: Schreier Sims cuts and orbital fixing; 7: Schreier Sims cuts, orbitopes, and orbital " \
+         "fixing, see type_symmetry.h.",
+         &(*set)->misc_usesymmetry, FALSE, SCIP_DEFAULT_MISC_USESYMMETRY, 0, 7,
          paramChgdUsesymmetry, NULL) );
 
    /* randomization parameters */
@@ -1928,7 +2076,6 @@ SCIP_RETCODE SCIPsetCreate(
          &(*set)->random_permutevars, TRUE, SCIP_DEFAULT_RANDOM_PERMUTEVARS,
          NULL, NULL) );
 
-
    SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
          "randomization/lpseed",
          "random seed for LP solver, e.g. for perturbations in the simplex (0: LP default)",
@@ -1947,7 +2094,7 @@ SCIP_RETCODE SCIPsetCreate(
          "numerics/infinity",
          "values larger than this are considered infinity",
          &(*set)->num_infinity, FALSE, SCIP_DEFAULT_INFINITY, 1e+10, SCIP_INVALID/10.0,
-         paramChgInfinity, NULL) );
+         paramChgdInfinity, NULL) );
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
          "numerics/epsilon",
          "absolute values smaller than this are considered zero",
@@ -1969,10 +2116,10 @@ SCIP_RETCODE SCIPsetCreate(
          &(*set)->num_checkfeastolfac, FALSE, SCIP_DEFAULT_CHECKFEASTOLFAC, 0.0, SCIP_REAL_MAX,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
-         "numerics/lpfeastol",
-         "primal feasibility tolerance of LP solver",
-         &(*set)->num_lpfeastol, FALSE, SCIP_DEFAULT_LPFEASTOL, SCIP_MINEPSILON*1e+03, SCIP_MAXEPSILON,
-         paramChgdLpfeastol, NULL) );
+         "numerics/lpfeastolfactor",
+         "factor w.r.t. primal feasibility tolerance that determines default (and maximal) primal feasibility tolerance of LP solver",
+         &(*set)->num_lpfeastolfactor, FALSE, SCIP_DEFAULT_LPFEASTOLFACTOR, 1e-6, 1.0,
+         paramChgdLPFeastolFactor, NULL) );
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
          "numerics/dualfeastol",
          "feasibility tolerance for reduced costs in LP solution",
@@ -2031,6 +2178,11 @@ SCIP_RETCODE SCIPsetCreate(
          &(*set)->presol_restartfac, TRUE, SCIP_DEFAULT_PRESOL_RESTARTFAC, 0.0, 1.0,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
+         "presolving/clqtablefac",
+         "limit on number of entries in clique table relative to number of problem nonzeros",
+         &(*set)->presol_clqtablefac, TRUE, SCIP_DEFAULT_PRESOL_CLQTABLEFAC, 0.0, SCIP_REAL_MAX,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
          "presolving/immrestartfac",
          "fraction of integer variables that were fixed in the root node triggering an immediate restart with preprocessing",
          &(*set)->presol_immrestartfac, TRUE, SCIP_DEFAULT_PRESOL_IMMRESTARTFAC, 0.0, 1.0,
@@ -2055,7 +2207,6 @@ SCIP_RETCODE SCIPsetCreate(
          "should aggregation of variables be forbidden?",
          &(*set)->presol_donotaggr, TRUE, SCIP_DEFAULT_PRESOL_DONOTAGGR,
          NULL, NULL) );
-
 
    /* pricing parameters */
    SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
@@ -2082,6 +2233,45 @@ SCIP_RETCODE SCIPsetCreate(
          "pricing/delvarsroot",
          "should variables created at the root node be deleted when the root is solved in case they are not present in the LP anymore?",
          &(*set)->price_delvarsroot, FALSE, SCIP_DEFAULT_PRICE_DELVARSROOT,
+         NULL, NULL) );
+
+   /* Decomposition parameters */
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "decomposition/benderslabels",
+         "should the variables be labelled for the application of Benders' decomposition?",
+         &(*set)->decomp_benderslabels, FALSE, SCIP_DEFAULT_DECOMP_BENDERSLABELS,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "decomposition/applybenders",
+         "if a decomposition exists, should Benders' decomposition be applied?",
+         &(*set)->decomp_applybenders, FALSE, SCIP_DEFAULT_DECOMP_APPLYBENDERS,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
+         "decomposition/maxgraphedge",
+         "maximum number of edges in block graph computation (-1: no limit, 0: disable block graph computation)",
+         &(*set)->decomp_maxgraphedge, FALSE, SCIP_DEFAULT_DECOMP_MAXGRAPHEDGE, -1, INT_MAX,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+      "decomposition/disablemeasures",
+      "disable expensive measures",
+      &(*set)->decomp_disablemeasures, FALSE, SCIP_DEFAULT_DECOMP_DISABLEMEASURES,
+      NULL, NULL) );
+
+   /* Benders' decomposition parameters */
+   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
+         "benders/solutiontol",
+         "the tolerance used for checking optimality in Benders' decomposition. tol where optimality is given by LB + tol > UB.",
+         &(*set)->benders_soltol, FALSE, SCIP_DEFAULT_BENDERS_SOLTOL, 0.0, SCIP_REAL_MAX,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "benders/cutlpsol",
+         "should Benders' cuts be generated from the solution to the LP relaxation?",
+         &(*set)->benders_cutlpsol, FALSE, SCIP_DEFAULT_BENDERS_CUTLPSOL,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "benders/copybenders",
+         "should Benders' decomposition be copied for use in sub-SCIPs?",
+         &(*set)->benders_copybenders, FALSE, SCIP_DEFAULT_BENDERS_COPYBENDERS,
          NULL, NULL) );
 
    /* propagation parameters */
@@ -2233,6 +2423,11 @@ SCIP_RETCODE SCIPsetCreate(
          &(*set)->sepa_maxcoefratio, FALSE, SCIP_DEFAULT_SEPA_MAXCOEFRATIO, 1.0, SCIP_INVALID/10.0,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
+         "separating/maxcoefratiofacrowprep",
+         "maximal ratio between coefficients (as factor of 1/feastol) to ensure in rowprep cleanup",
+         &(*set)->sepa_maxcoefratiofacrowprep, FALSE, SCIP_DEFAULT_SEPA_MAXCOEFRATIOFACROWPREP, 0.0, SCIP_REAL_MAX,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
          "separating/minefficacy",
          "minimal efficacy for a cut to enter the LP",
          &(*set)->sepa_minefficacy, FALSE, SCIP_DEFAULT_SEPA_MINEFFICACY, 0.0, SCIP_INVALID/10.0,
@@ -2241,26 +2436,6 @@ SCIP_RETCODE SCIPsetCreate(
          "separating/minefficacyroot",
          "minimal efficacy for a cut to enter the LP in the root node",
          &(*set)->sepa_minefficacyroot, FALSE, SCIP_DEFAULT_SEPA_MINEFFICACYROOT, 0.0, SCIP_INVALID/10.0,
-         NULL, NULL) );
-   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
-         "separating/minortho",
-         "minimal orthogonality for a cut to enter the LP",
-         &(*set)->sepa_minortho, FALSE, SCIP_DEFAULT_SEPA_MINORTHO, 0.0, 1.0,
-         NULL, NULL) );
-   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
-         "separating/minorthoroot",
-         "minimal orthogonality for a cut to enter the LP in the root node",
-         &(*set)->sepa_minorthoroot, FALSE, SCIP_DEFAULT_SEPA_MINORTHOROOT, 0.0, 1.0,
-         NULL, NULL) );
-   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
-         "separating/objparalfac",
-         "factor to scale objective parallelism of cut in separation score calculation",
-         &(*set)->sepa_objparalfac, TRUE, SCIP_DEFAULT_SEPA_OBJPARALFAC, 0.0, SCIP_INVALID/10.0,
-         NULL, NULL) );
-   SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
-         "separating/intsupportfac",
-         "factor to scale integral support of cut in separation score calculation",
-         &(*set)->sepa_intsupportfac, TRUE, SCIP_DEFAULT_SEPA_INTSUPPORTFAC, 0.0, SCIP_INVALID/10.0,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddRealParam(*set, messagehdlr, blkmem,
            "separating/minactivityquot",
@@ -2286,6 +2461,11 @@ SCIP_RETCODE SCIPsetCreate(
          "separating/cutselsubscip",
          "cut selection for sub SCIPs  ('a'ge, activity 'q'uotient)",
          &(*set)->sepa_cutselsubscip, TRUE, SCIP_DEFAULT_SEPA_CUTSELSUBSCIP, "aq",
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "separating/filtercutpoolrel",
+         "should cutpool separate only cuts with high relative efficacy?",
+         &(*set)->sepa_filtercutpoolrel, TRUE, SCIP_DEFAULT_SEPA_FILTERCUTPOOLREL,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
          "separating/maxruns",
@@ -2321,11 +2501,6 @@ SCIP_RETCODE SCIPsetCreate(
          "separating/maxstallroundsroot",
          "maximal number of consecutive separation rounds without objective or integrality improvement in the root node (-1: no additional restriction)",
          &(*set)->sepa_maxstallroundsroot, FALSE, SCIP_DEFAULT_SEPA_MAXSTALLROUNDSROOT, -1, INT_MAX,
-         NULL, NULL) );
-   SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
-         "separating/maxincrounds",
-         "maximal number of consecutive separation rounds that increase the size of the LP relaxation per node (-1: unlimited)",
-         &(*set)->sepa_maxincrounds, FALSE, SCIP_DEFAULT_SEPA_MAXINCROUNDS, -1, INT_MAX,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
          "separating/maxcuts",
@@ -2438,7 +2613,7 @@ SCIP_RETCODE SCIPsetCreate(
          NULL, NULL) );
 
    /* timing parameters */
-   assert(sizeof(int) == sizeof(SCIP_CLOCKTYPE));
+   assert(sizeof(int) == sizeof(SCIP_CLOCKTYPE)); /*lint !e506*/
    SCIP_CALL( SCIPsetAddIntParam(*set, messagehdlr, blkmem,
          "timing/clocktype",
          "default clock type (1: CPU user seconds, 2: wall clock time)",
@@ -2464,6 +2639,11 @@ SCIP_RETCODE SCIPsetCreate(
          "should timing for statistic output be performed?",
          &(*set)->time_statistictiming, FALSE, SCIP_DEFAULT_TIME_STATISTICTIMING,
          paramChgdStatistictiming, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "timing/nlpieval",
+         "should time for evaluation in NLP solves be measured?",
+         &(*set)->time_nlpieval, FALSE, SCIP_DEFAULT_TIME_NLPIEVAL,
+         NULL, NULL) );
 
    /* visualization parameters */
    SCIP_CALL( SCIPsetAddStringParam(*set, messagehdlr, blkmem,
@@ -2485,6 +2665,11 @@ SCIP_RETCODE SCIPsetCreate(
          "visual/dispsols",
          "should the node where solutions are found be visualized?",
          &(*set)->visual_dispsols, FALSE, SCIP_DEFAULT_VISUAL_DISPSOLS,
+         NULL, NULL) );
+   SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
+         "visual/displb",
+         "should lower bound information be visualized?",
+         &(*set)->visual_displb, FALSE, SCIP_DEFAULT_VISUAL_DISPLB,
          NULL, NULL) );
    SCIP_CALL( SCIPsetAddBoolParam(*set, messagehdlr, blkmem,
          "visual/objextern",
@@ -2564,6 +2749,13 @@ SCIP_RETCODE SCIPsetFree(
    }
    BMSfreeMemoryArrayNull(&(*set)->pricers);
 
+   /* free Benders' decomposition */
+   for( i = 0; i < (*set)->nbenders; ++i )
+   {
+      SCIP_CALL( SCIPbendersFree(&(*set)->benders[i], *set) );
+   }
+   BMSfreeMemoryArrayNull(&(*set)->benders);
+
    /* free constraint handlers */
    for( i = 0; i < (*set)->nconshdlrs; ++i )
    {
@@ -2601,6 +2793,13 @@ SCIP_RETCODE SCIPsetFree(
       SCIP_CALL( SCIPsepaFree(&(*set)->sepas[i], *set) );
    }
    BMSfreeMemoryArrayNull(&(*set)->sepas);
+
+   /* free cut selectors */
+   for( i = 0; i < (*set)->ncutsels; ++i)
+   {
+      SCIP_CALL( SCIPcutselFree(&(*set)->cutsels[i], *set) );
+   }
+   BMSfreeMemoryArrayNull(&(*set)->cutsels);
 
    /* free propagators */
    for( i = 0; i < (*set)->nprops; ++i )
@@ -2662,10 +2861,22 @@ SCIP_RETCODE SCIPsetFree(
    /* free dialogs */
    BMSfreeMemoryArrayNull(&(*set)->dialogs);
 
+   /* free expression handlers */
+   for( i = 0; i < (*set)->nexprhdlrs; ++i )
+   {
+      SCIP_CALL( SCIPexprhdlrFree(&(*set)->exprhdlrs[i], *set, blkmem) );
+   }
+   BMSfreeMemoryArrayNull(&(*set)->exprhdlrs);
+   (*set)->exprhdlrvar = NULL;
+   (*set)->exprhdlrval = NULL;
+   (*set)->exprhdlrsum = NULL;
+   (*set)->exprhdlrproduct = NULL;
+   (*set)->exprhdlrpow = NULL;
+
    /* free NLPIs */
    for( i = 0; i < (*set)->nnlpis; ++i )
    {
-      SCIP_CALL( SCIPnlpiFree(&(*set)->nlpis[i]) );
+      SCIP_CALL( SCIPnlpiFree(&(*set)->nlpis[i], *set) );
    }
    BMSfreeMemoryArrayNull(&(*set)->nlpis);
 
@@ -2678,7 +2889,6 @@ SCIP_RETCODE SCIPsetFree(
       SCIPconcsolverTypeFree(&(*set)->concsolvertypes[i]);
    }
    BMSfreeMemoryArrayNull(&(*set)->concsolvertypes);
-
 
    /* free information on external codes */
    for( i = 0; i < (*set)->nextcodes; ++i )
@@ -2695,6 +2905,9 @@ SCIP_RETCODE SCIPsetFree(
       SCIPbanditvtableFree(&(*set)->banditvtables[i]);
    }
    BMSfreeMemoryArrayNull(&(*set)->banditvtables);
+
+   /* free debugging data structure */
+   SCIP_CALL( SCIPdebugFree(*set) );
 
    BMSfreeMemory(set);
 
@@ -2966,21 +3179,6 @@ SCIP_RETCODE SCIPsetChgParamFixed(
    assert(set != NULL);
 
    SCIP_CALL( SCIPparamsetFix(set->paramset, name, fixed) );
-
-   return SCIP_OKAY;
-}
-
-/** changes the value of an existing parameter */
-SCIP_RETCODE SCIPsetSetParam(
-   SCIP_SET*             set,                /**< global SCIP settings */
-   SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
-   const char*           name,               /**< name of the parameter */
-   void*                 value               /**< new value of the parameter */
-   )
-{
-   assert(set != NULL);
-
-   SCIP_CALL( SCIPparamsetSet(set->paramset, set, messagehdlr, name, value) );
 
    return SCIP_OKAY;
 }
@@ -3522,6 +3720,79 @@ void SCIPsetSortPricersName(
    }
 }
 
+/** inserts Benders' decomposition in the Benders' decomposition list */
+SCIP_RETCODE SCIPsetIncludeBenders(
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_BENDERS*         benders             /**< Benders' decomposition structure */
+   )
+{
+   assert(set != NULL);
+   assert(benders != NULL);
+
+   if( set->nbenders >= set->benderssize )
+   {
+      set->benderssize = SCIPsetCalcMemGrowSize(set, set->nbenders+1);
+      SCIP_ALLOC( BMSreallocMemoryArray(&set->benders, set->benderssize) );
+   }
+   assert(set->nbenders < set->benderssize);
+
+   set->benders[set->nbenders] = benders;
+   set->nbenders++;
+   set->benderssorted = FALSE;
+
+   return SCIP_OKAY;
+}
+
+/** returns the Benders' decomposition of the given name, or NULL if not existing */
+SCIP_BENDERS* SCIPsetFindBenders(
+   SCIP_SET*             set,                /**< global SCIP settings */
+   const char*           name                /**< name of the Benders' decomposition */
+   )
+{
+   int i;
+
+   assert(set != NULL);
+   assert(name != NULL);
+
+   for( i = 0; i < set->nbenders; ++i )
+   {
+      if( strcmp(SCIPbendersGetName(set->benders[i]), name) == 0 )
+         return set->benders[i];
+   }
+
+   return NULL;
+}
+
+/** sorts Benders' decomposition by priorities */
+void SCIPsetSortBenders(
+   SCIP_SET*             set                 /**< global SCIP settings */
+   )
+{
+   assert(set != NULL);
+
+   if( !set->benderssorted )
+   {
+      SCIPsortPtr((void**)set->benders, SCIPbendersComp, set->nbenders);
+      set->benderssorted = TRUE;
+      set->bendersnamesorted = FALSE;
+   }
+}
+
+/** sorts Benders' decomposition by name */
+void SCIPsetSortBendersName(
+   SCIP_SET*             set                 /**< global SCIP settings */
+   )
+{
+   assert(set != NULL);
+
+   if( !set->bendersnamesorted )
+   {
+      SCIPsortPtr((void**)set->benders, SCIPbendersCompName, set->nbenders);
+      set->benderssorted = FALSE;
+      set->bendersnamesorted = TRUE;
+   }
+}
+
 /** inserts constraint handler in constraint handler list */
 SCIP_RETCODE SCIPsetIncludeConshdlr(
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -3624,13 +3895,11 @@ void SCIPsetReinsertConshdlrSepaPrio(
          }
          set->conshdlrs_sepa[newpos] = conshdlr;
       }
-
    }
    else if( newpriority < oldpriority )
    {
       i = set->nconshdlrs - 1;
-      while( i >= 0 &&
-                  strcmp(SCIPconshdlrGetName(set->conshdlrs_sepa[i]), SCIPconshdlrGetName(conshdlr)) != 0 )
+      while( i >= 0 && strcmp(SCIPconshdlrGetName(set->conshdlrs_sepa[i]), SCIPconshdlrGetName(conshdlr)) != 0 )
       {
          int priorityatpos;
 
@@ -3978,6 +4247,64 @@ void SCIPsetSortSepasName(
    }
 }
 
+/** inserts cut selector in cut selector list */
+SCIP_RETCODE SCIPsetIncludeCutsel(
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_CUTSEL*          cutsel              /**< cut selector */
+   )
+{
+   assert(set != NULL);
+   assert(cutsel != NULL);
+   assert(!SCIPcutselIsInitialized(cutsel));
+
+   if( set->ncutsels >= set->cutselssize )
+   {
+      set->cutselssize = SCIPsetCalcMemGrowSize(set, set->ncutsels + 1);
+      SCIP_ALLOC( BMSreallocMemoryArray(&set->cutsels, set->cutselssize) );
+   }
+   assert(set->ncutsels < set->cutselssize);
+
+   set->cutsels[set->ncutsels] = cutsel;
+   set->ncutsels++;
+   set->cutselssorted = FALSE;
+
+   return SCIP_OKAY;
+}
+
+/** returns the cut selector of the given name, or NULL if not existing */
+SCIP_CUTSEL* SCIPsetFindCutsel(
+   SCIP_SET*             set,                /**< global SCIP settings */
+   const char*           name                /**< name of separator */
+   )
+{
+   int i;
+
+   assert(set != NULL);
+   assert(name != NULL);
+
+   for( i = 0; i < set->ncutsels; ++i )
+   {
+      if( strcmp(SCIPcutselGetName(set->cutsels[i]), name) == 0 )
+         return set->cutsels[i];
+   }
+
+   return NULL;
+}
+
+/** sorts cut selectors by priorities */
+void SCIPsetSortCutsels(
+   SCIP_SET*             set                 /**< global SCIP settings */
+   )
+{
+   assert(set != NULL);
+
+   if( !set->cutselssorted )
+   {
+      SCIPsortPtr((void**)set->cutsels, SCIPcutselComp, set->ncutsels);
+      set->cutselssorted = TRUE;
+   }
+}
+
 /** inserts propagator in propagator list */
 SCIP_RETCODE SCIPsetIncludeProp(
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -4245,7 +4572,7 @@ SCIP_HEUR* SCIPsetFindHeur(
    return NULL;
 }
 
-/** sorts heuristics by priorities */
+/** sorts heuristics by their delay positions and priorities */
 void SCIPsetSortHeurs(
    SCIP_SET*             set                 /**< global SCIP settings */
    )
@@ -4696,6 +5023,72 @@ SCIP_Bool SCIPsetExistsDialog(
    return FALSE;
 }
 
+/** inserts expression handler in expression handler list */
+SCIP_RETCODE SCIPsetIncludeExprhdlr(
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_EXPRHDLR*        exprhdlr            /**< expression handler */
+   )
+{
+   assert(set != NULL);
+   assert(exprhdlr != NULL);
+
+   if( set->nexprhdlrs >= set->exprhdlrssize )
+   {
+      set->exprhdlrssize = SCIPsetCalcMemGrowSize(set, set->nexprhdlrs+1);
+      SCIP_ALLOC( BMSreallocMemoryArray(&set->exprhdlrs, set->exprhdlrssize) );
+   }
+   assert(set->nexprhdlrs < set->exprhdlrssize);
+
+   set->exprhdlrs[set->nexprhdlrs] = exprhdlr;
+   set->nexprhdlrs++;
+   set->exprhdlrssorted = FALSE;
+
+   if( set->exprhdlrvar == NULL && strcmp(SCIPexprhdlrGetName(exprhdlr), "var") == 0 )
+      set->exprhdlrvar = exprhdlr;
+   else if( set->exprhdlrval == NULL && strcmp(SCIPexprhdlrGetName(exprhdlr), "val") == 0 )
+      set->exprhdlrval = exprhdlr;
+   else if( set->exprhdlrsum == NULL && strcmp(SCIPexprhdlrGetName(exprhdlr), "sum") == 0 )
+      set->exprhdlrsum = exprhdlr;
+   else if( set->exprhdlrproduct == NULL && strcmp(SCIPexprhdlrGetName(exprhdlr), "prod") == 0 )
+      set->exprhdlrproduct = exprhdlr;
+   else if( set->exprhdlrpow == NULL && strcmp(SCIPexprhdlrGetName(exprhdlr), "pow") == 0 )
+      set->exprhdlrpow = exprhdlr;
+
+   return SCIP_OKAY;
+}
+
+/** returns the expression handler of the given name, or NULL if not existing */
+SCIP_EXPRHDLR* SCIPsetFindExprhdlr(
+   SCIP_SET*             set,                /**< global SCIP settings */
+   const char*           name                /**< name of expression handler */
+   )
+{
+   int i;
+
+   assert(set != NULL);
+   assert(name != NULL);
+
+   for( i = 0; i < set->nexprhdlrs; ++i )
+      if( strcmp(SCIPexprhdlrGetName(set->exprhdlrs[i]), name) == 0 )
+         return set->exprhdlrs[i];
+
+   return NULL;
+}
+
+/** sorts expression handlers by name */
+void SCIPsetSortExprhdlrs(
+   SCIP_SET*             set                 /**< global SCIP settings */
+   )
+{
+   assert(set != NULL);
+
+   if( !set->exprhdlrssorted )
+   {
+      SCIPsortPtr((void**)set->exprhdlrs, SCIPexprhdlrComp, set->nexprhdlrs);
+      set->exprhdlrssorted = TRUE;
+   }
+}
+
 /** inserts NLPI in NLPI list */
 SCIP_RETCODE SCIPsetIncludeNlpi(
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -4817,6 +5210,13 @@ SCIP_RETCODE SCIPsetInitPlugins(
       SCIP_CALL( SCIPpricerInit(set->pricers[i], set) );
    }
 
+   /* Benders' decomposition algorithm */
+   SCIPsetSortBenders(set);
+   for( i = 0; i < set->nactivebenders; ++i )
+   {
+      SCIP_CALL( SCIPbendersInit(set->benders[i], set) );
+   }
+
    /* constraint handlers */
    for( i = 0; i < set->nconshdlrs; ++i )
    {
@@ -4845,6 +5245,12 @@ SCIP_RETCODE SCIPsetInitPlugins(
    for( i = 0; i < set->nsepas; ++i )
    {
       SCIP_CALL( SCIPsepaInit(set->sepas[i], set) );
+   }
+
+   /* cut selectors */
+   for( i = 0; i < set->ncutsels; ++i )
+   {
+      SCIP_CALL( SCIPcutselInit(set->cutsels[i], set) );
    }
 
    /* propagators */
@@ -4896,6 +5302,14 @@ SCIP_RETCODE SCIPsetInitPlugins(
       SCIP_CALL( SCIPtableInit(set->tables[i], set) );
    }
 
+   /* expression handlers */
+   for( i = 0; i < set->nexprhdlrs; ++i )
+      SCIPexprhdlrInit(set->exprhdlrs[i], set);
+
+   /* NLP solver interfaces */
+   for( i = 0; i < set->nnlpis; ++i )
+      SCIPnlpiInit(set->nlpis[i]);
+
    return SCIP_OKAY;
 }
 
@@ -4915,6 +5329,13 @@ SCIP_RETCODE SCIPsetExitPlugins(
    for( i = 0; i < set->nactivepricers; ++i )
    {
       SCIP_CALL( SCIPpricerExit(set->pricers[i], set) );
+   }
+
+   /* Benders' decomposition */
+   SCIPsetSortBenders(set);
+   for( i = 0; i < set->nactivebenders; ++i )
+   {
+      SCIP_CALL( SCIPbendersExit(set->benders[i], set) );
    }
 
    /* constraint handlers */
@@ -4945,6 +5366,12 @@ SCIP_RETCODE SCIPsetExitPlugins(
    for( i = 0; i < set->nsepas; ++i )
    {
       SCIP_CALL( SCIPsepaExit(set->sepas[i], set) );
+   }
+
+   /* cut selectors */
+   for( i = 0; i < set->ncutsels; ++i )
+   {
+      SCIP_CALL( SCIPcutselExit(set->cutsels[i], set) );
    }
 
    /* propagators */
@@ -5009,22 +5436,28 @@ SCIP_RETCODE SCIPsetInitprePlugins(
 
    assert(set != NULL);
 
-   /* inform presolvers that the presolving is abound to begin */
+   /* inform presolvers that the presolving is about to begin */
    for( i = 0; i < set->npresols; ++i )
    {
       SCIP_CALL( SCIPpresolInitpre(set->presols[i], set) );
    }
 
-   /* inform propagators that the presolving is abound to begin */
+   /* inform propagators that the presolving is about to begin */
    for( i = 0; i < set->nprops; ++i )
    {
       SCIP_CALL( SCIPpropInitpre(set->props[i], set) );
    }
 
-   /* inform constraint handlers that the presolving is abound to begin */
+   /* inform constraint handlers that the presolving is about to begin */
    for( i = 0; i < set->nconshdlrs; ++i )
    {
       SCIP_CALL( SCIPconshdlrInitpre(set->conshdlrs[i], blkmem, set, stat) );
+   }
+
+   /* inform Benders' decomposition that the presolving is about to begin */
+   for( i = 0; i < set->nactivebenders; ++i )
+   {
+      SCIP_CALL( SCIPbendersInitpre(set->benders[i], set, stat) );
    }
 
    return SCIP_OKAY;
@@ -5041,22 +5474,28 @@ SCIP_RETCODE SCIPsetExitprePlugins(
 
    assert(set != NULL);
 
-   /* inform presolvers that the presolving is abound to begin */
+   /* inform presolvers that the presolving is about to end */
    for( i = 0; i < set->npresols; ++i )
    {
       SCIP_CALL( SCIPpresolExitpre(set->presols[i], set) );
    }
 
-   /* inform propagators that the presolving is abound to begin */
+   /* inform propagators that the presolving is about to end */
    for( i = 0; i < set->nprops; ++i )
    {
       SCIP_CALL( SCIPpropExitpre(set->props[i], set) );
    }
 
-   /* inform constraint handlers that the presolving is abound to begin */
+   /* inform constraint handlers that the presolving is about to end */
    for( i = 0; i < set->nconshdlrs; ++i )
    {
       SCIP_CALL( SCIPconshdlrExitpre(set->conshdlrs[i], blkmem, set, stat) );
+   }
+
+   /* inform Benders' decomposition that the presolving is about to end */
+   for( i = 0; i < set->nactivebenders; ++i )
+   {
+      SCIP_CALL( SCIPbendersExitpre(set->benders[i], set, stat) );
    }
 
    return SCIP_OKAY;
@@ -5089,6 +5528,13 @@ SCIP_RETCODE SCIPsetInitsolPlugins(
       SCIP_CALL( SCIPpricerInitsol(set->pricers[i], set) );
    }
 
+   /* Benders' decomposition */
+   SCIPsetSortBenders(set);
+   for( i = 0; i < set->nactivebenders; ++i )
+   {
+      SCIP_CALL( SCIPbendersInitsol(set->benders[i], set) );
+   }
+
    /* constraint handlers */
    for( i = 0; i < set->nconshdlrs; ++i )
    {
@@ -5111,6 +5557,12 @@ SCIP_RETCODE SCIPsetInitsolPlugins(
    for( i = 0; i < set->nsepas; ++i )
    {
       SCIP_CALL( SCIPsepaInitsol(set->sepas[i], set) );
+   }
+
+   /* cut selectors */
+   for( i =0; i < set->ncutsels; ++i )
+   {
+      SCIP_CALL( SCIPcutselInitsol(set->cutsels[i], set) );
    }
 
    /* propagators */
@@ -5177,6 +5629,13 @@ SCIP_RETCODE SCIPsetExitsolPlugins(
       SCIP_CALL( SCIPpricerExitsol(set->pricers[i], set) );
    }
 
+   /* Benders' decomposition */
+   SCIPsetSortBenders(set);
+   for( i = 0; i < set->nactivebenders; ++i )
+   {
+      SCIP_CALL( SCIPbendersExitsol(set->benders[i], set) );
+   }
+
    /* constraint handlers */
    for( i = 0; i < set->nconshdlrs; ++i )
    {
@@ -5199,6 +5658,12 @@ SCIP_RETCODE SCIPsetExitsolPlugins(
    for( i = 0; i < set->nsepas; ++i )
    {
       SCIP_CALL( SCIPsepaExitsol(set->sepas[i], set) );
+   }
+
+   /* cut selectors */
+   for( i = 0; i < set->ncutsels; ++i )
+   {
+      SCIP_CALL( SCIPcutselExitsol(set->cutsels[i], set) );
    }
 
    /* propagators */
@@ -5295,6 +5760,7 @@ SCIP_RETCODE SCIPsetSetVerbLevel(
 /** sets feasibility tolerance */
 SCIP_RETCODE SCIPsetSetFeastol(
    SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_LP*              lp,                 /**< LP data, or NULL */
    SCIP_Real             feastol             /**< new feasibility tolerance */
    )
 {
@@ -5302,54 +5768,14 @@ SCIP_RETCODE SCIPsetSetFeastol(
 
    set->num_feastol = feastol;
 
-   /* the feasibility tolerance of the LP solver should never be larger than SCIP's feasibility tolerance; if necessary,
-    * decrease it; use the SCIP change method in order to mark the LP unsolved
+   /* the feasibility tolerance of the LP solver should never be larger than
+    * numerics/lpfeastolfactor times SCIP's feasibility tolerance
+    * if necessary, reset LP feastol
     */
-   if( SCIPsetFeastol(set) < SCIPsetLpfeastol(set) )
-   {
-      SCIPsetDebugMsg(set, "decreasing lpfeastol along with feastol to %g\n", SCIPsetFeastol(set));
-      SCIP_CALL( SCIPchgLpfeastol(set->scip, SCIPsetFeastol(set), TRUE) );
-   }
+   if( lp != NULL && SCIPlpGetFeastol(lp) > set->num_lpfeastolfactor * SCIPsetFeastol(set) )
+      SCIPlpResetFeastol(lp, set);
 
    return SCIP_OKAY;
-}
-
-/** sets primal feasibility tolerance of LP solver */
-SCIP_RETCODE SCIPsetSetLpfeastol(
-   SCIP_SET*             set,                /**< global SCIP settings */
-   SCIP_Real             lpfeastol,          /**< new primal feasibility tolerance of LP solver */
-   SCIP_Bool             printnewvalue       /**< should "numerics/lpfeastol = ..." be printed? */
-   )
-{
-   SCIP_RETCODE retcode;
-
-   assert(set != NULL);
-
-   retcode = SCIP_OKAY;
-
-   /* the feasibility tolerance of the LP solver should never be larger than SCIP's feasibility tolerance; if this is
-    * tried, we correct it to feastol; note that when we are called, e.g., by paramChgdLpfeastol, lpfeastol has already
-    * been modified and so we cannot leave the lpfeastol value unchanged; if we would not return SCIP_PARAMETERWRONGVAL
-    * in this case, the interactive shell would print the incorrect value to be set
-    */
-   if( lpfeastol > SCIPsetFeastol(set) )
-   {
-      SCIPerrorMessage("LP feasibility tolerance must be at least as tight as SCIP's feasibility tolerance\n");
-
-      retcode = SCIP_PARAMETERWRONGVAL;
-      printnewvalue = TRUE;
-
-      set->num_lpfeastol = SCIPsetFeastol(set);
-   }
-   else
-      set->num_lpfeastol = lpfeastol;
-
-   if( printnewvalue )
-   {
-      SCIPverbMessage(set->scip, SCIP_VERBLEVEL_HIGH, NULL, "numerics/lpfeastol = %.15g\n", SCIPsetLpfeastol(set));
-   }
-
-   return retcode;
 }
 
 /** sets feasibility tolerance for reduced costs in LP solution */
@@ -5438,6 +5864,20 @@ int SCIPsetGetSepaMaxcuts(
       return set->sepa_maxcuts;
 }
 
+/** returns the maximal ratio between coefficients to ensure in rowprep cleanup */
+SCIP_Real SCIPsetGetSepaMaxCoefRatioRowprep(
+   SCIP_SET*             set                 /**< global SCIP settings */
+   )
+{
+   SCIP_Real maxcoefrange;
+
+   maxcoefrange = set->sepa_maxcoefratiofacrowprep / set->num_feastol;
+   if( maxcoefrange < 1.0 )
+      maxcoefrange = 1.0;
+
+   return maxcoefrange;
+}
+
 /** returns user defined objective value (in original space) for reference purposes */
 SCIP_Real SCIPsetGetReferencevalue(
    SCIP_SET*             set                 /**< global SCIP settings */
@@ -5474,12 +5914,12 @@ SCIP_DEBUGSOLDATA* SCIPsetGetDebugSolData(
 #undef SCIPsetEpsilon
 #undef SCIPsetSumepsilon
 #undef SCIPsetFeastol
-#undef SCIPsetLpfeastol
 #undef SCIPsetDualfeastol
 #undef SCIPsetBarrierconvtol
 #undef SCIPsetPseudocosteps
 #undef SCIPsetPseudocostdelta
 #undef SCIPsetCutoffbounddelta
+#undef SCIPsetLPFeastolFactor
 #undef SCIPsetRelaxfeastol
 #undef SCIPsetRecompfac
 #undef SCIPsetIsEQ
@@ -5555,6 +5995,7 @@ SCIP_DEBUGSOLDATA* SCIPsetGetDebugSolData(
 #undef SCIPsetInitializeRandomSeed
 #undef SCIPsetIsHugeValue
 #undef SCIPsetGetHugeValue
+#undef SCIPsetGetSubscipsOff
 
 /** returns value treated as infinity */
 SCIP_Real SCIPsetInfinity(
@@ -5618,17 +6059,12 @@ SCIP_Real SCIPsetDualfeastol(
    return set->num_dualfeastol;
 }
 
-/** returns primal feasibility tolerance of LP solver given as minimum of lpfeastol option and relaxfeastol */
-SCIP_Real SCIPsetLpfeastol(
+/** returns factor w.r.t. primal feasibility tolerance that determines default (and maximal) feasibility tolerance */
+SCIP_Real SCIPsetLPFeastolFactor(
    SCIP_SET*             set                 /**< global SCIP settings */
    )
 {
-   assert(set != NULL);
-
-   if( set->num_relaxfeastol != SCIP_INVALID ) /*lint !e777*/
-      return MIN(set->num_relaxfeastol, set->num_lpfeastol);
-
-   return set->num_lpfeastol;
+   return set->num_lpfeastolfactor;
 }
 
 /** returns convergence tolerance used in barrier algorithm */
@@ -6527,8 +6963,6 @@ SCIP_Bool SCIPsetIsLbBetter(
    SCIP_Real             oldub               /**< old upper bound */
    )
 {
-   SCIP_Real eps;
-
    assert(set != NULL);
    assert(SCIPsetIsLE(set, oldlb, oldub));
 
@@ -6536,9 +6970,7 @@ SCIP_Bool SCIPsetIsLbBetter(
    if( oldlb < 0.0 && newlb >= 0.0 )
       return TRUE;
 
-   eps = REALABS(oldlb);
-   eps = MIN(oldub - oldlb, eps);
-   return EPSGT(newlb, oldlb, set->num_boundstreps * MAX(eps, 1e-3));
+   return EPSGT(newlb, oldlb, set->num_boundstreps * MAX(MIN(oldub - oldlb, REALABS(oldlb)), 1e-3));  /*lint !e666*/
 }
 
 /** checks, if the given new upper bound is at least min(oldub - oldlb, |oldub|) times the bound
@@ -6552,8 +6984,6 @@ SCIP_Bool SCIPsetIsUbBetter(
    SCIP_Real             oldub               /**< old upper bound */
    )
 {
-   SCIP_Real eps;
-
    assert(set != NULL);
    assert(SCIPsetIsLE(set, oldlb, oldub));
 
@@ -6561,9 +6991,7 @@ SCIP_Bool SCIPsetIsUbBetter(
    if( oldub > 0.0 && newub <= 0.0 )
       return TRUE;
 
-   eps = REALABS(oldub);
-   eps = MIN(oldub - oldlb, eps);
-   return EPSLT(newub, oldub, set->num_boundstreps * MAX(eps, 1e-3));
+   return EPSLT(newub, oldub, set->num_boundstreps * MAX(MIN(oldub - oldlb, REALABS(oldub)), 1e-3));  /*lint !e666*/
 }
 
 /** checks, if the given cut's efficacy is larger than the minimal cut efficacy */
@@ -6801,6 +7229,16 @@ SCIP_Bool SCIPsetIsSumRelGE(
    return !EPSN(diff, set->num_sumepsilon);
 }
 
+/** returns the flag indicating whether sub-SCIPs that could cause recursion have been deactivated */
+SCIP_Bool SCIPsetGetSubscipsOff(
+   SCIP_SET*             set                 /**< global SCIP settings */
+   )
+{
+   assert(set != NULL);
+
+   return set->subscipsoff;
+}
+
 /** Checks, if an iteratively updated value is reliable or should be recomputed from scratch.
  *  This is useful, if the value, e.g., the activity of a linear constraint or the pseudo objective value, gets a high
  *  absolute value during the optimization process which is later reduced significantly. In this case, the last digits
@@ -6836,6 +7274,7 @@ void SCIPsetPrintDebugMessage(
    ...                                       /**< format arguments line in printf() function */
    )
 {
+   const char* filename;
    int subscipdepth = 0;
    SCIP* scip;
    va_list ap;
@@ -6846,13 +7285,24 @@ void SCIPsetPrintDebugMessage(
    scip = set->scip;
    assert( scip != NULL );
 
+   /* strip directory from filename */
+#if defined(_WIN32) || defined(_WIN64)
+   filename = strrchr(sourcefile, '\\');
+#else
+   filename = strrchr(sourcefile, '/');
+#endif
+   if ( filename == NULL )
+      filename = sourcefile;
+   else
+      ++filename;
+
    if ( scip->stat != NULL )
       subscipdepth = scip->stat->subscipdepth;
 
    if ( subscipdepth > 0 )
-      SCIPmessageFPrintInfo(scip->messagehdlr, NULL, "%d: [%s:%d] debug: ", subscipdepth, sourcefile, sourceline);
+      SCIPmessageFPrintInfo(scip->messagehdlr, NULL, "%d: [%s:%d] debug: ", subscipdepth, filename, sourceline);
    else
-      SCIPmessageFPrintInfo(scip->messagehdlr, NULL, "[%s:%d] debug: ", sourcefile, sourceline);
+      SCIPmessageFPrintInfo(scip->messagehdlr, NULL, "[%s:%d] debug: ", filename, sourceline);
 
    va_start(ap, formatstr); /*lint !e838*/
    SCIPmessageVFPrintInfo(scip->messagehdlr, NULL, formatstr, ap);
@@ -6877,12 +7327,12 @@ void SCIPsetDebugMessagePrint(
 }
 
 /** modifies an initial seed value with the global shift of random seeds */
-int SCIPsetInitializeRandomSeed(
+unsigned int SCIPsetInitializeRandomSeed(
    SCIP_SET*             set,                /**< global SCIP settings */
-   int                   initialseedvalue    /**< initial seed value to be modified */
+   unsigned int          initialseedvalue    /**< initial seed value to be modified */
    )
 {
    assert(set != NULL);
 
-   return (initialseedvalue + set->random_randomseedshift);
+   return (unsigned int)(initialseedvalue + (unsigned) set->random_randomseedshift);
 }

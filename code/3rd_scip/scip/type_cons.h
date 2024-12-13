@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -26,12 +35,18 @@
  *  - \ref scip::ObjConshdlr "C++ wrapper class"
  */
 
+/** @defgroup DEFPLUGINS_CONS Default constraint handlers
+ *  @ingroup DEFPLUGINS
+ *  @brief implementation files (.c files) of the default constraint handlers of SCIP
+ */
+
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
 #ifndef __SCIP_TYPE_CONS_H__
 #define __SCIP_TYPE_CONS_H__
 
 #include "scip/def.h"
+#include "scip/type_lp.h"
 #include "scip/type_retcode.h"
 #include "scip/type_result.h"
 #include "scip/type_var.h"
@@ -336,9 +351,10 @@ typedef enum SCIP_LinConstype SCIP_LINCONSTYPE;
  *
  *  possible return values for *result (if more than one applies, the first in the list should be used):
  *  - SCIP_CUTOFF     : the node is infeasible in the variable's bounds and can be cut off
- *  - SCIP_CONSADDED  : an additional constraint was generated
+ *  - SCIP_CONSADDED  : an additional constraint was generated (added constraints must have initial flag = TRUE)
  *  - SCIP_REDUCEDDOM : a variable's domain was reduced
  *  - SCIP_SEPARATED  : a cutting plane was generated
+ *  - SCIP_SOLVELP    : the LP should be solved again because the LP primal feasibility tolerance has been tightened
  *  - SCIP_BRANCHED   : no changes were made to the problem, but a branching was applied to resolve an infeasibility
  *  - SCIP_INFEASIBLE : at least one constraint is infeasible, but it was not resolved
  *  - SCIP_FEASIBLE   : all constraints of the handler are feasible
@@ -360,14 +376,13 @@ typedef enum SCIP_LinConstype SCIP_LINCONSTYPE;
  *
  *  possible return values for *result (if more than one applies, the first in the list should be used):
  *  - SCIP_CUTOFF     : the node is infeasible in the variable's bounds and can be cut off
- *  - SCIP_CONSADDED  : an additional constraint was generated
+ *  - SCIP_CONSADDED  : an additional constraint was generated (added constraints must have initial flag = TRUE)
  *  - SCIP_REDUCEDDOM : a variable's domain was reduced
  *  - SCIP_SEPARATED  : a cutting plane was generated
  *  - SCIP_BRANCHED   : no changes were made to the problem, but a branching was applied to resolve an infeasibility
  *  - SCIP_SOLVELP    : at least one constraint is infeasible, and this can only be resolved by solving the LP
  *  - SCIP_INFEASIBLE : at least one constraint is infeasible, but it was not resolved
  *  - SCIP_FEASIBLE   : all constraints of the handler are feasible
- *  - SCIP_DIDNOTRUN  : the enforcement was skipped (only possible, if objinfeasible is true)
  */
 #define SCIP_DECL_CONSENFORELAX(x) SCIP_RETCODE x (SCIP* scip, SCIP_SOL* sol, SCIP_CONSHDLR* conshdlr, SCIP_CONS** conss, int nconss, int nusefulconss, \
       SCIP_Bool solinfeasible, SCIP_RESULT* result)
@@ -465,7 +480,7 @@ typedef enum SCIP_LinConstype SCIP_LINCONSTYPE;
  *  nconss - nusefulconss constraints.
  *
  *  @note if the constraint handler uses dual information in propagation it is nesassary to check via calling
- *        SCIPallowDualReds and SCIPallowObjProp if dual reductions and propgation with the current cutoff bound, resp.,
+ *        SCIPallowWeakDualReds and SCIPallowStrongDualReds if dual reductions and propgation with the current cutoff bound, resp.,
  *        are allowed.
  *
  *  input:
@@ -515,8 +530,8 @@ typedef enum SCIP_LinConstype SCIP_LINCONSTYPE;
  *  @note the counters state the changes since the last call including the changes of this presolving method during its
  *        call
  *
- *  @note if the constraint handler performs dual presolving it is nesassary to check via calling SCIPallowDualReds
- *        if dual reductions are allowed.
+ *  @note if the constraint handler performs dual presolving it is nesassary to check via calling SCIPallowWeakDualReds
+ *        and SCIPallowStrongDualReds if dual reductions are allowed.
  *
  *  input/output:
  *  - nfixedvars      : pointer to count total number of variables fixed of all presolvers
@@ -599,50 +614,52 @@ typedef enum SCIP_LinConstype SCIP_LINCONSTYPE;
 /** variable rounding lock method of constraint handler
  *
  *  This method is called, after a constraint is added or removed from the transformed problem.
- *  It should update the rounding locks of all associated variables with calls to SCIPaddVarLocks(),
- *  depending on the way, the variable is involved in the constraint:
+ *  It should update the rounding locks of the given type of all associated variables with calls to
+ *  SCIPaddVarLocksType(), depending on the way, the variable is involved in the constraint:
  *  - If the constraint may get violated by decreasing the value of a variable, it should call
- *    SCIPaddVarLocks(scip, var, nlockspos, nlocksneg), saying that rounding down is potentially rendering the
- *    (positive) constraint infeasible and rounding up is potentially rendering the negation of the constraint
- *    infeasible.
+ *    SCIPaddVarLocksType(scip, var, locktype, nlockspos, nlocksneg), saying that rounding down is
+ *    potentially rendering the (positive) constraint infeasible and rounding up is potentially rendering the
+ *    negation of the constraint infeasible.
  *  - If the constraint may get violated by increasing the value of a variable, it should call
- *    SCIPaddVarLocks(scip, var, nlocksneg, nlockspos), saying that rounding up is potentially rendering the
- *    constraint's negation infeasible and rounding up is potentially rendering the constraint itself
- *    infeasible.
+ *    SCIPaddVarLocksType(scip, var, locktype, nlocksneg, nlockspos), saying that rounding up is
+ *    potentially rendering the constraint's negation infeasible and rounding up is potentially rendering the
+ *    constraint itself infeasible.
  *  - If the constraint may get violated by changing the variable in any direction, it should call
- *    SCIPaddVarLocks(scip, var, nlockspos + nlocksneg, nlockspos + nlocksneg).
+ *    SCIPaddVarLocksType(scip, var, locktype, nlockspos + nlocksneg, nlockspos + nlocksneg).
  *
  *  Consider the linear constraint "3x -5y +2z <= 7" as an example. The variable rounding lock method of the
- *  linear constraint handler should call SCIPaddVarLocks(scip, x, nlocksneg, nlockspos), 
- *  SCIPaddVarLocks(scip, y, nlockspos, nlocksneg) and SCIPaddVarLocks(scip, z, nlocksneg, nlockspos) to tell SCIP,
- *  that rounding up of x and z and rounding down of y can destroy the feasibility of the constraint, while rounding
- *  down of x and z and rounding up of y can destroy the feasibility of the constraint's negation "3x -5y +2z > 7".
+ *  linear constraint handler should call SCIPaddVarLocksType(scip, x, locktype, nlocksneg, nlockspos),
+ *  SCIPaddVarLocksType(scip, y, locktype, nlockspos, nlocksneg) and
+ *  SCIPaddVarLocksType(scip, z, type, nlocksneg, nlockspos) to tell SCIP, that rounding up of x and z and rounding
+ *  down of y can destroy the feasibility of the constraint, while rounding down of x and z and rounding up of y can
+ *  destroy the feasibility of the constraint's negation "3x -5y +2z > 7".
  *  A linear constraint "2 <= 3x -5y +2z <= 7" should call
- *  SCIPaddVarLocks(scip, ..., nlockspos + nlocksneg, nlockspos + nlocksneg) on all variables, since rounding in both
+ *  SCIPaddVarLocksType(scip, ..., nlockspos + nlocksneg, nlockspos + nlocksneg) on all variables, since rounding in both
  *  directions of each variable can destroy both the feasibility of the constraint and it's negation
  *  "3x -5y +2z < 2  or  3x -5y +2z > 7".
  *
  *  If the constraint itself contains other constraints as sub constraints (e.g. the "or" constraint concatenation
  *  "c(x) or d(x)"), the rounding lock methods of these constraints should be called in a proper way.
  *  - If the constraint may get violated by the violation of the sub constraint c, it should call
- *    SCIPaddConsLocks(scip, c, nlockspos, nlocksneg), saying that infeasibility of c may lead to infeasibility of
- *    the (positive) constraint, and infeasibility of c's negation (i.e. feasibility of c) may lead to infeasibility
- *    of the constraint's negation (i.e. feasibility of the constraint).
+ *    SCIPaddConsLocksType(scip, c, locktype, nlockspos, nlocksneg), saying that infeasibility of c may lead to
+ *    infeasibility of the (positive) constraint, and infeasibility of c's negation (i.e. feasibility of c) may lead
+ *    to infeasibility of the constraint's negation (i.e. feasibility of the constraint).
  *  - If the constraint may get violated by the feasibility of the sub constraint c, it should call
- *    SCIPaddConsLocks(scip, c, nlocksneg, nlockspos), saying that infeasibility of c may lead to infeasibility of
- *    the constraint's negation (i.e. feasibility of the constraint), and infeasibility of c's negation (i.e. feasibility
- *    of c) may lead to infeasibility of the (positive) constraint.
+ *    SCIPaddConsLocksType(scip, c, locktype, nlocksneg, nlockspos), saying that infeasibility of c may lead to
+ *    infeasibility of the constraint's negation (i.e. feasibility of the constraint), and infeasibility of c's negation
+ *    (i.e. feasibility of c) may lead to infeasibility of the (positive) constraint.
  *  - If the constraint may get violated by any change in the feasibility of the sub constraint c, it should call
- *    SCIPaddConsLocks(scip, c, nlockspos + nlocksneg, nlockspos + nlocksneg).
+ *    SCIPaddConsLocksType(scip, c, locktype, nlockspos + nlocksneg, nlockspos + nlocksneg).
  *
  *  Consider the or concatenation "c(x) or d(x)". The variable rounding lock method of the or constraint handler
- *  should call SCIPaddConsLocks(scip, c, nlockspos, nlocksneg) and SCIPaddConsLocks(scip, d, nlockspos, nlocksneg)
- *  to tell SCIP, that infeasibility of c and d can lead to infeasibility of "c(x) or d(x)".
+ *  should call SCIPaddConsLocksType(scip, c, locktype, nlockspos, nlocksneg) and
+ *  SCIPaddConsLocksType(scip, d, locktype, nlockspos, nlocksneg) to tell SCIP, that infeasibility of c and d can lead
+ *  to infeasibility of "c(x) or d(x)".
  *
  *  As a second example, consider the equivalence constraint "y <-> c(x)" with variable y and constraint c. The
  *  constraint demands, that y == 1 if and only if c(x) is satisfied. The variable lock method of the corresponding
- *  constraint handler should call SCIPaddVarLocks(scip, y, nlockspos + nlocksneg, nlockspos + nlocksneg) and
- *  SCIPaddConsLocks(scip, c, nlockspos + nlocksneg, nlockspos + nlocksneg), because any modification to the
+ *  constraint handler should call SCIPaddVarLocksType(scip, y, locktype, nlockspos + nlocksneg, nlockspos + nlocksneg) and
+ *  SCIPaddConsLocksType(scip, c, locktype, nlockspos + nlocksneg, nlockspos + nlocksneg), because any modification to the
  *  value of y or to the feasibility of c can alter the feasibility of the equivalence constraint.
  *
  *  input:
@@ -650,10 +667,11 @@ typedef enum SCIP_LinConstype SCIP_LINCONSTYPE;
  *  - conshdlr        : the constraint handler itself
  *  - cons            : the constraint that should lock rounding of its variables, or NULL if the constraint handler
  *                      does not need constraints
+ *  - locktype        : type of rounding locks, i.e., SCIP_LOCKTYPE_MODEL or SCIP_LOCKTYPE_CONFLICT
  *  - nlockspos       : number of times, the roundings should be locked for the constraint (may be negative)
  *  - nlocksneg       : number of times, the roundings should be locked for the constraint's negation (may be negative)
  */
-#define SCIP_DECL_CONSLOCK(x) SCIP_RETCODE x (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, int nlockspos, int nlocksneg)
+#define SCIP_DECL_CONSLOCK(x) SCIP_RETCODE x (SCIP* scip, SCIP_CONSHDLR* conshdlr, SCIP_CONS* cons, SCIP_LOCKTYPE locktype, int nlockspos, int nlocksneg)
 
 /** constraint activation notification method of constraint handler
  *

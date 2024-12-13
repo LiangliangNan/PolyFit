@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   branch_allfullstrong.c
+ * @ingroup DEFPLUGINS_BRANCH
  * @brief  all variables full strong LP branching rule
  * @author Tobias Achterberg
  *
@@ -36,10 +46,23 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/branch_allfullstrong.h"
+#include "scip/pub_branch.h"
+#include "scip/pub_message.h"
+#include "scip/pub_tree.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 
 #define BRANCHRULE_NAME          "allfullstrong"
@@ -293,7 +316,6 @@ SCIP_RETCODE SCIPselectVarPseudoStrongBranching(
    cutoffbound = SCIPgetCutoffbound(scip);
 #endif
 
-
    assert(scip != NULL);
    assert(pseudocands != NULL);
    assert(bestpseudocand != NULL);
@@ -357,7 +379,6 @@ SCIP_RETCODE SCIPselectVarPseudoStrongBranching(
       branchruledata = SCIPbranchruleGetData(branchrule);
       assert(branchruledata != NULL);
 
-
       /* initialize strong branching */
       SCIP_CALL( SCIPstartStrongbranch(scip, FALSE) );
 
@@ -386,12 +407,12 @@ SCIP_RETCODE SCIPselectVarPseudoStrongBranching(
 
          if( integral )
          {
-            SCIP_CALL( SCIPgetVarStrongbranchInt(scip, pseudocands[c], INT_MAX,
+            SCIP_CALL( SCIPgetVarStrongbranchInt(scip, pseudocands[c], INT_MAX, FALSE,
                   skipdown[c] ? NULL : &down, skipup[c] ? NULL : &up, &downvalid, &upvalid, &downinf, &upinf, &downconflict, &upconflict, &lperror) );
          }
          else
          {
-            SCIP_CALL( SCIPgetVarStrongbranchFrac(scip, pseudocands[c], INT_MAX,
+            SCIP_CALL( SCIPgetVarStrongbranchFrac(scip, pseudocands[c], INT_MAX, FALSE,
                   skipdown[c] ? NULL : &down, skipup[c] ? NULL : &up, &downvalid, &upvalid, &downinf, &upinf, &downconflict, &upconflict, &lperror) );
          }
          nsbcalls++;
@@ -496,7 +517,6 @@ SCIP_RETCODE SCIPselectVarPseudoStrongBranching(
          {
             if( integral )
             {
-
                if( skipdown[c] )
                {
                   downgain = 0.0;

@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_AD_TAPE_HPP
-# define CPPAD_AD_TAPE_HPP
+# ifndef CPPAD_LOCAL_AD_TAPE_HPP
+# define CPPAD_LOCAL_AD_TAPE_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -12,9 +11,9 @@ the terms of the
 A copy of this license is included in the COPYING file of this distribution.
 Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
-# include <cppad/local/define.hpp>
+# include <cppad/core/define.hpp>
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL__NAMESPACE
 
 /*!
 Class used to hold tape that records AD<Base> operations.
@@ -37,14 +36,14 @@ class ADTape {
 
 	// functions -----------------------------------------------------------
 	// PrintFor
-	friend void PrintFor <Base> (
+	friend void CppAD::PrintFor <Base> (
 		const AD<Base>&    flag   ,
 		const char*        before ,
 		const AD<Base>&    var    ,
 		const char*        after
 	);
 	// CondExpOp
-	friend AD<Base> CondExpOp <Base> (
+	friend AD<Base> CppAD::CondExpOp <Base> (
 		enum CompareOp  cop          ,
 		const AD<Base> &left         ,
 		const AD<Base> &right        ,
@@ -52,41 +51,55 @@ class ADTape {
 		const AD<Base> &falseCase
 	);
 	// pow
-	friend AD<Base> pow <Base>
+	friend AD<Base> CppAD::pow <Base>
 		(const AD<Base> &x, const AD<Base> &y);
 	// azmul
-	friend AD<Base> azmul <Base>
+	friend AD<Base> CppAD::azmul <Base>
 		(const AD<Base> &x, const AD<Base> &y);
 	// Parameter
-	friend bool Parameter     <Base>
+	friend bool CppAD::Parameter     <Base>
 		(const AD<Base> &u);
 	// Variable
-	friend bool Variable      <Base>
+	friend bool CppAD::Variable      <Base>
 		(const AD<Base> &u);
 	// operators -----------------------------------------------------------
 	// arithematic binary operators
-	friend AD<Base> operator + <Base>
+	friend AD<Base> CppAD::operator + <Base>
 		(const AD<Base> &left, const AD<Base> &right);
-	friend AD<Base> operator - <Base>
+	friend AD<Base> CppAD::operator - <Base>
 		(const AD<Base> &left, const AD<Base> &right);
-	friend AD<Base> operator * <Base>
+# ifdef _MSC_VER
+    // see https://github.com/coin-or/CppAD/issues/60
+	template <class Type> friend AD<Type> CppAD::operator * <Type>
+		(const AD<Type> &left, const AD<Type> &right);
+# else
+	friend AD<Base> CppAD::operator * <Base>
 		(const AD<Base> &left, const AD<Base> &right);
-	friend AD<Base> operator / <Base>
+# endif
+	friend AD<Base> CppAD::operator / <Base>
 		(const AD<Base> &left, const AD<Base> &right);
 
 	// comparison operators
-	friend bool operator < <Base>
+	friend bool CppAD::operator < <Base>
 		(const AD<Base> &left, const AD<Base> &right);
-	friend bool operator <= <Base>
+	friend bool CppAD::operator <= <Base>
 		(const AD<Base> &left, const AD<Base> &right);
-	friend bool operator > <Base>
+	friend bool CppAD::operator > <Base>
 		(const AD<Base> &left, const AD<Base> &right);
-	friend bool operator >= <Base>
+	friend bool CppAD::operator >= <Base>
 		(const AD<Base> &left, const AD<Base> &right);
-	friend bool operator == <Base>
+# ifdef _MSC_VER
+    // see https://github.com/coin-or/CppAD/issues/60
+	template <class Type> friend bool CppAD::operator == <Type>
+		(const AD<Type> &left, const AD<Type> &right);
+	template <class Type> friend bool CppAD::operator != <Type>
+		(const AD<Type> &left, const AD<Type> &right);
+# else
+	friend bool CppAD::operator == <Base>
 		(const AD<Base> &left, const AD<Base> &right);
-	friend bool operator != <Base>
+	friend bool CppAD::operator != <Base>
 		(const AD<Base> &left, const AD<Base> &right);
+# endif
 	// ======================================================================
 
 // --------------------------------------------------------------------------
@@ -104,12 +117,12 @@ private:
 	/// Set by Independent and effectively const
 	size_t         size_independent_;
 	/// This is where the information is recorded.
-	recorder<Base>              Rec_;
+	local::recorder<Base>              Rec_;
 	// ----------------------------------------------------------------------
 	// private functions
 	//
 	// add a parameter to the tape
-	size_t RecordParOp(const Base &x);
+	addr_t RecordParOp(const Base &x);
 
 	// see CondExp.h
 	void RecordCondExp(
@@ -158,9 +171,9 @@ All these operates are preformed in \c Rec_, so we should
 move this routine from <tt>ADTape<Base></tt> to <tt>recorder<Base></tt>.
 */
 template <class Base>
-size_t ADTape<Base>::RecordParOp(const Base &z)
-{	size_t z_taddr;
-	size_t ind;
+addr_t ADTape<Base>::RecordParOp(const Base &z)
+{	addr_t z_taddr;
+	addr_t ind;
 	CPPAD_ASSERT_UNKNOWN( NumRes(ParOp) == 1 );
 	CPPAD_ASSERT_UNKNOWN( NumArg(ParOp) == 1 );
 	z_taddr = Rec_.PutOp(ParOp);
@@ -215,6 +228,6 @@ size_t ADTape<Base>::AddVec(size_t length, const pod_vector<Base>& data)
 	return start;
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 
 # endif

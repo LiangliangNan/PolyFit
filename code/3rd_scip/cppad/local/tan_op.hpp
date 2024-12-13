@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_TAN_OP_HPP
-# define CPPAD_TAN_OP_HPP
+# ifndef CPPAD_LOCAL_TAN_OP_HPP
+# define CPPAD_LOCAL_TAN_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,7 +13,7 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file tan_op.hpp
 Forward and reverse mode calculations for z = tan(x).
@@ -35,7 +34,7 @@ The auxillary result is
 The value of y, and its derivatives, are computed along with the value
 and derivatives of z.
 
-\copydetails forward_unary2_op
+\copydetails CppAD::local::forward_unary2_op
 */
 template <class Base>
 inline void forward_tan_op(
@@ -64,11 +63,11 @@ inline void forward_tan_op(
 		p++;
 	}
 	for(size_t j = p; j <= q; j++)
-	{	Base base_j = static_cast<Base>(j);
+	{	Base base_j = static_cast<Base>(double(j));
 
 		z[j] = x[j];
 		for(k = 1; k <= j; k++)
-			z[j] += Base(k) * x[k] * y[j-k] / base_j;
+			z[j] += Base(double(k)) * x[k] * y[j-k] / base_j;
 
 		y[j] = z[0] * z[j];
 		for(k = 1; k <= j; k++)
@@ -90,7 +89,7 @@ The auxillary result is
 The value of y, and its derivatives, are computed along with the value
 and derivatives of z.
 
-\copydetails forward_unary2_op_dir
+\copydetails CppAD::local::forward_unary2_op_dir
 */
 template <class Base>
 inline void forward_tan_op_dir(
@@ -116,12 +115,12 @@ inline void forward_tan_op_dir(
 	size_t k;
 	size_t m = (q-1) * r + 1;
 	for(size_t ell = 0; ell < r; ell++)
-	{	z[m+ell] = Base(q) * ( x[m+ell] + x[m+ell] * y[0]);
+	{	z[m+ell] = Base(double(q)) * ( x[m+ell] + x[m+ell] * y[0]);
 		for(k = 1; k < q; k++)
-			z[m+ell] +=  Base(k) * x[(k-1)*r+1+ell] * y[(q-k-1)*r+1+ell];
-		z[m+ell] /= Base(q);
+			z[m+ell] +=  Base(double(k)) * x[(k-1)*r+1+ell] * y[(q-k-1)*r+1+ell];
+		z[m+ell] /= Base(double(q));
 		//
-		y[m+ell] = Base(2) * z[m+ell] * z[0];
+		y[m+ell] = Base(2.0) * z[m+ell] * z[0];
 		for(k = 1; k < q; k++)
 			y[m+ell] += z[(k-1)*r+1+ell] * z[(q-k-1)*r+1+ell];
 	}
@@ -141,7 +140,7 @@ The auxillary result is
 \endverbatim
 The value of y is computed along with the value of z.
 
-\copydetails forward_unary2_op_0
+\copydetails CppAD::local::forward_unary2_op_0
 */
 template <class Base>
 inline void forward_tan_op_0(
@@ -177,7 +176,7 @@ The auxillary result is
 \endverbatim
 The value of y is computed along with the value of z.
 
-\copydetails reverse_unary2_op
+\copydetails CppAD::local::reverse_unary2_op
 */
 
 template <class Base>
@@ -215,18 +214,18 @@ inline void reverse_tan_op(
 	while(j)
 	{
 		px[j]   += pz[j];
-		pz[j]   /= Base(j);
+		pz[j]   /= Base(double(j));
 		for(k = 1; k <= j; k++)
-		{	px[k]   += azmul(pz[j], y[j-k]) * Base(k);
-			py[j-k] += azmul(pz[j], x[k]) * Base(k);
+		{	px[k]   += azmul(pz[j], y[j-k]) * Base(double(k));
+			py[j-k] += azmul(pz[j], x[k]) * Base(double(k));
 		}
 		for(k = 0; k < j; k++)
 			pz[k] += azmul(py[j-1], z[j-k-1]) * base_two;
 
 		--j;
 	}
-	px[0] += azmul(pz[0], Base(1) + y[0]);
+	px[0] += azmul(pz[0], Base(1.0) + y[0]);
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   intervalarith.c
+ * @ingroup OTHER_CFILES
  * @brief  interval arithmetics for provable bounds
  * @author Tobias Achterberg
  * @author Stefan Vigerske
@@ -33,7 +43,32 @@
 #include "scip/pub_message.h"
 #include "scip/misc.h"
 
-#ifdef ROUNDING_FE
+/* Inform compiler that this code accesses the floating-point environment, so that
+ * certain optimizations should be omitted (http://www.cplusplus.com/reference/cfenv/FENV_ACCESS/).
+ * Not supported by Clang (gives warning) and GCC (silently), at the moment.
+ */
+#if defined(__INTEL_COMPILER) || defined(_MSC_VER)
+#pragma fenv_access (on)
+#elif defined __GNUC__
+#pragma STDC FENV_ACCESS ON
+#endif
+
+/* Unfortunately, the FENV_ACCESS pragma is essentially ignored by GCC at the moment (2019),
+ * see #2650 and https://gcc.gnu.org/bugzilla/show_bug.cgi?id=34678.
+ * There are ways to work around this by declaring variables volatile or inserting more assembler code,
+ * but there is always the danger that something would be overlooked.
+ * A more drastic but safer way seems to be to just disable all compiler optimizations for this file.
+ * The Intel compiler seems to implement FENV_ACCESS correctly, but also defines __GNUC__.
+ */
+#if defined(__GNUC__) && !defined( __INTEL_COMPILER)
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+#endif
+
+/*lint -e644*/
+/*lint -e777*/
+
+#ifdef SCIP_ROUNDING_FE
 #define ROUNDING
 /*
  * Linux rounding operations
@@ -56,19 +91,25 @@ SCIP_Bool SCIPintervalHasRoundingControl(
 }
 
 /** sets rounding mode of floating point operations */
-void SCIPintervalSetRoundingMode(
+static
+void intervalSetRoundingMode(
    SCIP_ROUNDMODE        roundmode           /**< rounding mode to activate */
    )
 {
+#ifndef NDEBUG
    if( fesetround(roundmode) != 0 )
    {
       SCIPerrorMessage("error setting rounding mode to %d\n", roundmode);
       abort();
    }
+#else
+   (void) fesetround(roundmode);
+#endif
 }
 
 /** gets current rounding mode of floating point operations */
-SCIP_ROUNDMODE SCIPintervalGetRoundingMode(
+static
+SCIP_ROUNDMODE intervalGetRoundingMode(
    void
    )
 {
@@ -79,7 +120,7 @@ SCIP_ROUNDMODE SCIPintervalGetRoundingMode(
 
 
 
-#ifdef ROUNDING_FP
+#ifdef SCIP_ROUNDING_FP
 #define ROUNDING
 /*
  * OSF rounding operations
@@ -102,19 +143,25 @@ SCIP_Bool SCIPintervalHasRoundingControl(
 }
 
 /** sets rounding mode of floating point operations */
-void SCIPintervalSetRoundingMode(
+static
+void intervalSetRoundingMode(
    SCIP_ROUNDMODE        roundmode           /**< rounding mode to activate */
    )
 {
+#ifndef NDEBUG
    if( write_rnd(roundmode) != 0 )
    {
       SCIPerrorMessage("error setting rounding mode to %d\n", roundmode);
       abort();
    }
+#else
+   (void) write_rnd(roundmode);
+#endif
 }
 
 /** gets current rounding mode of floating point operations */
-SCIP_ROUNDMODE SCIPintervalGetRoundingMode(
+static
+SCIP_ROUNDMODE intervalGetRoundingMode(
    void
    )
 {
@@ -125,7 +172,7 @@ SCIP_ROUNDMODE SCIPintervalGetRoundingMode(
 
 
 
-#ifdef ROUNDING_MS
+#ifdef SCIP_ROUNDING_MS
 #define ROUNDING
 /*
  * Microsoft compiler rounding operations
@@ -148,19 +195,25 @@ SCIP_Bool SCIPintervalHasRoundingControl(
 }
 
 /** sets rounding mode of floating point operations */
-void SCIPintervalSetRoundingMode(
+static
+void intervalSetRoundingMode(
    SCIP_ROUNDMODE        roundmode           /**< rounding mode to activate */
    )
 {
+#ifndef NDEBUG
    if( (_controlfp(roundmode, _MCW_RC) & _MCW_RC) != roundmode )
    {
       SCIPerrorMessage("error setting rounding mode to %x\n", roundmode);
       abort();
    }
+#else
+   (void) _controlfp(roundmode, _MCW_RC);
+#endif
 }
 
 /** gets current rounding mode of floating point operations */
-SCIP_ROUNDMODE SCIPintervalGetRoundingMode(
+static
+SCIP_ROUNDMODE intervalGetRoundingMode(
    void
    )
 {
@@ -187,8 +240,9 @@ SCIP_Bool SCIPintervalHasRoundingControl(
    return FALSE;
 }
 
-/** sets rounding mode of floating point operations */
-void SCIPintervalSetRoundingMode(
+/** sets rounding mode of floating point operations */ /*lint -e715*/
+static
+void intervalSetRoundingMode(
    SCIP_ROUNDMODE        roundmode           /**< rounding mode to activate */
    )
 {  /*lint --e{715}*/
@@ -196,7 +250,8 @@ void SCIPintervalSetRoundingMode(
 }
 
 /** gets current rounding mode of floating point operations */
-SCIP_ROUNDMODE SCIPintervalGetRoundingMode(
+static
+SCIP_ROUNDMODE intervalGetRoundingMode(
    void
    )
 {
@@ -206,16 +261,32 @@ SCIP_ROUNDMODE SCIPintervalGetRoundingMode(
 #undef ROUNDING
 #endif
 
+/** sets rounding mode of floating point operations */
+void SCIPintervalSetRoundingMode(
+   SCIP_ROUNDMODE        roundmode           /**< rounding mode to activate */
+   )
+{
+   intervalSetRoundingMode(roundmode);
+}
+
+/** gets current rounding mode of floating point operations */
+SCIP_ROUNDMODE SCIPintervalGetRoundingMode(
+   void
+   )
+{
+   return intervalGetRoundingMode();
+}
 
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))  /* gcc or icc compiler on x86 32bit or 64bit */
 
 /** gets the negation of a double
  * Do this in a way that the compiler does not "optimize" it away, which usually does not considers rounding modes.
  * However, compiling with -frounding-math would allow to return -x here.
+ * @todo We now set the FENV_ACCESS pragma to on, which is the same as -frounding-math, so we might be able to eliminate this.
  */
 static
 double negate(
-   /* we explicitely use double here, since I'm not sure the assembler code would work as it for other float's */
+   /* we explicitly use double here, since I'm not sure the assembler code would work as it for other float's */
    double                x                   /**< number that should be negated */
    )
 {
@@ -234,7 +305,7 @@ double negate(
  */
 static
 double negate(
-   /* we explicitely use double here, since I'm not sure the assembler code would work as it for other float's */
+   /* we explicitly use double here, since I'm not sure the assembler code would work as it for other float's */
    double                x                   /**< number that should be negated */
    )
 {
@@ -271,7 +342,7 @@ void SCIPintervalSetRoundingModeDownwards(
    void
    )
 {
-   SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
 }
 
 /** sets rounding mode of floating point operations to upwards rounding */
@@ -279,7 +350,7 @@ void SCIPintervalSetRoundingModeUpwards(
    void
    )
 {
-   SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
 }
 
 /** sets rounding mode of floating point operations to nearest rounding */
@@ -287,7 +358,7 @@ void SCIPintervalSetRoundingModeToNearest(
    void
    )
 {
-   SCIPintervalSetRoundingMode(SCIP_ROUND_NEAREST);
+   intervalSetRoundingMode(SCIP_ROUND_NEAREST);
 }
 
 /** sets rounding mode of floating point operations to towards zero rounding */
@@ -295,7 +366,7 @@ void SCIPintervalSetRoundingModeTowardsZero(
    void
    )
 {
-   SCIPintervalSetRoundingMode(SCIP_ROUND_ZERO);
+   intervalSetRoundingMode(SCIP_ROUND_ZERO);
 }
 
 /** negates a number in a way that the compiler does not optimize it away */
@@ -369,7 +440,7 @@ void SCIPintervalSetBounds(
    resultant->sup = sup;
 }
 
-/** sets interval to empty interval, which will be [infinity, -infinity] */
+/** sets interval to empty interval, which will be [1.0, -1.0] */
 void SCIPintervalSetEmpty(
    SCIP_INTERVAL*        resultant           /**< resultant interval of operation */
    )
@@ -404,7 +475,7 @@ void SCIPintervalSetEntire(
    resultant->sup =  infinity;
 }
 
-/** indicates whether interval is entire, i.e., whether inf <= -infinity and sup >= infinity */
+/** indicates whether interval is entire, i.e., whether inf &le; -infinity and sup &ge; infinity */
 SCIP_Bool SCIPintervalIsEntire(
    SCIP_Real             infinity,           /**< value for infinity */
    SCIP_INTERVAL         operand             /**< operand of operation */
@@ -459,6 +530,26 @@ SCIP_Bool SCIPintervalAreDisjoint(
    return (operand1.sup < operand2.inf) || (operand2.sup < operand1.inf);
 }
 
+/** indicates whether operand1 and operand2 are disjoint with epsilon tolerance
+ *
+ * Returns whether minimal (relative) distance of intervals is larger than epsilon.
+ * Same as `SCIPintervalIsEmpty(SCIPintervalIntersectEps(operand1, operand2))`.
+ */
+SCIP_Bool SCIPintervalAreDisjointEps(
+   SCIP_Real             eps,                /**< epsilon */
+   SCIP_INTERVAL         operand1,           /**< first operand of operation */
+   SCIP_INTERVAL         operand2            /**< second operand of operation */
+   )
+{
+   if( operand1.sup < operand2.inf )
+      return SCIPrelDiff(operand2.inf, operand1.sup) > eps;
+
+   if( operand1.inf > operand2.sup )
+      return SCIPrelDiff(operand1.inf, operand2.sup) > eps;
+
+   return FALSE;
+}
+
 /** intersection of two intervals */
 void SCIPintervalIntersect(
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
@@ -470,6 +561,45 @@ void SCIPintervalIntersect(
 
    resultant->inf = MAX(operand1.inf, operand2.inf);
    resultant->sup = MIN(operand1.sup, operand2.sup);
+}
+
+/** intersection of two intervals with epsilon tolerance
+ *
+ * If intersection of operand1 and operand2 is empty, but minimal (relative) distance of intervals
+ * is at most epsilon, then set resultant to singleton containing the point in operand1
+ * that is closest to operand2, i.e.,
+ * - `resultant = { operand1.sup }`, if `operand1.sup` < `operand2.inf` and `reldiff(operand2.inf,operand1.sup)` &le; eps
+ * - `resultant = { operand1.inf }`, if `operand1.inf` > `operand2.sup` and `reldiff(operand1.inf,operand2.sup)` &le; eps
+ * - `resultant` = intersection of `operand1` and `operand2`, otherwise
+ */
+void SCIPintervalIntersectEps(
+   SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
+   SCIP_Real             eps,                /**< epsilon */
+   SCIP_INTERVAL         operand1,           /**< first operand of operation */
+   SCIP_INTERVAL         operand2            /**< second operand of operation */
+   )
+{
+   assert(resultant != NULL);
+   assert(eps >= 0.0);
+
+   if( operand1.sup < operand2.inf )
+   {
+      if( SCIPrelDiff(operand2.inf, operand1.sup) <= eps )
+      {
+         SCIPintervalSet(resultant, operand1.sup);
+         return;
+      }
+   }
+   else if( operand1.inf > operand2.sup )
+   {
+      if( SCIPrelDiff(operand1.inf, operand2.sup) <= eps )
+      {
+         SCIPintervalSet(resultant, operand1.inf);
+         return;
+      }
+   }
+
+   SCIPintervalIntersect(resultant, operand1, operand2);
 }
 
 /** interval enclosure of the union of two intervals */
@@ -507,7 +637,7 @@ void SCIPintervalAddInf(
    SCIP_INTERVAL         operand2            /**< second operand of operation */
    )
 {
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_DOWNWARDS);
+   assert(intervalGetRoundingMode() == SCIP_ROUND_DOWNWARDS);
    assert(resultant != NULL);
 
    /* [a,...] + [-inf,...] = [-inf,...] for all a, in particular, [+inf,...] + [-inf,...] = [-inf,...] */
@@ -534,7 +664,7 @@ void SCIPintervalAddSup(
    SCIP_INTERVAL         operand2            /**< second operand of operation */
    )
 {
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_UPWARDS);
+   assert(intervalGetRoundingMode() == SCIP_ROUND_UPWARDS);
    assert(resultant != NULL);
 
    /* [...,b] + [...,+inf] = [...,+inf] for all b, in particular, [...,-inf] + [...,+inf] = [...,+inf] */
@@ -567,17 +697,17 @@ void SCIPintervalAdd(
    assert(!SCIPintervalIsEmpty(infinity, operand1));
    assert(!SCIPintervalIsEmpty(infinity, operand2));
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    /* compute infimum of result */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
    SCIPintervalAddInf(infinity, resultant, operand1, operand2);
 
    /* compute supremum of result */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
    SCIPintervalAddSup(infinity, resultant, operand1, operand2);
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** adds operand1 and scalar operand2 and stores result in resultant */
@@ -593,7 +723,7 @@ void SCIPintervalAddScalar(
    assert(resultant != NULL);
    assert(!SCIPintervalIsEmpty(infinity, operand1));
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    /* -inf + something >= -inf */
    if( operand1.inf <= -infinity || operand2 <= -infinity )
@@ -607,7 +737,7 @@ void SCIPintervalAddScalar(
    }
    else
    {
-      SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
       resultant->inf = operand1.inf + operand2;
    }
 
@@ -623,11 +753,11 @@ void SCIPintervalAddScalar(
    }
    else
    {
-      SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
       resultant->sup = operand1.sup + operand2;
    }
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** adds vector operand1 and vector operand2 and stores result in vector resultant */
@@ -642,22 +772,22 @@ void SCIPintervalAddVectors(
    SCIP_ROUNDMODE roundmode;
    int i;
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    /* compute infimums of resultant array */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
    for( i = 0; i < length; ++i )
    {
       SCIPintervalAddInf(infinity, &resultant[i], operand1[i], operand2[i]);
    }
    /* compute supremums of result array */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
    for( i = 0; i < length; ++i )
    {
       SCIPintervalAddSup(infinity, &resultant[i], operand1[i], operand2[i]);
    }
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** subtracts operand2 from operand1 and stores result in resultant */
@@ -674,7 +804,7 @@ void SCIPintervalSub(
    assert(!SCIPintervalIsEmpty(infinity, operand1));
    assert(!SCIPintervalIsEmpty(infinity, operand2));
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    if( operand1.inf <= -infinity || operand2.sup >=  infinity )
       resultant->inf = -infinity;
@@ -687,7 +817,7 @@ void SCIPintervalSub(
    }
    else
    {
-      SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
       resultant->inf = operand1.inf - operand2.sup;
    }
 
@@ -696,16 +826,16 @@ void SCIPintervalSub(
    /* [a,b] - [+inf,+inf] = [-inf,-inf] */
    else if( operand1.sup <= -infinity || operand2.inf >= infinity )
    {
-      assert(resultant->inf == -infinity);  /* should be set above, since operand1.inf <= operand1.sup <= -infinity */  /*lint !e777*/
+      assert(resultant->inf == -infinity);  /* should be set above, since operand1.inf <= operand1.sup <= -infinity */
       resultant->sup = -infinity;
    }
    else
    {
-      SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
       resultant->sup = operand1.sup - operand2.inf;
    }
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** subtracts scalar operand2 from operand1 and stores result in resultant */
@@ -731,7 +861,7 @@ void SCIPintervalMulInf(
    assert(!SCIPintervalIsEmpty(infinity, operand1));
    assert(!SCIPintervalIsEmpty(infinity, operand2));
 
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_DOWNWARDS); 
+   assert(intervalGetRoundingMode() == SCIP_ROUND_DOWNWARDS);
 
    if( operand1.inf >= infinity )
    {
@@ -791,7 +921,7 @@ void SCIPintervalMulSup(
    assert(!SCIPintervalIsEmpty(infinity, operand1));
    assert(!SCIPintervalIsEmpty(infinity, operand2));
 
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_UPWARDS); 
+   assert(intervalGetRoundingMode() == SCIP_ROUND_UPWARDS);
 
    if( operand1.inf >= infinity )
    {
@@ -853,17 +983,17 @@ void SCIPintervalMul(
    assert(!SCIPintervalIsEmpty(infinity, operand1));
    assert(!SCIPintervalIsEmpty(infinity, operand2));
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    /* compute infimum result */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
    SCIPintervalMulInf(infinity, resultant, operand1, operand2);
 
    /* compute supremum of result */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
    SCIPintervalMulSup(infinity, resultant, operand1, operand2);
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** multiplies operand1 with scalar operand2 and stores infimum of result in infimum of resultant */
@@ -874,7 +1004,7 @@ void SCIPintervalMulScalarInf(
    SCIP_Real             operand2            /**< second operand of operation; can be +/- inf */
    )
 {
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_DOWNWARDS);
+   assert(intervalGetRoundingMode() == SCIP_ROUND_DOWNWARDS);
    assert(resultant != NULL);
    assert(!SCIPintervalIsEmpty(infinity, operand1));
 
@@ -930,7 +1060,7 @@ void SCIPintervalMulScalarSup(
    SCIP_Real             operand2            /**< second operand of operation; can be +/- inf */
    )
 {
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_UPWARDS);
+   assert(intervalGetRoundingMode() == SCIP_ROUND_UPWARDS);
    assert(resultant != NULL);
    assert(!SCIPintervalIsEmpty(infinity, operand1));
 
@@ -991,17 +1121,30 @@ void SCIPintervalMulScalar(
    assert(resultant != NULL);
    assert(!SCIPintervalIsEmpty(infinity, operand1));
 
-   roundmode = SCIPintervalGetRoundingMode();
+   if( operand2 == 1.0 )
+   {
+      *resultant = operand1;
+      return;
+   }
+
+   if( operand2 == -1.0 )
+   {
+      resultant->inf = -operand1.sup;
+      resultant->sup = -operand1.inf;
+      return;
+   }
+
+   roundmode = intervalGetRoundingMode();
 
    /* compute infimum result */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
    SCIPintervalMulScalarInf(infinity, resultant, operand1, operand2);
 
    /* compute supremum of result */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
    SCIPintervalMulScalarSup(infinity, resultant, operand1, operand2);
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** divides operand1 by operand2 and stores result in resultant */
@@ -1032,7 +1175,7 @@ void SCIPintervalDiv(
       return;
    }
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    /* division by nonzero: resultant = x * (1/y) */
    if( operand2.sup >=  infinity || operand2.sup <= -infinity )
@@ -1041,7 +1184,7 @@ void SCIPintervalDiv(
    }
    else
    {
-      SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
       intmed.inf = 1.0 / operand2.sup;
    }
    if( operand2.inf <= -infinity || operand2.inf >= infinity )
@@ -1050,12 +1193,12 @@ void SCIPintervalDiv(
    }
    else
    {
-      SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
       intmed.sup = 1.0 / operand2.inf;
    }
    SCIPintervalMul(infinity, resultant, operand1, intmed);
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** divides operand1 by scalar operand2 and stores result in resultant */
@@ -1071,7 +1214,7 @@ void SCIPintervalDivScalar(
    assert(resultant != NULL);
    assert(!SCIPintervalIsEmpty(infinity, operand1));
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    if( operand2 >= infinity || operand2 <= -infinity )
    {
@@ -1090,7 +1233,7 @@ void SCIPintervalDivScalar(
       }
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          resultant->inf = operand1.inf / operand2;
       }
 
@@ -1103,7 +1246,7 @@ void SCIPintervalDivScalar(
       }
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          resultant->sup = operand1.sup / operand2;
       }
    }
@@ -1118,7 +1261,7 @@ void SCIPintervalDivScalar(
       }
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          resultant->inf = operand1.sup / operand2;
       }
 
@@ -1131,7 +1274,7 @@ void SCIPintervalDivScalar(
       }
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          resultant->sup = operand1.inf / operand2;
       }
    }
@@ -1158,7 +1301,7 @@ void SCIPintervalDivScalar(
       return;
    }
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** computes the scalar product of two vectors of intervals and stores result in resultant */
@@ -1174,13 +1317,13 @@ void SCIPintervalScalprod(
    SCIP_INTERVAL prod;
    int i;
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    resultant->inf = 0.0;
    resultant->sup = 0.0;
 
    /* compute infimum of resultant */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
    for( i = 0; i < length && resultant->inf > -infinity; ++i )
    {
       SCIPintervalSetEntire(infinity, &prod);
@@ -1190,7 +1333,7 @@ void SCIPintervalScalprod(
    assert(resultant->sup == 0.0);
 
    /* compute supremum of resultant */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
    for( i = 0; i < length && resultant->sup < infinity ; ++i )
    {
       SCIPintervalSetEntire(infinity, &prod);
@@ -1198,12 +1341,10 @@ void SCIPintervalScalprod(
       SCIPintervalAddSup(infinity, resultant, *resultant, prod); 
    }
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
-/** computes scalar product of a vector of intervals and a vector of scalars and stores infimum of result in infimum of 
- *  resultant 
- */
+/** computes the scalar product of a vector of intervals and a vector of scalars and stores infimum of result in infimum of resultant */
 void SCIPintervalScalprodScalarsInf(
    SCIP_Real             infinity,           /**< value for infinity */
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
@@ -1215,7 +1356,7 @@ void SCIPintervalScalprodScalarsInf(
    SCIP_INTERVAL prod;
    int i;
 
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_DOWNWARDS);
+   assert(intervalGetRoundingMode() == SCIP_ROUND_DOWNWARDS);
 
    resultant->inf = 0.0;
 
@@ -1229,9 +1370,7 @@ void SCIPintervalScalprodScalarsInf(
    }
 }
 
-/** computes the scalar product of a vector of intervals and a vector of scalars and stores supremum of result in 
- *  supremum of resultant 
- */
+/** computes the scalar product of a vector of intervals and a vector of scalars and stores supremum of result in supremum of resultant */
 void SCIPintervalScalprodScalarsSup(
    SCIP_Real             infinity,           /**< value for infinity */
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
@@ -1243,7 +1382,7 @@ void SCIPintervalScalprodScalarsSup(
    SCIP_INTERVAL prod;
    int i;
 
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_UPWARDS);
+   assert(intervalGetRoundingMode() == SCIP_ROUND_UPWARDS);
 
    resultant->sup = 0.0;
 
@@ -1268,21 +1407,21 @@ void SCIPintervalScalprodScalars(
 {
    SCIP_ROUNDMODE roundmode;
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    resultant->inf = 0.0;
    resultant->sup = 0.0;
 
    /* compute infimum of resultant */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
    SCIPintervalScalprodScalarsInf(infinity, resultant, length, operand1, operand2);
    assert(resultant->sup == 0.0);
 
    /* compute supremum of resultant */
-   SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+   intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
    SCIPintervalScalprodScalarsSup(infinity, resultant, length, operand1, operand2);
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** squares operand and stores result in resultant */
@@ -1297,7 +1436,7 @@ void SCIPintervalSquare(
    assert(resultant != NULL);
    assert(!SCIPintervalIsEmpty(infinity, operand));
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    if( operand.sup <= 0.0 )
    {  /* operand is left of 0.0 */
@@ -1305,7 +1444,7 @@ void SCIPintervalSquare(
          resultant->inf =  infinity;
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          resultant->inf = operand.sup * operand.sup;
       }
 
@@ -1313,7 +1452,7 @@ void SCIPintervalSquare(
          resultant->sup = infinity;
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          resultant->sup = operand.inf * operand.inf;
       }
    }
@@ -1323,7 +1462,7 @@ void SCIPintervalSquare(
          resultant->inf = infinity;
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          resultant->inf = operand.inf * operand.inf;
       }
 
@@ -1331,7 +1470,7 @@ void SCIPintervalSquare(
          resultant->sup = infinity;
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          resultant->sup = operand.sup * operand.sup;
       }
    }
@@ -1345,14 +1484,14 @@ void SCIPintervalSquare(
          SCIP_Real x;
          SCIP_Real y;
 
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          x = operand.inf * operand.inf;
          y = operand.sup * operand.sup;
          resultant->sup = MAX(x, y);
       }
    }
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** stores (positive part of) square root of operand in resultant
@@ -1373,7 +1512,7 @@ void SCIPintervalSquareRoot(
       return;
    }
 
-   if( operand.inf == operand.sup )  /*lint !e777 */
+   if( operand.inf == operand.sup )
    {
       if( operand.inf >= infinity )
       {
@@ -1384,7 +1523,7 @@ void SCIPintervalSquareRoot(
       {
          SCIP_Real tmp;
 
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
          tmp = sqrt(operand.inf);
          resultant->inf = SCIPnextafter(tmp, SCIP_REAL_MIN);
          resultant->sup = SCIPnextafter(tmp, SCIP_REAL_MAX);
@@ -1402,7 +1541,7 @@ void SCIPintervalSquareRoot(
    }
    else
    {
-      assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
+      assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
       resultant->inf = SCIPnextafter(sqrt(operand.inf), SCIP_REAL_MIN);
    }
 
@@ -1410,7 +1549,7 @@ void SCIPintervalSquareRoot(
       resultant->sup = infinity;
    else
    {
-      assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
+      assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
       resultant->sup = SCIPnextafter(sqrt(operand.sup), SCIP_REAL_MAX);
    }
 }
@@ -1425,7 +1564,7 @@ void SCIPintervalPower(
    SCIP_INTERVAL         operand1,           /**< first operand of operation */
    SCIP_INTERVAL         operand2            /**< second operand of operation */
    )
-{  /*lint --e{777}*/
+{
    assert(resultant != NULL);
    assert(!SCIPintervalIsEmpty(infinity, operand1));
    assert(!SCIPintervalIsEmpty(infinity, operand2));
@@ -1433,6 +1572,18 @@ void SCIPintervalPower(
    if( operand2.inf == operand2.sup )
    {  /* operand is number */
       SCIPintervalPowerScalar(infinity, resultant, operand1, operand2.inf);
+      return;
+   }
+
+   /* log([..,0]) will give an empty interval below, but we want [0,0]^exponent to be 0
+    * if 0 is in exponent, then resultant should also contain 1 (the case exponent == [0,0] is handled above)
+    */
+   if( operand1.sup == 0.0 )
+   {
+      if( operand2.inf <= 0.0 && operand2.sup >= 0.0 )
+         SCIPintervalSetBounds(resultant, 0.0, 1.0);
+      else
+         SCIPintervalSet(resultant, 0.0);
       return;
    }
 
@@ -1449,8 +1600,9 @@ void SCIPintervalPower(
 }
 
 /** computes lower bound on power of a scalar operand1 to an integer operand2
- * both operands need to be finite numbers
- * need to have operand1 >= 0 and need to have operand2 >= 0 if operand1 == 0
+ *
+ * Both operands need to be finite numbers.
+ * Needs to have operand1 &ge; 0 and need to have operand2 &ge; 0 if operand1 = 0.
  */
 SCIP_Real SCIPintervalPowerScalarIntegerInf(
    SCIP_Real             operand1,           /**< first operand of operation */
@@ -1481,23 +1633,23 @@ SCIP_Real SCIPintervalPowerScalarIntegerInf(
       result = SCIPintervalPowerScalarIntegerSup(operand1, -operand2);
       assert(result != 0.0);
 
-      roundmode = SCIPintervalGetRoundingMode();
-      SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+      roundmode = intervalGetRoundingMode();
+      intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
       result = 1.0 / result;
-      SCIPintervalSetRoundingMode(roundmode);
+      intervalSetRoundingMode(roundmode);
    }
    else
    {
       unsigned int n;
       SCIP_Real z;
 
-      roundmode = SCIPintervalGetRoundingMode();
+      roundmode = intervalGetRoundingMode();
 
       result = 1.0;
       n = (unsigned int)operand2;
       z = operand1;
 
-      SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
 
       /* use a binary exponentiation algorithm:
        * consider the binary representation of n: n = sum_i 2^i d_i with d_i \in {0,1}
@@ -1524,15 +1676,16 @@ SCIP_Real SCIPintervalPowerScalarIntegerInf(
       }
       while( TRUE );  /*lint !e506 */
 
-      SCIPintervalSetRoundingMode(roundmode);
+      intervalSetRoundingMode(roundmode);
    }
 
    return result;
 }
 
 /** computes upper bound on power of a scalar operand1 to an integer operand2
- * both operands need to be finite numbers
- * need to have operand1 >= 0 and need to have operand2 >= 0 if operand1 == 0
+ *
+ * Both operands need to be finite numbers.
+ * Needs to have operand1 &ge; 0 and needs to have operand2 &ge; 0 if operand1 = 0.
  */
 SCIP_Real SCIPintervalPowerScalarIntegerSup(
    SCIP_Real             operand1,           /**< first operand of operation */
@@ -1563,23 +1716,23 @@ SCIP_Real SCIPintervalPowerScalarIntegerSup(
       result = SCIPintervalPowerScalarIntegerInf(operand1, -operand2);
       assert(result != 0.0);
 
-      roundmode = SCIPintervalGetRoundingMode();
-      SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+      roundmode = intervalGetRoundingMode();
+      intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
       result = 1.0 / result;
-      SCIPintervalSetRoundingMode(roundmode);
+      intervalSetRoundingMode(roundmode);
    }
    else
    {
       unsigned int n;
       SCIP_Real z;
 
-      roundmode = SCIPintervalGetRoundingMode();
+      roundmode = intervalGetRoundingMode();
 
       result = 1.0;
       n = (unsigned int)operand2;
       z = operand1;
 
-      SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
 
       /* use a binary exponentiation algorithm... see comments in SCIPintervalPowerScalarIntegerInf */
       assert(n >= 1);
@@ -1598,15 +1751,16 @@ SCIP_Real SCIPintervalPowerScalarIntegerSup(
       }
       while( TRUE );  /*lint !e506 */
 
-      SCIPintervalSetRoundingMode(roundmode);
+      intervalSetRoundingMode(roundmode);
    }
 
    return result;
 }
 
 /** computes bounds on power of a scalar operand1 to an integer operand2
- * both operands need to be finite numbers
- * need to have operand1 >= 0 and need to have operand2 >= 0 if operand1 == 0
+ *
+ * Both operands need to be finite numbers.
+ * Needs to have operand1 &ge; 0 and needs to have operand2 &ge; 0 if operand1 = 0.
  */
 void SCIPintervalPowerScalarInteger(
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
@@ -1655,7 +1809,7 @@ void SCIPintervalPowerScalarInteger(
       SCIP_Real result_sup;
       SCIP_Real result_inf;
 
-      roundmode = SCIPintervalGetRoundingMode();
+      roundmode = intervalGetRoundingMode();
 
       result_inf = 1.0;
       result_sup = 1.0;
@@ -1663,7 +1817,7 @@ void SCIPintervalPowerScalarInteger(
       z_sup = operand1;
       n = (unsigned int)operand2;
 
-      SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+      intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
 
       /* use a binary exponentiation algorithm... see comments in SCIPintervalPowerScalarIntegerInf
        * we compute lower and upper bounds within the same loop
@@ -1686,7 +1840,7 @@ void SCIPintervalPowerScalarInteger(
       }
       while( TRUE );  /*lint !e506 */
 
-      SCIPintervalSetRoundingMode(roundmode);
+      intervalSetRoundingMode(roundmode);
 
       resultant->inf = result_inf;
       resultant->sup = result_sup;
@@ -1695,8 +1849,9 @@ void SCIPintervalPowerScalarInteger(
 }
 
 /** stores bounds on the power of a scalar operand1 to a scalar operand2 in resultant
- * both operands need to be finite numbers
- * need to have operand1 >= 0 or operand2 integer and need to have operand2 >= 0 if operand1 == 0
+ *
+ * Both operands need to be finite numbers.
+ * Needs to have operand1 &ge; 0 or operand2 integer and needs to have operand2 &ge; 0 if operand1 = 0.
  * @attention we assume a correctly rounded pow(double) function when rounding is to nearest
  */
 void SCIPintervalPowerScalarScalar(
@@ -1731,7 +1886,7 @@ void SCIPintervalPowerScalarScalar(
       return;
    }
 
-   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
+   assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
    result = pow(operand1, operand2);
 
    /* to get safe bounds, get the floating point numbers just below and above result */
@@ -1748,7 +1903,7 @@ void SCIPintervalPowerScalar(
    SCIP_INTERVAL         operand1,           /**< first operand of operation */
    SCIP_Real             operand2            /**< second operand of operation */
    )
-{  /*lint --e{777}*/
+{
    SCIP_Bool op2isint;
 
    assert(resultant != NULL);
@@ -1819,7 +1974,7 @@ void SCIPintervalPowerScalar(
             resultant->inf = infinity;
          else if( operand1.inf > 0.0 )
          {
-            assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
+            assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
             resultant->inf = SCIPnextafter(pow(operand1.inf, operand2), SCIP_REAL_MIN);
          }
          else
@@ -1829,7 +1984,7 @@ void SCIPintervalPowerScalar(
             resultant->sup = infinity;
          else if( operand1.sup > 0.0 )
          {
-            assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
+            assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
             resultant->sup = SCIPnextafter(pow(operand1.sup, operand2), SCIP_REAL_MAX);
          }
          else
@@ -1850,7 +2005,7 @@ void SCIPintervalPowerScalar(
          }
          else
          {
-            assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
+            assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
             resultant->inf = SCIPnextafter(pow(operand1.sup, operand2), SCIP_REAL_MIN);
          }
 
@@ -1859,7 +2014,7 @@ void SCIPintervalPowerScalar(
             resultant->sup = infinity;
          else
          {
-            assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
+            assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST); /* usually, no-one should have changed rounding mode */
             resultant->sup = SCIPnextafter(pow(operand1.inf, operand2), SCIP_REAL_MAX);
          }
       }
@@ -1987,8 +2142,9 @@ void SCIPintervalPowerScalar(
 }
 
 /** given an interval for the image of a power operation, computes an interval for the origin
- * that is, for y = x^p with p = exponent a given scalar and y = image a given interval,
- * computes a subinterval x of basedomain such that y in x^p and such that for all z in basedomain less x, z^p not in y
+ *
+ * That is, for \f$y = x^p\f$ with the exponent \f$p\f$ a given scalar and \f$y\f$ = `image` a given interval,
+ * computes \f$x \subseteq \text{basedomain}\f$ such that \f$y \in x^p\f$ and such that for all \f$z \in \text{basedomain} \setminus x: z^p \not \in y\f$.
  */
 void SCIPintervalPowerScalarInverse(
    SCIP_Real             infinity,           /**< value for infinity */
@@ -2065,9 +2221,9 @@ void SCIPintervalPowerScalarInverse(
    }
 }
 
-/** stores operand1 to the signed power of the scalar positive operand2 in resultant 
+/** stores operand1 to the signed power of the scalar positive operand2 in resultant
  * 
- * the signed power of x w.r.t. an exponent n >= 0 is given as sign(x) * abs(x)^n
+ * The signed power of x w.r.t. an exponent n &ge; 0 is given as \f$\mathrm{sign}(x) |x|^n\f$.
  *
  * @attention we assume correctly rounded sqrt(double) and pow(double) functions when rounding is to nearest
  */
@@ -2084,7 +2240,7 @@ void SCIPintervalSignPowerScalar(
    assert(!SCIPintervalIsEmpty(infinity, operand1));
    assert(operand2     >= 0.0);
 
-   if( operand2 == infinity )  /*lint !e777 */
+   if( operand2 == infinity )
    {
       /* 0^infinity =  0
        * +^infinity =  infinity
@@ -2127,7 +2283,7 @@ void SCIPintervalSignPowerScalar(
       return;
    }
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    if( operand2 == 2.0 )
    { /* common case where pow can easily be avoided */
@@ -2141,13 +2297,13 @@ void SCIPintervalSignPowerScalar(
       }
       else if( operand1.inf > 0.0 )
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          resultant->inf = operand1.inf * operand1.inf;
       }
       else
       {
          /* need upwards since we negate result of multiplication */
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          resultant->inf = negate(operand1.inf * operand1.inf);
       }
 
@@ -2161,13 +2317,13 @@ void SCIPintervalSignPowerScalar(
       }
       else if( operand1.sup > 0.0 )
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          resultant->sup = operand1.sup * operand1.sup;
       }
       else
       {
          /* need downwards since we negate result of multiplication */
-         SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          resultant->sup = negate(operand1.sup * operand1.sup);
       }
       assert(resultant->inf <= resultant->sup);
@@ -2180,12 +2336,12 @@ void SCIPintervalSignPowerScalar(
          resultant->inf = infinity;
       else if( operand1.inf >= 0.0 )
       {
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          resultant->inf =  SCIPnextafter(sqrt( operand1.inf), SCIP_REAL_MIN);
       }
       else
       {
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          resultant->inf = -SCIPnextafter(sqrt(-operand1.inf), SCIP_REAL_MAX);
       }
 
@@ -2195,12 +2351,12 @@ void SCIPintervalSignPowerScalar(
          resultant->sup = -infinity;
       else if( operand1.sup > 0.0 )
       {
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          resultant->sup =  SCIPnextafter(sqrt( operand1.sup), SCIP_REAL_MAX);
       }
       else
       {
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          resultant->sup = -SCIPnextafter(sqrt(-operand1.sup), SCIP_REAL_MAX);
       }
       assert(resultant->inf <= resultant->sup);
@@ -2213,12 +2369,12 @@ void SCIPintervalSignPowerScalar(
          resultant->inf =  infinity;
       else if( operand1.inf > 0.0 )
       {
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          resultant->inf =  SCIPnextafter(pow( operand1.inf, operand2), SCIP_REAL_MIN);
       }
       else
       {
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          resultant->inf = -SCIPnextafter(pow(-operand1.inf, operand2), SCIP_REAL_MAX);
       }
 
@@ -2228,17 +2384,17 @@ void SCIPintervalSignPowerScalar(
          resultant->sup = -infinity;
       else if( operand1.sup > 0.0 )
       {
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          resultant->sup =  SCIPnextafter(pow( operand1.sup, operand2), SCIP_REAL_MAX);
       }
       else
       {
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          resultant->sup = -SCIPnextafter(pow(-operand1.sup, operand2), SCIP_REAL_MIN);
       }
    }
 
-   SCIPintervalSetRoundingMode(roundmode);
+   intervalSetRoundingMode(roundmode);
 }
 
 /** computes the reciprocal of an interval
@@ -2261,7 +2417,7 @@ void SCIPintervalReciprocal(
       return;
    }
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
    if( operand.inf >= 0.0 )
    {  /* 1/x with x >= 0 */
@@ -2269,7 +2425,7 @@ void SCIPintervalReciprocal(
          resultant->inf = 0.0;
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          resultant->inf = 1.0 / operand.sup;
       }
 
@@ -2279,11 +2435,11 @@ void SCIPintervalReciprocal(
          resultant->sup = infinity;
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          resultant->sup = 1.0 / operand.inf;
       }
 
-      SCIPintervalSetRoundingMode(roundmode);
+      intervalSetRoundingMode(roundmode);
    }
    else if( operand.sup <= 0.0 )
    {  /* 1/x with x <= 0 */
@@ -2293,7 +2449,7 @@ void SCIPintervalReciprocal(
          resultant->inf = -infinity;
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          resultant->inf = 1.0 / operand.sup;
       }
 
@@ -2301,10 +2457,10 @@ void SCIPintervalReciprocal(
          resultant->sup = infinity;
       else
       {
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          resultant->sup = 1.0 / operand.inf;
       }
-      SCIPintervalSetRoundingMode(roundmode);
+      intervalSetRoundingMode(roundmode);
    }
    else
    {  /* 1/x with x in [-,+] is division by zero */
@@ -2339,7 +2495,7 @@ void SCIPintervalExp(
       return;
    }
 
-   if( operand.inf == operand.sup )  /*lint !e777 */
+   if( operand.inf == operand.sup )
    {
       if( operand.inf == 0.0 )
       {
@@ -2350,7 +2506,7 @@ void SCIPintervalExp(
       {
          SCIP_Real tmp;
 
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          tmp = exp(operand.inf);
          resultant->inf = tmp > 0.0 ? SCIPnextafter(tmp, SCIP_REAL_MIN) : 0.0;
          assert(resultant->inf >= 0.0);
@@ -2372,7 +2528,7 @@ void SCIPintervalExp(
    {
       SCIP_Real tmp;
 
-      assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+      assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
       tmp = exp(operand.inf);
       resultant->inf = tmp > 0.0 ? SCIPnextafter(tmp, SCIP_REAL_MIN) : 0.0;
       /* make sure we do not exceed value for infinity, so interval is not declared as empty if inf and sup are both > infinity */
@@ -2390,7 +2546,7 @@ void SCIPintervalExp(
    }
    else
    {
-      assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+      assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
       resultant->sup = SCIPnextafter(exp(operand.sup), SCIP_REAL_MAX);
       if( resultant->sup < -infinity )
          resultant->sup = -infinity;
@@ -2418,7 +2574,7 @@ void SCIPintervalLog(
       return;
    }
 
-   if( operand.inf == operand.sup )  /*lint !e777 */
+   if( operand.inf == operand.sup )
    {
       if( operand.sup == 1.0 )
       {
@@ -2429,7 +2585,7 @@ void SCIPintervalLog(
       {
          SCIP_Real tmp;
 
-         assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+         assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
          tmp = log(operand.inf);
          resultant->inf = SCIPnextafter(tmp, SCIP_REAL_MIN);
          resultant->sup = SCIPnextafter(tmp, SCIP_REAL_MAX);
@@ -2448,7 +2604,7 @@ void SCIPintervalLog(
    }
    else
    {
-      assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+      assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
       resultant->inf = SCIPnextafter(log(operand.inf), SCIP_REAL_MIN);
    }
 
@@ -2462,7 +2618,7 @@ void SCIPintervalLog(
    }
    else
    {
-      assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+      assert(intervalGetRoundingMode() == SCIP_ROUND_NEAREST);
       resultant->sup = SCIPnextafter(log(operand.sup), SCIP_REAL_MAX);
    }
 }
@@ -2525,176 +2681,185 @@ void SCIPintervalAbs(
    }
 }
 
-/** stores sine value of operand in resultant
- * NOTE: the operations are not applied rounding-safe here
+/* double precision lower and upper bounds on pi
+ * taken from boost::numeric::interval_lib::constants
+ * MSVC refuses to evaluate this at compile time
  */
+#ifndef _MSC_VER
+static const double pi_d_l = (3373259426.0 + 273688.0 / (1<<21)) / (1<<30);   /*lint !e790*/
+static const double pi_d_u = (3373259426.0 + 273689.0 / (1<<21)) / (1<<30);   /*lint !e790*/
+#else
+#define pi_d_l ((3373259426.0 + 273688.0 / (1<<21)) / (1<<30))
+#define pi_d_u ((3373259426.0 + 273689.0 / (1<<21)) / (1<<30))
+#endif
+
+/** stores sine value of operand in resultant */
 void SCIPintervalSin(
    SCIP_Real             infinity,           /**< value for infinity */
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
    SCIP_INTERVAL         operand             /**< operand of operation */
    )
 {
-   SCIP_Real intervallen;
-   SCIP_Real modinf;
-   SCIP_Real modsup;
-   SCIP_Real finf;
-   SCIP_Real fsup;
-   int a;
-   int b;
-   int nbetween;
-   /* first one is 1 so even indices are the maximum points */
-   static SCIP_Real extremepoints[] = {0.5*M_PI, 1.5*M_PI, 2.5*M_PI, 3.5*M_PI};
+   /* the function evaluates sine transforming it to a cosine via sin(x) = cos(x-pi/2) = -cos(x+pi/2) */
+   SCIP_INTERVAL pihalf;
+   SCIP_INTERVAL shiftedop;
 
-   assert(resultant != NULL);
-   assert(!SCIPintervalIsEmpty(infinity, operand));
+   /* sin(x) = cos(x-pi/2) = -cos(x+pi/2)*/
+   SCIPintervalSetBounds(&pihalf, pi_d_l, pi_d_u);
+   SCIPintervalMulScalar(infinity, &pihalf, pihalf, 0.5);
 
-   intervallen = operand.sup - operand.inf;
-   if( intervallen >= 2*M_PI )
-   {
-      SCIPintervalSetBounds(resultant, -1.0, 1.0);
-      return;
-   }
-
-   modinf = fmod(operand.inf, 2*M_PI);
-   if( modinf < 0.0 )
-      modinf += 2*M_PI;
-   modsup = modinf + intervallen;
-
-   for( b = 0; ; ++b )
-   {
-      if( modinf <= extremepoints[b] )
-      {
-         a = b;
-         break;
-      }
-   }
-   for( ; b < 4; ++b )
-   {
-      if( modsup <= extremepoints[b] )
-         break;
-   }
-
-   nbetween = b-a;
-
-   if( nbetween > 1 )
-   {
-      SCIPintervalSetBounds(resultant, -1.0, 1.0);
-      return;
-   }
-
-   finf = sin(operand.inf);
-   fsup = sin(operand.sup);
-
-   if( nbetween == 0 )
-   {
-      if( a & 1 ) /* next extremepoint is minimum -> decreasing -> finf < fsup */
-         SCIPintervalSetBounds(resultant, fsup, finf);
-      else
-         SCIPintervalSetBounds(resultant, finf, fsup);
-   }
-   else /* 1 extremepoint in between */
-   {
-       if( a & 1 ) /* extremepoint is minimum */
-          SCIPintervalSetBounds(resultant, -1.0, MAX(finf,fsup));
-       else
-          SCIPintervalSetBounds(resultant, MIN(finf,fsup), 1.0);
-   }
-
-   /* above operations did not take outward rounding into account,
-    * so extend the computed interval slightly to increase the chance that it will contain the complete sin(operand)
+   /* intervalCos() will move operand.inf into [0,pi]
+    * if we can achieve this here by add pi/2 instead of subtracting it, then use the sin(x) = -cos(x+pi/2) identity
     */
-   if( resultant->inf > -1.0 )
-      resultant->inf = MAX(-1.0, resultant->inf - 1e-10 * REALABS(resultant->inf));  /*lint !e666*/
-   if( resultant->sup <  1.0 )
-      resultant->sup = MIN( 1.0, resultant->sup + 1e-10 * REALABS(resultant->sup));  /*lint !e666*/
+   if( operand.inf < 0.0 && operand.inf > -pi_d_l )
+   {
+      SCIP_Real tmp;
 
-   assert(resultant->inf <= resultant->sup);
+      SCIPintervalAdd(infinity, &shiftedop, operand, pihalf);
+      SCIPintervalCos(infinity, resultant, shiftedop);
+
+      tmp = -resultant->sup;
+      resultant->sup = -resultant->inf;
+      resultant->inf = tmp;
+   }
+   else
+   {
+      SCIPintervalSub(infinity, &shiftedop, operand, pihalf);
+      SCIPintervalCos(infinity, resultant, shiftedop);
+   }
+
+   /* some correction if inf or sup is 0, then sin(0) = 0 would be nice */
+   if( operand.inf == 0.0 && operand.sup < pi_d_l )
+      resultant->inf = 0.0;
+   else if( operand.sup == 0.0 && operand.inf > -pi_d_l )
+      resultant->sup = 0.0;
 }
 
-/** stores cosine value of operand in resultant
- * NOTE: the operations are not applied rounding-safe here
- */
+/** stores cosine value of operand in resultant */
 void SCIPintervalCos(
    SCIP_Real             infinity,           /**< value for infinity */
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
    SCIP_INTERVAL         operand             /**< operand of operation */
    )
 {
-   SCIP_Real intervallen;
-   SCIP_Real modinf;
-   SCIP_Real modsup;
-   SCIP_Real finf;
-   SCIP_Real fsup;
-   int a;
-   int b;
-   int nbetween;
-   /* first one is -1 so even indices are the minimum points */
-   static SCIP_Real extremepoints[] = {M_PI, 2*M_PI, 3*M_PI};
+   /* this implementation follows boost::numeric::cos
+    * cos is decreasing in [0, pi] and increasing in [pi, 2pi].
+    * If operand = [a,b] and a is in [0, pi], then
+    * cos([a,b]) = [-1, 1] if b >= 2pi
+    * cos([a,b]) = [-1, max(cos(a), cos(b))] if b is in [pi, 2pi]
+    * cos([a,b]) = [cos(b), cos(a)] if b is in [0, pi]
+    *
+    * To make sure that a is always between [0, pi] we use the identity cos(x) = (-1)^k cos(x + k pi), i.e.,
+    * we compute k such that a + k pi \in [0,pi], compute cos([a,b] + k pi) and then multiply by (-1)^k.
+    */
+   SCIP_ROUNDMODE roundmode;
+   SCIP_Real negwidth;
+   SCIP_Real k = 0.0;
 
    assert(resultant != NULL);
    assert(!SCIPintervalIsEmpty(infinity, operand));
 
-   intervallen = operand.sup - operand.inf;
-   if( intervallen >= 2*M_PI )
+   SCIPdebugMessage("cos([%.16g,%.16g])\n", operand.inf, operand.sup);
+
+   if( operand.inf == operand.sup )
    {
-      SCIPintervalSetBounds(resultant, -1.0, 1.0);
+      SCIP_Real tmp;
+
+      assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+      tmp = cos(operand.inf);
+      resultant->inf = SCIPnextafter(tmp, SCIP_REAL_MIN);
+      resultant->sup = SCIPnextafter(tmp, SCIP_REAL_MAX);
       return;
    }
 
-   modinf = fmod(operand.inf, 2*M_PI);
-   if( modinf < 0.0 )
-      modinf += 2*M_PI;
-   modsup = modinf + intervallen;
-
-   for( b = 0; ; ++b )
-   {
-      if( modinf <= extremepoints[b] )
-      {
-         a = b;
-         break;
-      }
-   }
-   for( ; b < 3; ++b )
-   {
-      if( modsup <= extremepoints[b] )
-         break;
-   }
-
-   nbetween = b-a;
-
-   if( nbetween > 1 )
-   {
-      SCIPintervalSetBounds(resultant, -1.0, 1.0);
-      return;
-   }
-
-   finf = cos(operand.inf);
-   fsup = cos(operand.sup);
-
-   if( nbetween == 0 )
-   {
-      if( a & 1 ) /* next extremepoint is maximum -> increasing -> finf < fsup */
-         SCIPintervalSetBounds(resultant, finf, fsup);
-      else
-         SCIPintervalSetBounds(resultant, fsup, finf);
-   }
-   else /* 1 extremepoint in between */
-   {
-       if( a & 1 ) /* extremepoint is maximum */
-          SCIPintervalSetBounds(resultant, MIN(finf,fsup), 1.0);
-       else
-          SCIPintervalSetBounds(resultant, -1.0, MAX(finf,fsup));
-   }
-
-   /* above operations did not take outward rounding into account,
-    * so extend the computed interval slightly to increase the chance that it will contain the complete cos(operand)
+   /* set interval to [-1,1] if we cannot reliably work out the difference between inf and sup
+    * double precision has almost 16 digits of precision; for now cut off at 12
     */
-   if( resultant->inf > -1.0 )
-      resultant->inf = MAX(-1.0, resultant->inf - 1e-10 * REALABS(resultant->inf));  /*lint !e666*/
-   if( resultant->sup <  1.0 )
-      resultant->sup = MIN( 1.0, resultant->sup + 1e-10 * REALABS(resultant->sup));  /*lint !e666*/
+   if( operand.sup > 1e12 || operand.inf < -1e12 )
+   {
+      SCIPintervalSetBounds(resultant, -1.0, 1.0);
+      return;
+   }
 
-   assert(resultant->inf <= resultant->sup);
+   roundmode = SCIPintervalGetRoundingMode();
+
+   /* set interval to [-1,1] if width is at least 2 pi */
+   SCIPintervalSetRoundingModeDownwards();
+   negwidth = operand.inf - operand.sup;
+   if( -negwidth >= 2.0*pi_d_l )
+   {
+      SCIPintervalSetBounds(resultant, -1.0, 1.0);
+      SCIPintervalSetRoundingMode(roundmode);
+      return;
+   }
+
+   /* get operand.inf into [0,pi] */
+   if( operand.inf < 0.0 || operand.inf >= pi_d_l )
+   {
+      SCIP_INTERVAL tmp;
+
+      k = floor((operand.inf / (operand.inf < 0.0 ? pi_d_l : pi_d_u)));
+
+      /* operand <- operand - k * pi */
+      SCIPintervalSetBounds(&tmp, pi_d_l, pi_d_u);
+      SCIPintervalMulScalar(infinity, &tmp, tmp, k);
+      SCIPintervalSub(infinity, &operand, operand, tmp);
+   }
+   assert(operand.inf >= 0.0);
+   assert(operand.inf <= pi_d_u);
+
+   SCIPdebugMessage("shifted operand by %g*pi = [%.16g,%.16g])\n", k, operand.inf, operand.sup);
+
+   SCIPintervalSetRoundingMode(roundmode);
+
+   if( operand.sup <= pi_d_l )
+   {
+      /* monotone decreasing */
+      resultant->inf = SCIPnextafter(cos(operand.sup), SCIP_REAL_MIN);
+      resultant->inf = MAX(-1.0, resultant->inf);
+      if( operand.inf == 0.0 )
+         resultant->sup = 1.0;
+      else
+      {
+         resultant->sup = SCIPnextafter(cos(operand.inf), SCIP_REAL_MAX);
+         resultant->sup = MIN( 1.0, resultant->sup);
+      }
+      SCIPdebugMessage("cos([%.16g,%.16g]) = [%.16g,%.16g]\n", operand.inf, operand.sup, resultant->inf, resultant->sup);
+   }
+   else if( operand.sup <= 2*pi_d_l )
+   {
+      /* inf <= pi, sup >= pi: minimum at pi (=-1), maximum at inf or sup */
+      resultant->inf = -1.0;
+      if( operand.inf == 0.0 )
+         resultant->sup = 1.0;
+      else
+      {
+         SCIP_Real cinf;
+         SCIP_Real csup;
+
+         cinf = cos(operand.inf);
+         csup = cos(operand.sup);
+         resultant->sup = SCIPnextafter(MAX(cinf, csup), SCIP_REAL_MAX);
+         resultant->sup = MIN(1.0, resultant->sup);
+      }
+      SCIPdebugMessage("cos([%.16g,%.16g]) = [%.16g,%.16g]\n", operand.inf, operand.sup, resultant->inf, resultant->sup);
+   }
+   else
+   {
+      SCIPintervalSetBounds(resultant, -1.0, 1.0);
+   }
+
+   /* back to original operand using cos(x + k pi) = (-1)^k cos(x) */
+   if( (int)k % 2 != 0 )
+   {
+      SCIP_Real tmp = -resultant->sup;
+      resultant->sup = -resultant->inf;
+      resultant->inf = tmp;
+      SCIPdebugMessage("shifted back -> [%.16g,%.16g]\n", resultant->inf, resultant->sup);
+   }
+
+   assert(resultant->inf >= -1.0);
+   assert(resultant->sup <=  1.0);
 }
 
 /** stores sign of operand in resultant */
@@ -2724,9 +2889,106 @@ void SCIPintervalSign(
    }
 }
 
+/** stores entropy of operand in resultant */
+void SCIPintervalEntropy(
+   SCIP_Real             infinity,           /**< value for infinity */
+   SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
+   SCIP_INTERVAL         operand             /**< operand of operation */
+   )
+{
+   SCIP_Real loginf;
+   SCIP_Real logsup;
+   SCIP_Real infcand1 = 0.0;
+   SCIP_Real infcand2 = 0.0;
+   SCIP_Real supcand1 = 0.0;
+   SCIP_Real supcand2 = 0.0;
+   SCIP_Real extr;
+   SCIP_Real inf;
+   SCIP_Real sup;
+
+   assert(resultant != NULL);
+   assert(!SCIPintervalIsEmpty(infinity, operand));
+
+   /* check whether the domain is empty */
+   if( operand.sup < 0.0 )
+   {
+      SCIPintervalSetEmpty(resultant);
+      return;
+   }
+
+   /* handle special case of domain being [0,0] */
+   if( operand.sup == 0.0 )
+   {
+      SCIPintervalSet(resultant, 0.0);
+      return;
+   }
+
+   /* compute infimum = MIN(entropy(op.inf), entropy(op.sup)) and supremum = MAX(MIN(entropy(op.inf), entropy(op.sup))) */
+
+   /* first, compute the logarithms (roundmode nearest, then nextafter) */
+   assert(SCIPintervalGetRoundingMode() == SCIP_ROUND_NEAREST);
+   if( operand.inf > 0.0 )
+   {
+      loginf = log(operand.inf);
+      infcand1 = SCIPnextafter(loginf, SCIP_REAL_MAX);
+      supcand1 = SCIPnextafter(loginf, SCIP_REAL_MIN);
+   }
+
+   if( operand.sup < infinity )
+   {
+      logsup = log(operand.sup);
+      infcand2 = SCIPnextafter(logsup, SCIP_REAL_MAX);
+      supcand2 = SCIPnextafter(logsup, SCIP_REAL_MIN);
+   }
+
+   /* second, multiply with operand.inf/sup using upward rounding
+    * thus, for infinum, negate after muliplication; for supremum, negate before multiplication
+    */
+   SCIPintervalSetRoundingModeUpwards();
+   if( operand.inf > 0.0 )
+   {
+      infcand1 = SCIPnegateReal(operand.inf * infcand1);
+      supcand1 = SCIPnegateReal(operand.inf) * supcand1;
+   }
+   else
+   {
+      infcand1 = 0.0;
+      supcand1 = 0.0;
+   }
+
+   if( operand.sup < infinity )
+   {
+      infcand2 = SCIPnegateReal(operand.sup * infcand2);
+      supcand2 = SCIPnegateReal(operand.sup) * supcand2;
+   }
+   else
+   {
+      infcand2 = -infinity;
+      supcand2 = -infinity;
+   }
+
+   /* restore original rounding mode (asserted to be "to-nearest" above) */
+   SCIPintervalSetRoundingModeToNearest();
+
+   inf = MIN(infcand1, infcand2);
+
+   extr = exp(-1.0);
+   if( operand.inf <= extr && extr <= operand.sup )
+   {
+      extr = SCIPnextafter(extr, SCIP_REAL_MAX);
+      sup = MAX3(supcand1, supcand2, extr);
+   }
+   else
+      sup = MAX(supcand1, supcand2);
+
+   assert(inf <= sup);
+   SCIPintervalSetBounds(resultant, inf, sup);
+}
+
 /** computes exact upper bound on \f$ a x^2 + b x \f$ for x in [xlb, xub], b an interval, and a scalar
  * 
- * Uses Algorithm 2.2 from Domes and Neumaier: Constraint propagation on quadratic constraints (2008) */
+ * Uses Algorithm 2.2 from Domes and Neumaier: Constraint propagation on quadratic constraints (2008).
+ */
 SCIP_Real SCIPintervalQuadUpperBound(
    SCIP_Real             infinity,           /**< value for infinity */
    SCIP_Real             a,                  /**< coefficient of x^2 */
@@ -2758,15 +3020,15 @@ SCIP_Real SCIPintervalQuadUpperBound(
          SCIP_ROUNDMODE roundmode;
          SCIP_Real cand1, cand2, cand3, cand4;
 
-         roundmode = SCIPintervalGetRoundingMode();
-         SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         roundmode = intervalGetRoundingMode();
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          cand1 = b_.inf * x.inf;
          cand2 = b_.inf * x.sup;
          cand3 = b_.sup * x.inf;
          cand4 = b_.sup * x.sup;
          u = MAX(MAX(cand1, cand2), MAX(cand3, cand4));
 
-         SCIPintervalSetRoundingMode(roundmode);
+         intervalSetRoundingMode(roundmode);
       }
 
       return u;
@@ -2792,8 +3054,8 @@ SCIP_Real SCIPintervalQuadUpperBound(
       if( b >= infinity )
          return infinity;
 
-      roundmode = SCIPintervalGetRoundingMode();
-      SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+      roundmode = intervalGetRoundingMode();
+      intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
 
       u = MAX(x.inf * (a*x.inf + b), x.sup * (a*x.sup + b));
       s = b/2;
@@ -2801,7 +3063,7 @@ SCIP_Real SCIPintervalQuadUpperBound(
       if( t > x.inf && negate(2*a)*x.sup > b && s*t > u )
          u = s*t;
 
-      SCIPintervalSetRoundingMode(roundmode);
+      intervalSetRoundingMode(roundmode);
       return u;
    }
    else
@@ -2855,14 +3117,15 @@ void SCIPintervalQuad(
 
 /** computes interval with positive solutions of a quadratic equation with interval coefficients
  * 
- * Given intervals a, b, and c, this function computes an interval that contains all positive solutions of \f$ a x^2 + b x \in c\f$.
+ * Given intervals a, b, and c, this function computes an interval that contains all positive solutions of \f$ a x^2 + b x \in c\f$ within xbnds.
  */
 void SCIPintervalSolveUnivariateQuadExpressionPositive(
    SCIP_Real             infinity,           /**< value for infinity */
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
    SCIP_INTERVAL         sqrcoeff,           /**< coefficient of x^2 */
    SCIP_INTERVAL         lincoeff,           /**< coefficient of x */
-   SCIP_INTERVAL         rhs                 /**< right hand side of equation */
+   SCIP_INTERVAL         rhs,                /**< right hand side of equation */
+   SCIP_INTERVAL         xbnds               /**< bounds on x */
    )
 {
    assert(resultant != NULL);
@@ -2875,7 +3138,7 @@ void SCIPintervalSolveUnivariateQuadExpressionPositive(
    }
    else
    {
-      SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(infinity, resultant, -sqrcoeff.inf, -lincoeff.inf, -rhs.sup);
+      SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(infinity, resultant, -sqrcoeff.inf, -lincoeff.inf, -rhs.sup, xbnds);
       SCIPdebugMessage("solve %g*x^2 + %g*x >= %g gives [%.20f, %.20f]\n", -sqrcoeff.inf, -lincoeff.inf, -rhs.sup, resultant->inf, resultant->sup);
    }
 
@@ -2883,7 +3146,8 @@ void SCIPintervalSolveUnivariateQuadExpressionPositive(
    if( lincoeff.sup <  infinity && rhs.inf >  -infinity && sqrcoeff.sup <  infinity )
    {
       SCIP_INTERVAL res2;
-      SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(infinity, &res2, sqrcoeff.sup, lincoeff.sup, rhs.inf);
+      /* coverity[uninit_use_in_call] */
+      SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(infinity, &res2, sqrcoeff.sup, lincoeff.sup, rhs.inf, xbnds);
       SCIPdebugMessage("solve %g*x^2 + %g*x >= %g gives [%.20f, %.20f]\n", sqrcoeff.sup, lincoeff.sup, rhs.inf, res2.inf, res2.sup);
       SCIPdebugMessage("intersection of [%.20f, %.20f] and [%.20f, %.20f]", resultant->inf, resultant->sup, res2.inf, res2.sup);
       /* intersect both results */
@@ -2898,9 +3162,44 @@ void SCIPintervalSolveUnivariateQuadExpressionPositive(
    }
 }
 
+/** computes interval with negative solutions of a quadratic equation with interval coefficients
+ *
+ * Given intervals a, b, and c, this function computes an interval that contains all negative solutions of \f$ a x^2 + b x \in c\f$ within xbnds.
+ */
+void SCIPintervalSolveUnivariateQuadExpressionNegative(
+   SCIP_Real             infinity,           /**< value for infinity */
+   SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
+   SCIP_INTERVAL         sqrcoeff,           /**< coefficient of x^2 */
+   SCIP_INTERVAL         lincoeff,           /**< coefficient of x */
+   SCIP_INTERVAL         rhs,                /**< right hand side of equation */
+   SCIP_INTERVAL         xbnds               /**< bounds on x */
+   )
+{
+   SCIP_Real tmp;
+
+   /* change in variables y = -x, thus get all positive solutions of
+    * a * y^2 + (-b) * y in c with -xbnds as bounds on y
+    */
+
+   tmp = lincoeff.inf;
+   lincoeff.inf = -lincoeff.sup;
+   lincoeff.sup = -tmp;
+
+   tmp = xbnds.inf;
+   xbnds.inf = -xbnds.sup;
+   xbnds.sup = -tmp;
+
+   SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, resultant, sqrcoeff, lincoeff, rhs, xbnds);
+
+   tmp = resultant->inf;
+   resultant->inf = -resultant->sup;
+   resultant->sup = -tmp;
+}
+
+
 /** computes positive solutions of a quadratic equation with scalar coefficients
  * 
- * Given scalar a, b, and c, this function computes an interval that contains all positive solutions of \f$ a x^2 + b x \geq c\f$.
+ * Givens scalar a, b, and c, this function computes an interval that contains all positive solutions of \f$ a x^2 + b x \geq c\f$ within xbnds.
  * Implements Algorithm 3.2 from Domes and Neumaier: Constraint propagation on quadratic constraints (2008).
  */
 void SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(
@@ -2908,7 +3207,8 @@ void SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
    SCIP_Real             sqrcoeff,           /**< coefficient of x^2 */
    SCIP_Real             lincoeff,           /**< coefficient of x */
-   SCIP_Real             rhs                 /**< right hand side of equation */
+   SCIP_Real             rhs,                /**< right hand side of equation */
+   SCIP_INTERVAL         xbnds               /**< bounds on x */
    )
 {
    SCIP_ROUNDMODE roundmode;
@@ -2920,29 +3220,91 @@ void SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(
    assert(sqrcoeff <  infinity);
    assert(sqrcoeff > -infinity);
 
+   if( sqrcoeff == 0.0 )
+   {
+      /* special handling for linear b * x >= c
+       *
+       * The non-negative solutions here are:
+       * b <  0, c <= 0 : [0, c/b]
+       * b <= 0, c >  0 : empty
+       * b >  0, c >  0 : [c/b, infty]
+       * b >= 0, c <= 0 : [0, infty]
+       *
+       * The same should have been computed below, but without the sqrcoeff, terms simplify (thus, also less rounding).
+       */
+
+      if( lincoeff <= 0.0 && rhs > 0.0 )
+      {
+         SCIPintervalSetEmpty(resultant);
+         return;
+      }
+
+      if( lincoeff >= 0.0 && rhs <= 0.0 )
+      {
+         /* [0,infty] cap xbnds */
+         resultant->inf = MAX(0.0, xbnds.inf);
+         resultant->sup = xbnds.sup;
+         return;
+      }
+
+      roundmode = intervalGetRoundingMode();
+
+      if( lincoeff < 0.0 && rhs <= 0.0 )
+      {
+         /* [0,c/b] cap xbnds */
+         resultant->inf = MAX(0.0, xbnds.inf);
+
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+         resultant->sup = rhs / lincoeff;
+         if( xbnds.sup < resultant->sup )
+            resultant->sup = xbnds.sup;
+      }
+      else
+      {
+         assert(lincoeff > 0.0);
+         assert(rhs > 0.0);
+
+         /* [c/b, infty] cap xbnds */
+
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+         resultant->inf = rhs / lincoeff;
+         if( resultant->inf < xbnds.inf )
+            resultant->inf = xbnds.inf;
+
+         resultant->sup = xbnds.sup;
+      }
+
+      intervalSetRoundingMode(roundmode);
+
+      return;
+   }
+
    resultant->inf = 0.0;
    resultant->sup = infinity;
 
-   roundmode = SCIPintervalGetRoundingMode();
+   roundmode = intervalGetRoundingMode();
 
-   SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+   /* this should actually be round_upwards, but unless lincoeff is min_double,
+    * there shouldn't be any rounding happening when dividing by 2, i.e., shifting exponent,
+    * so it is ok to not change the rounding mode here
+    */
    b = lincoeff / 2.0;
 
    if( lincoeff >= 0.0 )
    { /* b >= 0.0 */
-      /*SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS); */
       if( rhs > 0.0 )
       { /* b >= 0.0 and c > 0.0 */
+         intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
          delta = b*b + sqrcoeff*rhs;
-         if( delta < 0.0 || (sqrcoeff == 0.0 && lincoeff == 0.0) )
+         if( delta < 0.0 )
          {
             SCIPintervalSetEmpty(resultant);
          }
          else
          {
-            SCIPintervalSetRoundingMode(SCIP_ROUND_NEAREST);
+            intervalSetRoundingMode(SCIP_ROUND_NEAREST);
             z = SCIPnextafter(sqrt(delta), SCIP_REAL_MAX);
-            SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+            intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
             z += b;
             resultant->inf = negate(negate(rhs)/z);
             if( sqrcoeff < 0.0 )
@@ -2953,10 +3315,11 @@ void SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(
       { /* b >= 0.0 and c <= 0.0 */
          if( sqrcoeff < 0.0 )
          {
+            intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
             delta = b*b + sqrcoeff*rhs;
-            SCIPintervalSetRoundingMode(SCIP_ROUND_NEAREST);
+            intervalSetRoundingMode(SCIP_ROUND_NEAREST);
             z = SCIPnextafter(sqrt(delta), SCIP_REAL_MAX);
-            SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+            intervalSetRoundingMode(SCIP_ROUND_UPWARDS);
             z += b;
             resultant->sup = z / negate(sqrcoeff);
          }
@@ -2968,11 +3331,11 @@ void SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(
       { /* b < 0.0 and c > 0.0 */
          if( sqrcoeff > 0.0 )
          {
-            SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+            intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
             delta = b*b + sqrcoeff*rhs;
-            SCIPintervalSetRoundingMode(SCIP_ROUND_NEAREST);
-            z = SCIPnextafter(sqrt(delta), SCIP_REAL_MAX);
-            SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
+            intervalSetRoundingMode(SCIP_ROUND_NEAREST);
+            z = SCIPnextafter(sqrt(delta), SCIP_REAL_MIN);
+            intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
             z += negate(b);
             resultant->inf = z / sqrcoeff;
          }
@@ -2983,88 +3346,131 @@ void SCIPintervalSolveUnivariateQuadExpressionPositiveAllScalar(
       }
       else
       { /* b < 0.0 and c <= 0.0 */
-         /* SCIPintervalSetRoundingMode(SCIP_ROUND_DOWNWARDS); */
+         intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
          delta = b*b + sqrcoeff * rhs;
-         if( delta >= 0.0 && sqrcoeff <= 0.0 )
+         if( delta >= 0.0 )
          {
-            SCIPintervalSetRoundingMode(SCIP_ROUND_NEAREST);
-            z = SCIPnextafter(sqrt(delta), SCIP_REAL_MAX);
-            SCIPintervalSetRoundingMode(SCIP_ROUND_UPWARDS);
+            /* let resultant = [0,-c/z] for now */
+            intervalSetRoundingMode(SCIP_ROUND_NEAREST);
+            z = SCIPnextafter(sqrt(delta), SCIP_REAL_MIN);
+            /* continue with downward rounding, because we want z (>= 0) to be small,
+             * because -rhs/z needs to be large (-rhs >= 0)
+             */
+            intervalSetRoundingMode(SCIP_ROUND_DOWNWARDS);
             z += negate(b);
+            /* also now compute rhs/z with downward rounding, so that -(rhs/z) becomes large */
             resultant->sup = negate(rhs/z);
+
+            if( sqrcoeff > 0.0 )
+            {
+               /* for a > 0, the result is [0,-c/z] \vee [z/a,infinity]
+                * currently, resultant = [0,-c/z]
+                */
+               SCIP_Real zdiva;
+
+               zdiva = z/sqrcoeff;
+
+               if( xbnds.sup < zdiva )
+               {
+                  /* after intersecting with xbnds, result is [0,-c/z], so we are done */
+               }
+               else if( xbnds.inf > resultant->sup )
+               {
+                  /* after intersecting with xbnds, result is [z/a,infinity] */
+                  resultant->inf = zdiva;
+                  resultant->sup = infinity;
+               }
+               else
+               {
+                  /* after intersecting with xbnds we can neither exclude [0,-c/z] nor [z/a,infinity],
+                   * so put resultant = [0,infinity] (intersection with xbnds happens below)
+                   * @todo we could create a hole here
+                   */
+                  resultant->sup = infinity;
+               }
+            }
+            else
+            {
+               /* for a < 0, the result is [0,-c/z], so we are done */
+            }
          }
-         /* @todo actually we could generate a hole here */
       }
    }
 
-   SCIPintervalSetRoundingMode(roundmode);
+   SCIPintervalIntersect(resultant, *resultant, xbnds);
+
+   intervalSetRoundingMode(roundmode);
 }
 
 /** solves a quadratic equation with interval coefficients
  *
- * Given intervals a, b and c, this function computes an interval that contains all solutions of \f$ a x^2 + b x \in c\f$
+ * Given intervals a, b and c, this function computes an interval that contains all solutions of \f$ a x^2 + b x \in c\f$ within xbnds.
  */
 void SCIPintervalSolveUnivariateQuadExpression(
    SCIP_Real             infinity,           /**< value for infinity */
    SCIP_INTERVAL*        resultant,          /**< resultant interval of operation */
    SCIP_INTERVAL         sqrcoeff,           /**< coefficient of x^2 */
    SCIP_INTERVAL         lincoeff,           /**< coefficient of x */
-   SCIP_INTERVAL         rhs                 /**< right hand side of equation */
+   SCIP_INTERVAL         rhs,                /**< right hand side of equation */
+   SCIP_INTERVAL         xbnds               /**< bounds on x */
    )
 {
-   SCIP_Real tmp;
    SCIP_INTERVAL xpos;
    SCIP_INTERVAL xneg;
 
    assert(resultant != NULL);
+   assert(!SCIPintervalIsEmpty(infinity, sqrcoeff));
+   assert(!SCIPintervalIsEmpty(infinity, lincoeff));
+   assert(!SCIPintervalIsEmpty(infinity, rhs));
 
-   if( sqrcoeff.inf == 0.0 && sqrcoeff.sup == 0.0 )
-   { /* relatively easy case: x \in rhs / lincoeff */
-      if( lincoeff.inf == 0.0 && lincoeff.sup == 0.0 )
-      { /* equation became 0.0 \in rhs */
-         if( rhs.inf <= 0.0 && rhs.sup >= 0.0 )
-            SCIPintervalSetEntire(infinity, resultant);
-         else
-            SCIPintervalSetEmpty(resultant);
-      }
-      else
-         SCIPintervalDiv(infinity, resultant, rhs, lincoeff);
-      SCIPdebugMessage("  solving [%g,%g]*x in [%g,%g] gives [%g,%g]\n", SCIPintervalGetInf(lincoeff), SCIPintervalGetSup(lincoeff), SCIPintervalGetInf(rhs), SCIPintervalGetSup(rhs), SCIPintervalGetInf(*resultant), SCIPintervalGetSup(*resultant));
+   /* special handling for lincoeff * x = rhs without 0 in lincoeff
+    * rhs/lincoeff gives a good interval that we just have to intersect with xbnds
+    * the code below would also work, but uses many more case distinctions to get to a result that should be the same (though epsilon differences can sometimes be observed)
+    */
+   if( sqrcoeff.inf == 0.0 && sqrcoeff.sup == 0.0 && (lincoeff.inf > 0.0 || lincoeff.sup < 0.0) )
+   {
+      SCIPintervalDiv(infinity, resultant, rhs, lincoeff);
+      SCIPintervalIntersect(resultant, *resultant, xbnds);
+      SCIPdebugMessage("solving [%g,%g]*x = [%g,%g] for x in [%g,%g] gives [%g,%g]\n", lincoeff.inf, lincoeff.sup, rhs.inf, rhs.sup, xbnds.inf, xbnds.sup, resultant->inf, resultant->sup);
       return;
    }
 
-   if( lincoeff.inf == 0.0 && lincoeff.sup == 0.0 )
-   { /* easy case: x \in +/- sqrt(rhs/a) */
-      SCIPintervalDiv(infinity, resultant, rhs, sqrcoeff);
-      SCIPintervalSquareRoot(infinity, resultant, *resultant);
-      resultant->inf = -resultant->sup;
-      return;
-   }
+   SCIPdebugMessage("solving [%g,%g]*x^2 + [%g,%g]*x = [%g,%g] for x in [%g,%g]\n", sqrcoeff.inf, sqrcoeff.sup, lincoeff.inf, lincoeff.sup, rhs.inf, rhs.sup, xbnds.inf, xbnds.sup);
 
    /* find all x>=0 such that a*x^2+b*x = c */
-   SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &xpos, sqrcoeff, lincoeff, rhs);
-   SCIPdebugMessage("  positive solutions of [%g,%g]*x^2 + [%g,%g]*x in [%g,%g] are [%g,%g]\n",
-      sqrcoeff.inf, sqrcoeff.sup, lincoeff.inf, lincoeff.sup, rhs.inf, rhs.sup, xpos.inf, xpos.sup);
+   if( xbnds.sup >= 0 )
+   {
+      SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &xpos, sqrcoeff, lincoeff, rhs, xbnds);
+      SCIPdebugMessage("  solutions of [%g,%g]*x^2 + [%g,%g]*x in [%g,%g] for x in [%g,%g] are [%.15g,%.15g]\n",
+         sqrcoeff.inf, sqrcoeff.sup, lincoeff.inf, lincoeff.sup, rhs.inf, rhs.sup, MAX(xbnds.inf, 0.0), xbnds.sup, xpos.inf, xpos.sup);
+   }
+   else
+   {
+      SCIPintervalSetEmpty(&xpos);
+   }
 
-   tmp = lincoeff.inf;
-   lincoeff.inf = -lincoeff.sup;
-   lincoeff.sup = -tmp;
-
-   /* find all x>=0 such that a*x^2-b*x = c */
-   SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &xneg, sqrcoeff, lincoeff, rhs);
-   tmp = xneg.inf;
-   xneg.inf = -xneg.sup;
-   xneg.sup = -tmp;
-   SCIPdebugMessage("  negative solutions of [%g,%g]*x^2 + [%g,%g]*x in [%g,%g] are [%g,%g]\n",
-      sqrcoeff.inf, sqrcoeff.sup, lincoeff.inf, lincoeff.sup, rhs.inf, rhs.sup, xneg.inf, xneg.sup);
+   /* find all x<=0 such that a*x^2-b*x = c */
+   if( xbnds.inf <= 0.0 )
+   {
+      SCIPintervalSolveUnivariateQuadExpressionNegative(infinity, &xneg, sqrcoeff, lincoeff, rhs, xbnds);
+      SCIPdebugMessage("  solutions of [%g,%g]*x^2 + [%g,%g]*x in [%g,%g] for x in [%g,%g] are [%g,%g]\n",
+         sqrcoeff.inf, sqrcoeff.sup, lincoeff.inf, lincoeff.sup, rhs.inf, rhs.sup, xbnds.inf, MIN(xbnds.sup, 0.0), xneg.inf, xneg.sup);
+   }
+   else
+   {
+      SCIPintervalSetEmpty(&xneg);
+   }
 
    SCIPintervalUnify(resultant, xpos, xneg);
    SCIPdebugMessage("  unify gives [%g,%g]\n", SCIPintervalGetInf(*resultant), SCIPintervalGetSup(*resultant));
 }
 
 /** stores range of bivariate quadratic term in resultant
- * given scalars ax, ay, axy, bx, and by and intervals for x and y, computes interval for \f$ ax x^2 + ay y^2 + axy x y + bx x + by y \f$
- * NOTE: the operations are not applied rounding-safe here
+ *
+ * Given scalars \f$a_x\f$, \f$a_y\f$, \f$a_{xy}\f$, \f$b_x\f$, and \f$b_y\f$ and intervals for \f$x\f$ and \f$y\f$,
+ * computes interval for \f$ a_x x^2 + a_y y^2 + a_{xy} x y + b_x x + b_y y \f$.
+ *
+ * \attention The operations are not applied rounding-safe here!
  */
 void SCIPintervalQuadBivar(
    SCIP_Real             infinity,           /**< value for infinity in interval arithmetics */
@@ -3321,9 +3727,11 @@ void SCIPintervalQuadBivar(
 }
 
 /** solves a bivariate quadratic equation for the first variable
- * given scalars ax, ay, axy, bx and by, and intervals for x, y, and rhs,
- * computes \f$ \{ x \in \mathbf{x} : \exists y \in \mathbf{y} : a_x x^2 + a_y y^2 + a_{xy} x y + b_x x + b_y y \in \mathbf{\mbox{rhs}} \} \f$
- * NOTE: the operations are not applied rounding-safe here
+ *
+ * Given scalars \f$a_x\f$, \f$a_y\f$, \f$a_{xy}\f$, \f$b_x\f$ and \f$b_y\f$, and intervals for \f$x\f$, \f$y\f$, and rhs,
+ * computes \f$ \{ x \in \mathbf{x} : \exists y \in \mathbf{y} : a_x x^2 + a_y y^2 + a_{xy} x y + b_x x + b_y y \in \mathbf{\mbox{rhs}} \} \f$.
+ *
+ * \attention the operations are not applied rounding-safe here
  */
 void SCIPintervalSolveBivariateQuadExpressionAllScalar(
    SCIP_Real             infinity,           /**< value for infinity in interval arithmetics */
@@ -3362,8 +3770,7 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
       if( xbnds.sup >= 0.0 )
       {
          SCIPintervalSet(&lincoef, bx);
-         SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &pos, sqrcoef, lincoef, rhs);
-         SCIPintervalIntersect(&pos, pos, xbnds);
+         SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &pos, sqrcoef, lincoef, rhs, xbnds);
       }
       else
          SCIPintervalSetEmpty(&pos);
@@ -3371,18 +3778,49 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
       /* get negative solutions, if of interest */
       if( xbnds.inf < 0.0 )
       {
+         SCIP_INTERVAL xbndsneg;
          SCIPintervalSet(&lincoef, -bx);
-         SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &neg, sqrcoef, lincoef, rhs);
+         SCIPintervalSetBounds(&xbndsneg, -xbnds.sup, -xbnds.inf);
+         SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &neg, sqrcoef, lincoef, rhs, xbndsneg);
          if( !SCIPintervalIsEmpty(infinity, neg) )
-         {
             SCIPintervalSetBounds(&neg, -neg.sup, -neg.inf);
-            SCIPintervalIntersect(&neg, neg, xbnds);
-         }
       }
       else
          SCIPintervalSetEmpty(&neg);
 
       SCIPintervalUnify(resultant, pos, neg);
+
+      return;
+   }
+
+   if( ybnds.inf <= -infinity || ybnds.sup >= infinity )
+   {
+      /* the code below is buggy if y is unbounded, see #2250
+       * fall back to univariate case by solving a_x x^2 + b_x x + a_y y^2 + (a_xy xbnds + b_y) y in rhs
+       */
+      SCIP_INTERVAL ax_;
+      SCIP_INTERVAL bx_;
+      SCIP_INTERVAL ycoef;
+      SCIP_INTERVAL ytermbounds;
+
+      *resultant = xbnds;
+
+      /* nothing we can do here if x is unbounded (we have a_xy != 0 here) */
+      if( xbnds.inf <= -infinity && xbnds.sup >= infinity )
+         return;
+
+      /* ycoef = axy xbnds + by */
+      SCIPintervalMulScalar(infinity, &ycoef, xbnds, axy);
+      SCIPintervalAddScalar(infinity, &ycoef, ycoef, by);
+
+      /* get bounds on ay y^2 + (axy xbnds + by) y */
+      SCIPintervalQuad(infinity, &ytermbounds, ay, ycoef, ybnds);
+
+      /* now solve ax x^2 + bx x in rhs - ytermbounds */
+      SCIPintervalSet(&ax_, ax);
+      SCIPintervalSet(&bx_, bx);
+      SCIPintervalSub(infinity, &rhs, rhs, ytermbounds);
+      SCIPintervalSolveUnivariateQuadExpression(infinity, resultant, ax_, bx_, rhs, xbnds);
 
       return;
    }
@@ -3735,7 +4173,6 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
                   }
                }
             }
-
          }
          else if( REALABS(2.0 * ay * bx - axy * by) > 1e-9 )
          {
@@ -3819,8 +4256,7 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
          {
             SCIP_INTERVAL ypos;
 
-            SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &ypos, rcoef_yy_int, rcoef_y_int, rhs2);
-            SCIPintervalIntersect(&ypos, ypos, ybnds);
+            SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &ypos, rcoef_yy_int, rcoef_y_int, rhs2, ybnds);
             if( !SCIPintervalIsEmpty(infinity, ypos) )
             {
                assert(ypos.inf >= 0.0); /* we computed only positive solutions above */
@@ -3863,14 +4299,7 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
          {
             SCIP_INTERVAL yneg;
 
-            /* find all y >= 0 such that -rcoef_y * y + rcoef_yy * y^2 in -rhs2 and then negate y */
-            SCIPintervalSet(&rcoef_y_int, -(SCIP_Real)rcoef_y);
-            SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, &yneg, rcoef_yy_int, rcoef_y_int, rhs2);
-            if( !SCIPintervalIsEmpty(infinity, yneg) )
-            {
-               SCIPintervalSetBounds(&yneg, -yneg.sup, -yneg.inf);
-               SCIPintervalIntersect(&yneg, yneg, ybnds);
-            }
+            SCIPintervalSolveUnivariateQuadExpressionNegative(infinity, &yneg, rcoef_yy_int, rcoef_y_int, rhs2, ybnds);
             if( !SCIPintervalIsEmpty(infinity, yneg) )
             {
                if( yneg.inf > -infinity )
@@ -3997,7 +4426,7 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
          {
             /* equation became 0.0 \in myrhs */
             if( myrhs.inf <= 0.0 && myrhs.sup >= 0.0 )
-               SCIPintervalSetEntire(infinity, resultant);
+               *resultant = xbnds;
             else
                SCIPintervalSetEmpty(resultant);
          }
@@ -4007,23 +4436,23 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
 
             /* need only positive solutions */
             SCIPintervalSet(&a_, 0.0);
-            SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, resultant, a_, lincoef, myrhs);
+            SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, resultant, a_, lincoef, myrhs, xbnds);
          }
          else
          {
             SCIP_INTERVAL a_;
+            SCIP_INTERVAL xbndsneg;
 
             assert(xbnds.sup <= 0.0);
 
             /* need only negative solutions */
             SCIPintervalSet(&a_, 0.0);
             SCIPintervalSetBounds(&lincoef, -lincoef.sup, -lincoef.inf);
-            SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, resultant, a_, lincoef, myrhs);
+            SCIPintervalSetBounds(&xbndsneg, -xbnds.sup, -xbnds.inf);
+            SCIPintervalSolveUnivariateQuadExpressionPositive(infinity, resultant, a_, lincoef, myrhs, xbndsneg);
             if( !SCIPintervalIsEmpty(infinity, *resultant) )
                SCIPintervalSetBounds(resultant, -resultant->sup, -resultant->inf);
          }
-
-         SCIPintervalIntersect(resultant, xbnds, *resultant);
 
          return;
       }
@@ -4145,14 +4574,22 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
                ymin = ay * bx + sqrt(MAX(d, 0.0));
                ymin /= axy * ay;
 
-               val = (c - ay * ymin * ymin - by * ymin) / (bx + axy * ymin);
-               maxval = MAX(val, maxval);
+               if( ymin > ybnds.inf && ymin < ybnds.sup )
+               {
+                  assert(bx + axy * ymin != 0.0); /* the case -bx/axy in ybnds was handled aboved */
+                  val = (c - ay * ymin * ymin - by * ymin) / (bx + axy * ymin);
+                  maxval = MAX(val, maxval);
+               }
 
                ymin = ay * bx - sqrt(MAX(d, 0.0));
                ymin /= axy * ay;
 
-               val = (c - ay * ymin * ymin - by * ymin) / (bx + axy * ymin);
-               maxval = MAX(val, maxval);
+               if( ymin > ybnds.inf && ymin < ybnds.sup )
+               {
+                  assert(bx + axy * ymin != 0.0); /* the case -bx/axy in ybnds was handled aboved */
+                  val = (c - ay * ymin * ymin - by * ymin) / (bx + axy * ymin);
+                  maxval = MAX(val, maxval);
+               }
             }
          }
       }
@@ -4172,3 +4609,174 @@ void SCIPintervalSolveBivariateQuadExpressionAllScalar(
       SCIPintervalIntersect(resultant, *resultant, xbnds);
    }
 }
+
+/** propagates a weighted sum of intervals in a given interval
+ *
+ * Given \f$\text{constant} + \sum_i \text{weights}_i \text{operands}_i \in \text{rhs}\f$,
+ * computes possibly tighter interval for each term.
+ *
+ * @attention Valid values are returned in resultants only if any tightening has been found and no empty interval, that is, function returns with non-zero and `*infeasible` = FALSE.
+ *
+ * @return Number of terms for which resulting interval is smaller than operand interval.
+ */
+int SCIPintervalPropagateWeightedSum(
+   SCIP_Real             infinity,           /**< value for infinity in interval arithmetics */
+   int                   noperands,          /**< number of operands (intervals) to propagate */
+   SCIP_INTERVAL*        operands,           /**< intervals to propagate */
+   SCIP_Real*            weights,            /**< weights of intervals in sum */
+   SCIP_Real             constant,           /**< constant in sum */
+   SCIP_INTERVAL         rhs,                /**< right-hand-side interval */
+   SCIP_INTERVAL*        resultants,         /**< array to store propagated intervals, if any reduction is found at all (check return code and *infeasible) */
+   SCIP_Bool*            infeasible          /**< buffer to store if propagation produced empty interval */
+   )
+{
+   SCIP_ROUNDMODE prevroundmode;
+   SCIP_INTERVAL childbounds;
+   SCIP_Real minlinactivity;
+   SCIP_Real maxlinactivity;
+   int minlinactivityinf;
+   int maxlinactivityinf;
+   int nreductions = 0;
+   int c;
+
+   assert(noperands > 0);
+   assert(operands != NULL);
+   assert(weights != NULL);
+   assert(resultants != NULL);
+   assert(infeasible != NULL);
+
+   *infeasible = FALSE;
+
+   /* not possible to conclude finite bounds if the rhs is [-inf,inf] */
+   if( SCIPintervalIsEntire(infinity, rhs) )
+      return 0;
+
+   prevroundmode = SCIPintervalGetRoundingMode();
+   SCIPintervalSetRoundingModeDownwards();
+
+   minlinactivity = constant;
+   maxlinactivity = -constant; /* use -constant because of the rounding mode */
+   minlinactivityinf = 0;
+   maxlinactivityinf = 0;
+
+   SCIPdebugMessage("reverse prop with %d children: %.20g", noperands, constant);
+
+   /* shift coefficients into the intervals of the children (using resultants as working memory)
+    * compute the min and max activities
+    */
+   for( c = 0; c < noperands; ++c )
+   {
+      childbounds = operands[c];
+      SCIPdebugPrintf(" %+.20g*[%.20g,%.20g]", weights[c], childbounds.inf, childbounds.sup);
+
+      if( SCIPintervalIsEmpty(infinity, childbounds) )
+      {
+         *infeasible = TRUE;
+         c = noperands;  /* signal for terminate code to not copy operands to resultants because we return *infeasible == TRUE */  /*lint !e850*/
+         goto TERMINATE;
+      }
+
+      SCIPintervalMulScalar(infinity, &resultants[c], childbounds, weights[c]);
+
+      if( resultants[c].sup >= infinity )
+         ++maxlinactivityinf;
+      else
+      {
+         assert(resultants[c].sup > -infinity);
+         maxlinactivity -= resultants[c].sup;
+      }
+
+      if( resultants[c].inf <= -infinity )
+         ++minlinactivityinf;
+      else
+      {
+         assert(resultants[c].inf < infinity);
+         minlinactivity += resultants[c].inf;
+      }
+   }
+   maxlinactivity = -maxlinactivity; /* correct sign */
+
+   SCIPdebugPrintf(" = [%.20g,%.20g] in rhs = [%.20g,%.20g]\n",
+      minlinactivityinf ? -infinity : minlinactivity,
+      maxlinactivityinf ?  infinity : maxlinactivity,
+      rhs.inf, rhs.sup);
+
+   /* if there are too many unbounded bounds, then could only compute infinite bounds for children, so give up */
+   if( (minlinactivityinf >= 2 || rhs.sup >= infinity) && (maxlinactivityinf >= 2 || rhs.inf <= -infinity) )
+   {
+      c = noperands;  /* signal for terminate code that it doesn't need to copy operands to resultants because we return nreductions==0 */
+      goto TERMINATE;
+   }
+
+   for( c = 0; c < noperands; ++c )
+   {
+      /* upper bounds of c_i is
+       *   node->bounds.sup - (minlinactivity - c_i.inf), if c_i.inf > -infinity and minlinactivityinf == 0
+       *   node->bounds.sup - minlinactivity, if c_i.inf == -infinity and minlinactivityinf == 1
+       */
+      SCIPintervalSetEntire(infinity, &childbounds);
+      if( rhs.sup < infinity )
+      {
+         /* we are still in downward rounding mode, so negate and negate to get upward rounding */
+         if( resultants[c].inf <= -infinity && minlinactivityinf <= 1 )
+         {
+            assert(minlinactivityinf == 1);
+            childbounds.sup = SCIPintervalNegateReal(minlinactivity - rhs.sup);
+         }
+         else if( minlinactivityinf == 0 )
+         {
+            childbounds.sup = SCIPintervalNegateReal(minlinactivity - rhs.sup - resultants[c].inf);
+         }
+      }
+
+      /* lower bounds of c_i is
+       *   node->bounds.inf - (maxlinactivity - c_i.sup), if c_i.sup < infinity and maxlinactivityinf == 0
+       *   node->bounds.inf - maxlinactivity, if c_i.sup == infinity and maxlinactivityinf == 1
+       */
+      if( rhs.inf > -infinity )
+      {
+         if( resultants[c].sup >= infinity && maxlinactivityinf <= 1 )
+         {
+            assert(maxlinactivityinf == 1);
+            childbounds.inf = rhs.inf - maxlinactivity;
+         }
+         else if( maxlinactivityinf == 0 )
+         {
+            childbounds.inf = rhs.inf - maxlinactivity + resultants[c].sup;
+         }
+      }
+
+      SCIPdebugMessage("child %d: %.20g*x in [%.20g,%.20g]", c, weights[c], childbounds.inf, childbounds.sup);
+
+      /* divide by the child coefficient */
+      SCIPintervalDivScalar(infinity, &childbounds, childbounds, weights[c]);
+
+      SCIPdebugPrintf(" -> x = [%.20g,%.20g]\n", childbounds.inf, childbounds.sup);
+
+      SCIPintervalIntersect(&resultants[c], operands[c], childbounds);
+      if( SCIPintervalIsEmpty(infinity, resultants[c]) )
+      {
+         *infeasible = TRUE;
+         c = noperands;   /*lint !e850*/
+         goto TERMINATE;
+      }
+
+      if( resultants[c].inf != operands[c].inf || resultants[c].sup != operands[c].sup )
+         ++nreductions;
+   }
+
+TERMINATE:
+   SCIPintervalSetRoundingMode(prevroundmode);
+
+   if( c < noperands )
+   {
+      BMScopyMemoryArray(&resultants[c], &operands[c], noperands - c); /*lint !e776 !e866*/
+   }
+
+   return nreductions;
+}
+
+/* pop -O0 from beginning, though it probably doesn't matter here at the end of the compilation unit */
+#if defined(__GNUC__) && !defined( __INTEL_COMPILER)
+#pragma GCC pop_options
+#endif

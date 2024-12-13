@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -27,7 +36,12 @@
 #ifndef __SCIP_CONS_ORBISACK_H__
 #define __SCIP_CONS_ORBISACK_H__
 
-#include "scip/scip.h"
+#include "scip/def.h"
+#include "scip/type_cons.h"
+#include "scip/type_retcode.h"
+#include "scip/type_scip.h"
+#include "scip/type_sol.h"
+#include "scip/type_var.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,7 +52,7 @@ extern "C" {
  *
  *  @ingroup ConshdlrIncludes
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPincludeConshdlrOrbisack(
    SCIP*                 scip                /**< SCIP data structure */
    );
@@ -62,37 +76,24 @@ SCIP_RETCODE SCIPincludeConshdlrOrbisack(
  * \f$x\f$ does not change the validity and objective function value of any feasible solution.
  */
 
-/** separate orbisack solutions */
-EXTERN
-SCIP_RETCODE SCIPseparateCoversOrbisack(
-   SCIP*                 scip,               /**< pointer to scip */
-   SCIP_CONS*            cons,               /**< pointer to constraint for which cover inequality should be added */
-   SCIP_SOL*             sol,                /**< solution to be separated */
-   SCIP_VAR**            vars1,              /**< variables of first columns */
-   SCIP_VAR**            vars2,              /**< variables of second columns */
-   int                   nrows,              /**< number of rows */
-   SCIP_Bool*            infeasible,         /**< memory address to store whether we detected infeasibility */
-   int*                  ngen                /**< memory address to store number of generated cuts */
-   );
-
 
 /** checks whether a given binary solution is feasible for the orbisack */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcheckSolutionOrbisack(
-   SCIP*              scip,               /**< SCIP data structure */
-   SCIP_SOL*          sol,                /**< solution to check for feasibility */
-   SCIP_VAR**         vars1,              /**< variables of first column */
-   SCIP_VAR**         vars2,              /**< variables of second column */
-   int                nrows,              /**< number of rows */
-   SCIP_Bool          printreason,        /**< whether reason for infeasibility should be printed */
-   SCIP_Bool*         feasible            /**< memory address to store whether sol is feasible */
+   SCIP*                 scip,               /**< SCIP data structure */
+   SCIP_SOL*             sol,                /**< solution to check for feasibility */
+   SCIP_VAR**            vars1,              /**< variables of first column */
+   SCIP_VAR**            vars2,              /**< variables of second column */
+   int                   nrows,              /**< number of rows */
+   SCIP_Bool             printreason,        /**< whether reason for infeasibility should be printed */
+   SCIP_Bool*            feasible            /**< memory address to store whether sol is feasible */
    );
 
 /** creates and captures a orbisack constraint
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsOrbisack(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -102,6 +103,7 @@ SCIP_RETCODE SCIPcreateConsOrbisack(
    int                   nrows,              /**< number of rows in variable matrix */
    SCIP_Bool             ispporbisack,       /**< whether the orbisack is a packing/partitioning orbisack */
    SCIP_Bool             isparttype,         /**< whether the orbisack is a partitioning orbisack */
+   SCIP_Bool             ismodelcons,        /**< whether the orbisack is a model constraint */
    SCIP_Bool             initial,            /**< should the LP relaxation of constraint be in the initial LP?
                                               *   Usually set to TRUE. Set to FALSE for 'lazy constraints'. */
    SCIP_Bool             separate,           /**< should the constraint be separated during LP processing?
@@ -135,7 +137,7 @@ SCIP_RETCODE SCIPcreateConsOrbisack(
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsBasicOrbisack(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -144,12 +146,13 @@ SCIP_RETCODE SCIPcreateConsBasicOrbisack(
    SCIP_VAR**            vars2,              /**< second column of matrix of variables on which the symmetry acts */
    int                   nrows,              /**< number of rows in constraint matrix */
    SCIP_Bool             ispporbisack,       /**< whether the orbisack is a packing/partitioning orbisack */
-   SCIP_Bool             isparttype          /**< whether the orbisack is a partitioning orbisack */
+   SCIP_Bool             isparttype,         /**< whether the orbisack is a partitioning orbisack */
+   SCIP_Bool             ismodelcons         /**< whether the orbisack is a model constraint */
    );
 
-/* @} */
+/** @} */
 
-/* @} */
+/** @} */
 
 #ifdef __cplusplus
 }

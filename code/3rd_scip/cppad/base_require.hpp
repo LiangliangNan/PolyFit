@@ -1,9 +1,9 @@
-// $Id$
+// $Id: base_require.hpp 3845 2016-11-19 01:50:47Z bradbell $
 # ifndef CPPAD_BASE_REQUIRE_HPP
 # define CPPAD_BASE_REQUIRE_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-16 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -132,7 +132,7 @@ namespace CppAD {
 }
 %$$
 where the macro is defined by
-$codep */
+$srccode%cpp% */
 # define CPPAD_AZMUL(Base) \
     inline Base azmul(const Base& x, const Base& y) \
     {   Base zero(0.0);   \
@@ -140,16 +140,17 @@ $codep */
             return zero;  \
         return x * y;     \
     }
-/* $$
+/* %$$
 
 $childtable%
 	omh/base_require/base_member.omh%
-	cppad/local/base_cond_exp.hpp%
+	cppad/core/base_cond_exp.hpp%
 	omh/base_require/base_identical.omh%
 	omh/base_require/base_ordered.omh%
-	cppad/local/base_std_math.hpp%
-	cppad/local/base_limits.hpp%
-	cppad/local/base_to_string.hpp%
+	cppad/core/base_std_math.hpp%
+	cppad/core/base_limits.hpp%
+	cppad/core/base_to_string.hpp%
+	cppad/core/base_hash.hpp%
 	omh/base_require/base_example.omh
 %$$
 
@@ -158,26 +159,27 @@ $end
 
 // definitions that must come before base implementations
 # include <cppad/utility/error_handler.hpp>
-# include <cppad/local/define.hpp>
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/define.hpp>
+# include <cppad/core/cppad_assert.hpp>
 # include <cppad/local/declare_ad.hpp>
 
 // grouping documentation by feature
-# include <cppad/local/base_cond_exp.hpp>
-# include <cppad/local/base_std_math.hpp>
-# include <cppad/local/base_limits.hpp>
-# include <cppad/local/base_to_string.hpp>
+# include <cppad/core/base_cond_exp.hpp>
+# include <cppad/core/base_std_math.hpp>
+# include <cppad/core/base_limits.hpp>
+# include <cppad/core/base_to_string.hpp>
+# include <cppad/core/base_hash.hpp>
 
 // must define template class numeric_limits before the base cases
-# include <cppad/local/numeric_limits.hpp>
-# include <cppad/local/epsilon.hpp> // deprecated
+# include <cppad/core/numeric_limits.hpp>
+# include <cppad/core/epsilon.hpp> // deprecated
 
 // base cases that come with CppAD
-# include <cppad/local/base_float.hpp>
-# include <cppad/local/base_double.hpp>
-# include <cppad/local/base_complex.hpp>
+# include <cppad/core/base_float.hpp>
+# include <cppad/core/base_double.hpp>
+# include <cppad/core/base_complex.hpp>
 
 // deprecated base type
-# include <cppad/local/zdouble.hpp>
+# include <cppad/core/zdouble.hpp>
 
 # endif

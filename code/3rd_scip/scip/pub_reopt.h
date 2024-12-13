@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -24,9 +33,10 @@
 #ifndef __SCIP_PUB_REOPT_H__
 #define __SCIP_PUB_REOPT_H__
 
-
 #include "scip/def.h"
+#include "scip/type_lp.h"
 #include "scip/type_reopt.h"
+#include "scip/type_var.h"
 
 #ifdef NDEBUG
 #include "scip/struct_reopt.h"
@@ -41,43 +51,43 @@ extern "C" {
  */
 
 /** returns the number of bound changes stored in the reoptnode */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptnodeGetNVars(
    SCIP_REOPTNODE*       reoptnode           /**< node of the reoptimization tree */
    );
 
 /** returns the number of bound changes at the node stored at ID id */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptnodeGetNConss(
    SCIP_REOPTNODE*       reoptnode           /**< node of the reoptimization tree */
    );
 
 /** returns the number of stored bound changes based on dual information in the reopttree at ID id */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptnodeGetNDualBoundChgs(
    SCIP_REOPTNODE*       reoptnode           /**< node of the reoptimization tree */
    );
 
 /** returns the number of child nodes of @p reoptnode */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptnodeGetNChildren(
    SCIP_REOPTNODE*       reoptnode           /**< node of the reoptimizzation tree */
    );
 
 /* return the lower bound stored at @p ID id */
-EXTERN
+SCIP_EXPORT
 SCIP_Real SCIPreoptnodeGetLowerbound(
    SCIP_REOPTNODE*       reoptnode           /**< node of the reoptimization tree */
    );
 
 /** returns the type of the @p reoptnode */
-EXTERN
+SCIP_EXPORT
 SCIP_REOPTTYPE SCIPreoptnodeGetType(
    SCIP_REOPTNODE*       reoptnode           /**< node of the reoptimization tree */
    );
 
 /** create the constraint which splits the node stored at ID id on the basis of the stored dual information. */
-EXTERN
+SCIP_EXPORT
 void SCIPreoptnodeGetSplitCons(
    SCIP_REOPTNODE*       reoptnode,          /**< node of the reoptimization tree */
    SCIP_VAR**            vars,               /**< array to store the variables of the constraint */
@@ -88,7 +98,7 @@ void SCIPreoptnodeGetSplitCons(
    );
 
 /** returns all added constraints at ID id */
-EXTERN
+SCIP_EXPORT
 void SCIPreoptnodeGetConss(
    SCIP_REOPTNODE*       reoptnode,          /**< reoptimization data structure */
    SCIP_VAR***           vars,               /**< 2-dim array of variables */
@@ -100,7 +110,7 @@ void SCIPreoptnodeGetConss(
    );
 
 /** set the parent id */
-EXTERN
+SCIP_EXPORT
 void SCIPreoptnodeSetParentID(
    SCIP_REOPTNODE*       reoptnode,          /**< node of the reopttree */
    unsigned int          parentid            /**< id of the parent node */
@@ -111,7 +121,7 @@ void SCIPreoptnodeSetParentID(
  */
 
 /** returns the number of global restarts */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNRestartsGlobal(
    SCIP_REOPT*           reopt               /**< reoptimization data */
    );
@@ -127,61 +137,61 @@ int SCIPreoptGetNTotalRestartsLocal(
    );
 
 /** returns the number of iteration with the first global restarts */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetFirstRestarts(
    SCIP_REOPT*           reopt               /**< reoptimization data structure */
    );
 
 /** returns the number of iteration with the last global restarts */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetLastRestarts(
    SCIP_REOPT*           reopt               /**< reoptimization data structure */
    );
 
 /** returns the number of nodes providing an improving feasible LP solution in the current run */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNFeasNodes(
    SCIP_REOPT*           reopt               /**< reoptimization data structure */
    );
 
 /** returns the number of nodes providing an improving feasible LP solution over all runs */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNTotalFeasNodes(
    SCIP_REOPT*           reopt               /**< reoptimization data structure */
    );
 
 /** returns the number of nodes that exceeded the cutoff bound in the current run */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNPrunedNodes(
    SCIP_REOPT*           reopt               /**< reoptimization data structure */
    );
 
 /** returns the number of nodes that exceeded the cutoff bound over all runs */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNTotalPrunedNodes(
    SCIP_REOPT*           reopt               /**< reoptimization data structure */
    );
 
 /** returns the number of reoptimized nodes that were cut off in the current run */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNCutoffReoptnodes(
    SCIP_REOPT*           reopt               /*< reoptimization data structure */
    );
 
 /** returns the number of reoptimized nodes that were cut off over all runs */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNTotalCutoffReoptnodes(
    SCIP_REOPT*           reopt               /*< reoptimization data structure */
    );
 
 /** returns the number of stored nodes with an infeasible LP in the current run */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNInfNodes(
    SCIP_REOPT*           reopt               /*< reoptimization data structure */
    );
 
 /** returns the number of stored nodes with an infeasible LP over all runs */
-EXTERN
+SCIP_EXPORT
 int SCIPreoptGetNTotalInfNodes(
    SCIP_REOPT*           reopt               /*< reoptimization data structure */
    );

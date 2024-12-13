@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   dialog.c
+ * @ingroup OTHER_CFILES
  * @brief  methods for user interface dialog
  * @author Tobias Achterberg
  */
@@ -24,12 +34,6 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifdef WITH_READLINE
-#include <stdio.h>
-#include <readline/readline.h>
-#include <readline/history.h>
-#endif
-
 #include "scip/scip.h"
 #include "scip/def.h"
 #include "blockmemshell/memory.h"
@@ -39,6 +43,11 @@
 
 #include "scip/struct_dialog.h"
 
+#ifdef SCIP_WITH_READLINE
+#include <stdio.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 
 
 
@@ -46,7 +55,7 @@
  * read line methods
  */
 
-#ifdef WITH_READLINE
+#ifdef SCIP_WITH_READLINE
 
 /** reads a line of input from stdin */
 static
@@ -63,8 +72,7 @@ SCIP_RETCODE readLine(
    s = readline(prompt);
    if( s != NULL )
    {
-      (void)strncpy(&dialoghdlr->buffer[dialoghdlr->bufferpos], s,
-         (unsigned int)(dialoghdlr->buffersize - dialoghdlr->bufferpos));
+      (void)SCIPstrncpy(&dialoghdlr->buffer[dialoghdlr->bufferpos], s, dialoghdlr->buffersize - dialoghdlr->bufferpos);
       free(s);
       *endoffile = FALSE;
    }
@@ -184,7 +192,7 @@ SCIP_RETCODE readLine(
    return SCIP_OKAY;
 }
 
-/** puts the given string on the command history */
+/** puts the given string on the command history */ /*lint -e715*/
 static
 SCIP_RETCODE addHistory(
    const char*           s                   /**< string to add to the command history */
@@ -203,7 +211,7 @@ int getHistoryLength(
    return 0;
 }
 
-/** removes a single element from the history list */
+/** removes a single element from the history list */ /*lint -e715*/
 static
 SCIP_RETCODE removeHistory(
    int                   pos                 /**< list position of history entry to remove */
@@ -220,6 +228,8 @@ SCIP_RETCODE writeHistory(
    const char*           filename            /**< name of file to (over)write history to */
    )
 {  /*lint --e{715}*/
+   assert(filename != NULL);
+
    /* nothing to do here */
    return SCIP_OKAY;
 }
@@ -282,9 +292,7 @@ SCIP_RETCODE readInputLine(
       SCIP_LINELIST* nextline;
 
       /* copy the next input line into the input buffer */
-      (void)strncpy(&dialoghdlr->buffer[dialoghdlr->bufferpos], dialoghdlr->inputlist->inputline,
-         (size_t)(dialoghdlr->buffersize - dialoghdlr->bufferpos)); /*lint !e571 !e776*/
-      dialoghdlr->buffer[dialoghdlr->buffersize-1] = '\0';
+      (void)SCIPstrncpy(&dialoghdlr->buffer[dialoghdlr->bufferpos], dialoghdlr->inputlist->inputline, dialoghdlr->buffersize - dialoghdlr->bufferpos);
 
       /* free the input line */
       nextline = dialoghdlr->inputlist->nextline;
@@ -330,10 +338,11 @@ SCIP_RETCODE SCIPdialoghdlrCreate(
    SCIP_DIALOGHDLR**     dialoghdlr          /**< pointer to store dialog handler */
    )
 {  /*lint --e{715}*/
-#ifdef WITH_READLINE
+#ifdef SCIP_WITH_READLINE
    char readlineversion[20];
 #endif
 
+   assert(set != NULL);
    assert(dialoghdlr != NULL);
 
    SCIP_ALLOC( BMSallocMemory(dialoghdlr) );
@@ -346,8 +355,8 @@ SCIP_RETCODE SCIPdialoghdlrCreate(
 
    SCIPdialoghdlrClearBuffer(*dialoghdlr);
 
-#ifdef WITH_READLINE
-   (void) SCIPsnprintf(readlineversion, sizeof(readlineversion), "Readline %s", rl_library_version);
+#ifdef SCIP_WITH_READLINE
+   (void) SCIPsnprintf(readlineversion, (int)sizeof(readlineversion), "Readline %s", rl_library_version);
    SCIP_CALL( SCIPsetIncludeExternalCode(set, readlineversion, "GNU library for command line editing (gnu.org/s/readline)") );
 #endif
 
@@ -466,7 +475,7 @@ SCIP_RETCODE SCIPdialoghdlrGetLine(
    SCIP_Bool*            endoffile           /**< pointer to store whether the end of the input file was reached */
    )
 {
-   char path[SCIP_MAXSTRLEN];
+   char path[SCIP_MAXSTRLEN+1];
    char p[SCIP_MAXSTRLEN];
 
    assert(dialoghdlr != NULL);
@@ -514,7 +523,6 @@ SCIP_RETCODE SCIPdialoghdlrGetLine(
    /* the last character in the buffer must be a '\0' */
    dialoghdlr->buffer[dialoghdlr->buffersize-1] = '\0';
 
-
    /* skip leading spaces: find start of first word */
    while( isspace((unsigned char)dialoghdlr->buffer[dialoghdlr->bufferpos]) )
       dialoghdlr->bufferpos++;
@@ -543,7 +551,7 @@ SCIP_RETCODE SCIPdialoghdlrGetWord(
    SCIP_Bool*            endoffile           /**< pointer to store whether the end of the input file was reached */
    )
 {
-   char path[SCIP_MAXSTRLEN];
+   char path[SCIP_MAXSTRLEN+1];
    char p[SCIP_MAXSTRLEN];
    char* firstword;
    int pos;
@@ -723,7 +731,7 @@ SCIP_RETCODE SCIPdialoghdlrAddHistory(
    )
 {
    char s[SCIP_MAXSTRLEN];
-   char h[SCIP_MAXSTRLEN];
+   char h[SCIP_MAXSTRLEN+1];
    SCIP_Bool cleanuphistory;
 
    assert(dialoghdlr != NULL);
@@ -733,14 +741,13 @@ SCIP_RETCODE SCIPdialoghdlrAddHistory(
 
    /* generate the string to add to the history */
    s[SCIP_MAXSTRLEN-1] = '\0';
-   h[SCIP_MAXSTRLEN-1] = '\0';
 
    if( command != NULL )
    {
       if( escapecommand )
          SCIPescapeString(h, SCIP_MAXSTRLEN, command);
       else
-         (void)strncpy(h, command, SCIP_MAXSTRLEN-1);
+         (void)SCIPstrncpy(h, command, SCIP_MAXSTRLEN);
    }
    else
       h[0] = '\0';
@@ -748,11 +755,11 @@ SCIP_RETCODE SCIPdialoghdlrAddHistory(
    while( dialog != NULL && dialog != dialoghdlr->rootdialog )
    {
       if( h[0] == '\0' )
-         (void)strncpy(h, dialog->name, SCIP_MAXSTRLEN-1);
+         (void)SCIPstrncpy(h, dialog->name, SCIP_MAXSTRLEN);
       else
       {
-         (void) SCIPsnprintf(s, SCIP_MAXSTRLEN, "%s %s", dialog->name, h);
-         (void)strncpy(h, s, SCIP_MAXSTRLEN-1);
+         (void)SCIPsnprintf(s, SCIP_MAXSTRLEN, "%s %s", dialog->name, h);
+         (void)SCIPstrncpy(h, s, SCIP_MAXSTRLEN);
       }
       dialog = dialog->parent;
    }
@@ -1171,15 +1178,13 @@ void SCIPdialogGetPath(
 
    assert(dialog != NULL);
 
-   (void)strncpy(path, dialog->name, SCIP_MAXSTRLEN);
-   path[SCIP_MAXSTRLEN - 1] = '\0';
+   (void)SCIPstrncpy(path, dialog->name, SCIP_MAXSTRLEN);
 
    dialog = dialog->parent;
    while( dialog != NULL )
    {
       (void)SCIPsnprintf(s, SCIP_MAXSTRLEN, "%s%c%s", dialog->name, sepchar, path);
-      (void)strncpy(path, s, SCIP_MAXSTRLEN);
-      path[SCIP_MAXSTRLEN - 1] = '\0';
+      (void)SCIPstrncpy(path, s, SCIP_MAXSTRLEN);
       dialog = dialog->parent;
    }
 }

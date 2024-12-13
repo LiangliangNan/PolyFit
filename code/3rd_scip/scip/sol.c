@@ -3,44 +3,56 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   sol.c
+ * @ingroup OTHER_CFILES
  * @brief  methods for storing primal CIP solutions
  * @author Tobias Achterberg
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-
-#include "scip/def.h"
-#include "scip/set.h"
-#include "scip/stat.h"
 #include "scip/clock.h"
-#include "scip/misc.h"
-#include "scip/lp.h"
-#include "scip/nlp.h"
-#include "scip/relax.h"
-#include "scip/var.h"
-#include "scip/prob.h"
-#include "scip/sol.h"
-#include "scip/primal.h"
-#include "scip/tree.h"
 #include "scip/cons.h"
+#include "scip/lp.h"
+#include "scip/misc.h"
+#include "scip/nlp.h"
+#include "scip/primal.h"
+#include "scip/prob.h"
+#include "scip/pub_lp.h"
 #include "scip/pub_message.h"
-
-#ifndef NDEBUG
+#include "scip/pub_sol.h"
+#include "scip/pub_var.h"
+#include "scip/relax.h"
+#include "scip/set.h"
+#include "scip/sol.h"
+#include "scip/stat.h"
+#include "scip/struct_lp.h"
+#include "scip/struct_prob.h"
+#include "scip/struct_set.h"
 #include "scip/struct_sol.h"
-#endif
+#include "scip/struct_stat.h"
+#include "scip/struct_var.h"
+#include "scip/tree.h"
+#include "scip/var.h"
 
 
 
@@ -290,7 +302,7 @@ SCIP_RETCODE SCIPsolCreate(
    SCIP_ALLOC( BMSallocBlockMemory(blkmem, sol) );
    SCIP_CALL( SCIPrealarrayCreate(&(*sol)->vals, blkmem) );
    SCIP_CALL( SCIPboolarrayCreate(&(*sol)->valid, blkmem) );
-   (*sol)->heur = heur;
+
    (*sol)->solorigin = SCIP_SOLORIGIN_ZERO;
    (*sol)->obj = 0.0;
    (*sol)->primalindex = -1;
@@ -300,6 +312,9 @@ SCIP_RETCODE SCIPsolCreate(
    stat->solindex++;
    solStamp(*sol, stat, tree, TRUE);
    SCIPsolResetViolations(*sol);
+
+   /* set solution type and creator depending on whether a heuristic or NULL is passed */
+   SCIPsolSetHeur(*sol, heur);
 
    SCIP_CALL( SCIPprimalSolCreated(primal, set, *sol) );
 
@@ -325,7 +340,6 @@ SCIP_RETCODE SCIPsolCreateOriginal(
    SCIP_ALLOC( BMSallocBlockMemory(blkmem, sol) );
    SCIP_CALL( SCIPrealarrayCreate(&(*sol)->vals, blkmem) );
    SCIP_CALL( SCIPboolarrayCreate(&(*sol)->valid, blkmem) );
-   (*sol)->heur = heur;
    (*sol)->solorigin = SCIP_SOLORIGIN_ORIGINAL;
    (*sol)->obj = origprob->objoffset;
    (*sol)->primalindex = -1;
@@ -333,6 +347,10 @@ SCIP_RETCODE SCIPsolCreateOriginal(
    (*sol)->hasinfval = FALSE;
    stat->solindex++;
    solStamp(*sol, stat, tree, TRUE);
+
+   /* set solution type and creator depending on whether a heuristic or NULL is passed */
+   SCIPsolSetHeur(*sol, heur);
+
    SCIPsolResetViolations(*sol);
 
    SCIP_CALL( SCIPprimalSolCreated(primal, set, *sol) );
@@ -356,7 +374,26 @@ SCIP_RETCODE SCIPsolCopy(
    SCIP_ALLOC( BMSallocBlockMemory(blkmem, sol) );
    SCIP_CALL( SCIPrealarrayCopy(&(*sol)->vals, blkmem, sourcesol->vals) );
    SCIP_CALL( SCIPboolarrayCopy(&(*sol)->valid, blkmem, sourcesol->valid) );
-   (*sol)->heur = sourcesol->heur;
+
+   /* copy solution type and creator information */
+   switch( sourcesol->type )
+   {
+   case SCIP_SOLTYPE_UNKNOWN:
+   case SCIP_SOLTYPE_LPRELAX:
+   case SCIP_SOLTYPE_STRONGBRANCH:
+   case SCIP_SOLTYPE_PSEUDO:
+      (*sol)->type = sourcesol->type;
+      break;
+   case SCIP_SOLTYPE_HEUR:
+      SCIPsolSetHeur((*sol), SCIPsolGetHeur(sourcesol));
+      break;
+   case SCIP_SOLTYPE_RELAX:
+      SCIPsolSetRelax((*sol), SCIPsolGetRelax(sourcesol));
+      break;
+   default:
+      SCIPerrorMessage("Unknown source solution type %d!\n", sourcesol->type);
+      return SCIP_INVALIDDATA;
+   }
    (*sol)->obj = sourcesol->obj;
    (*sol)->primalindex = -1;
    (*sol)->time = sourcesol->time;
@@ -400,6 +437,7 @@ SCIP_RETCODE SCIPsolTransform(
 
    assert(sol != NULL);
    assert(transsol != NULL);
+   assert(set != NULL);
    assert(SCIPsolIsOriginal(sol));
    assert(sol->primalindex > -1);
 
@@ -483,8 +521,8 @@ SCIP_RETCODE SCIPsolAdjustImplicitSolVals(
       if( SCIPsetIsFeasIntegral(set, solval) || SCIPvarGetStatus(var) != SCIP_VARSTATUS_COLUMN )
          continue;
 
-      nuplocks = SCIPvarGetNLocksUp(var);
-      ndownlocks = SCIPvarGetNLocksDown(var);
+      nuplocks = SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL);
+      ndownlocks = SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL);
       obj = SCIPvarGetUnchangedObj(var);
 
       roundup = FALSE;
@@ -629,6 +667,10 @@ SCIP_RETCODE SCIPsolCreateRelaxSol(
    SCIP_CALL( SCIPsolCreate(sol, blkmem, set, stat, primal, tree, heur) );
    SCIP_CALL( SCIPsolLinkRelaxSol(*sol, set, stat, tree, relaxation) );
 
+   /* update solution type and store relaxator as creator only if no heuristic is specified as creator */
+   if( heur == NULL )
+      SCIPsolSetRelax(*sol, SCIPrelaxationGetSolRelax(relaxation));
+
    return SCIP_OKAY;
 }
 
@@ -649,6 +691,10 @@ SCIP_RETCODE SCIPsolCreatePseudoSol(
 
    SCIP_CALL( SCIPsolCreate(sol, blkmem, set, stat, primal, tree, heur) );
    SCIP_CALL( SCIPsolLinkPseudoSol(*sol, set, stat, prob, tree, lp) );
+
+   /* update solution type to pseudo solution */
+   if( heur == NULL )
+      SCIPsolSetPseudo(*sol);
 
    return SCIP_OKAY;
 }
@@ -699,7 +745,6 @@ SCIP_RETCODE SCIPsolCreatePartial(
    SCIP_ALLOC( BMSallocBlockMemory(blkmem, sol) );
    SCIP_CALL( SCIPrealarrayCreate(&(*sol)->vals, blkmem) );
    SCIP_CALL( SCIPboolarrayCreate(&(*sol)->valid, blkmem) );
-   (*sol)->heur = heur;
    (*sol)->solorigin = SCIP_SOLORIGIN_PARTIAL;
    (*sol)->obj = SCIP_UNKNOWN;
    (*sol)->primalindex = -1;
@@ -708,6 +753,9 @@ SCIP_RETCODE SCIPsolCreatePartial(
    stat->solindex++;
    solStamp(*sol, stat, NULL, TRUE);
    SCIPsolResetViolations(*sol);
+
+   /* set solution type and creator depending on whether a heuristic or NULL is passed */
+   SCIPsolSetHeur(*sol, heur);
 
    SCIP_CALL( SCIPprimalSolCreated(primal, set, *sol) );
 
@@ -732,7 +780,6 @@ SCIP_RETCODE SCIPsolCreateUnknown(
    SCIP_ALLOC( BMSallocBlockMemory(blkmem, sol) );
    SCIP_CALL( SCIPrealarrayCreate(&(*sol)->vals, blkmem) );
    SCIP_CALL( SCIPboolarrayCreate(&(*sol)->valid, blkmem) );
-   (*sol)->heur = heur;
    (*sol)->solorigin = SCIP_SOLORIGIN_UNKNOWN;
    (*sol)->obj = 0.0;
    (*sol)->primalindex = -1;
@@ -741,6 +788,9 @@ SCIP_RETCODE SCIPsolCreateUnknown(
    stat->solindex++;
    solStamp(*sol, stat, tree, TRUE);
    SCIPsolResetViolations(*sol);
+
+   /* set solution type and creator depending on whether a heuristic or NULL is passed */
+   SCIPsolSetHeur(*sol, heur);
 
    SCIP_CALL( SCIPprimalSolCreated(primal, set, *sol) );
 
@@ -836,7 +886,7 @@ SCIP_RETCODE SCIPsolLinkNLPSol(
    assert(stat != NULL);
    assert(tree != NULL);
    assert(nlp != NULL);
-   assert(SCIPnlpGetSolstat(nlp) <= SCIP_NLPSOLSTAT_FEASIBLE);
+   assert(SCIPnlpHasSolution(nlp));
 
    SCIPstatDebugMsg(stat, "linking solution to NLP\n");
 
@@ -1055,7 +1105,7 @@ SCIP_RETCODE SCIPsolSetVal(
       {
          oldval = solGetArrayVal(sol, var);
 
-         if( !SCIPsetIsEQ(set, val, oldval) )
+         if( val != oldval )  /*lint !e777*/
          {
             SCIP_Real obj;
             SCIP_Real objcont;
@@ -1094,7 +1144,6 @@ SCIP_RETCODE SCIPsolSetVal(
             }
 
             solStamp(sol, stat, tree, FALSE);
-
          }
          return SCIP_OKAY;
       }
@@ -1107,7 +1156,7 @@ SCIP_RETCODE SCIPsolSetVal(
       assert(sol->solorigin != SCIP_SOLORIGIN_LPSOL || SCIPboolarrayGetVal(sol->valid, SCIPvarGetIndex(var))
          || sol->lpcount == stat->lpcount);
       oldval = solGetArrayVal(sol, var);
-      if( !SCIPsetIsEQ(set, val, oldval) )
+      if( val != oldval )  /*lint !e777*/
       {
          SCIP_Real obj;
          SCIP_Real objcont;
@@ -1149,7 +1198,7 @@ SCIP_RETCODE SCIPsolSetVal(
    case SCIP_VARSTATUS_FIXED:
       assert(!SCIPsolIsOriginal(sol));
       oldval = SCIPvarGetLbGlobal(var);
-      if( !SCIPsetIsEQ(set, val, oldval) )
+      if( val != oldval )  /*lint !e777*/
       {
          SCIPerrorMessage("cannot set solution value for variable <%s> fixed to %.15g to different value %.15g\n",
             SCIPvarGetName(var), oldval, val);
@@ -1342,7 +1391,12 @@ SCIP_Real SCIPsolGetVal(
          return 0.0;
       }
       assert(!SCIPvarIsTransformed(origvar));
-      return scalar * SCIPsolGetVal(sol, set, stat, origvar) + constant;
+
+      solval = SCIPsolGetVal(sol, set, stat, origvar);
+      if( solval == SCIP_UNKNOWN ) /*lint !e777*/
+         return SCIP_UNKNOWN;
+      else
+         return scalar * solval + constant;
    }
 
    /* only values for non fixed variables (LOOSE or COLUMN) are stored; others have to be transformed */
@@ -1614,7 +1668,7 @@ SCIP_RETCODE SCIPsolCheck(
    assert(prob != NULL);
    assert(feasible != NULL);
 
-   SCIPsetDebugMsg(set, "checking solution with objective value %g (nodenum=%" SCIP_LONGINT_FORMAT ", origin=%u)\n",
+   SCIPsetDebugMsg(set, "checking solution with objective value %g (nodenum=%" SCIP_LONGINT_FORMAT ", origin=%d)\n",
       sol->obj, sol->nodenum, sol->solorigin);
 
    *feasible = TRUE;
@@ -1706,7 +1760,6 @@ SCIP_RETCODE SCIPsolCheck(
       }
 #endif
    }
-
 
    return SCIP_OKAY;
 }
@@ -1985,6 +2038,7 @@ SCIP_Bool SCIPsolsAreEqual(
    )
 {
    SCIP_PROB* prob;
+   SCIP_Bool infobjs;
    SCIP_Real obj1;
    SCIP_Real obj2;
    int v;
@@ -2006,8 +2060,12 @@ SCIP_Bool SCIPsolsAreEqual(
       obj2 = SCIPsolGetObj(sol2, set, transprob, origprob);
    }
 
-   /* solutions with different objective values cannot be the same */
-   if( !SCIPsetIsEQ(set, obj1, obj2) )
+   /* solutions with different objective values cannot be the same; we consider two infinite objective values with the
+    * same sign always to be different
+    */
+   infobjs = (SCIPsetIsInfinity(set, obj1) && SCIPsetIsInfinity(set, obj2))
+      || (SCIPsetIsInfinity(set, -obj1) && SCIPsetIsInfinity(set, -obj2));
+   if( !infobjs && !SCIPsetIsEQ(set, obj1, obj2) )
       return FALSE;
 
    /* if one of the solutions is defined in the original space, the comparison has to be performed in the original
@@ -2107,8 +2165,11 @@ SCIP_RETCODE SCIPsolPrint(
       }
    }
 
-   /* display additional priced variables (if given problem data is original problem) */
-   if( !prob->transformed && !SCIPsolIsOriginal(sol) )
+   /* display additional priced variables (if given problem data is original problem); consider these variables only
+    * if there is at least one active pricer, otherwise we might print variables that have been added by, e.g., the
+    * dual sparsify presolver (see #2946)
+    */
+   if( !prob->transformed && !SCIPsolIsOriginal(sol) && set->nactivepricers > 0 )
    {
       assert(transprob != NULL);
       for( v = 0; v < transprob->nfixedvars; ++v )
@@ -2445,11 +2506,15 @@ SCIP_Real SCIPsolGetRelConsViolation(
 #undef SCIPsolGetRunnum
 #undef SCIPsolGetDepth
 #undef SCIPsolGetHeur
+#undef SCIPsolGetRelax
 #undef SCIPsolOrigAddObjval
 #undef SCIPsolGetPrimalIndex
 #undef SCIPsolSetPrimalIndex
 #undef SCIPsolGetIndex
-#undef SCIPsolSetHeur
+#undef SCIPsolGetType
+#undef SCIPsolSetLPRelaxation
+#undef SCIPsolSetStrongbranching
+#undef SCIPsolSetPseudo
 
 /** gets origin of solution */
 SCIP_SOLORIGIN SCIPsolGetOrigin(
@@ -2544,14 +2609,14 @@ int SCIPsolGetDepth(
    return sol->depth;
 }
 
-/** gets heuristic, that found this solution (or NULL if it's from the tree) */
+/** gets heuristic, that found this solution or NULL if solution has type different than SCIP_SOLTYPE_HEUR */
 SCIP_HEUR* SCIPsolGetHeur(
    SCIP_SOL*             sol                 /**< primal CIP solution */
    )
 {
    assert(sol != NULL);
 
-   return sol->heur;
+   return sol->type == SCIP_SOLTYPE_HEUR ? sol->creator.heur : NULL;
 }
 
 /** gets current position of solution in array of existing solutions of primal data */
@@ -2585,14 +2650,87 @@ int SCIPsolGetIndex(
    return sol->index;
 }
 
-/** informs the solution that it now belongs to the given primal heuristic */
+/** informs the solution that it now belongs to the given primal heuristic. For convenience and backwards compatibility,
+ *  the method accepts NULL as input for \p heur, in which case the solution type is set to SCIP_SOLTYPE_LPRELAX.
+ *
+ *  @note Relaxation handlers should use SCIPsolSetRelax() instead.
+ */
 void SCIPsolSetHeur(
    SCIP_SOL*             sol,                /**< primal CIP solution */
-   SCIP_HEUR*            heur                /**< heuristic that found the solution (or NULL if it's from the tree) */
+   SCIP_HEUR*            heur                /**< primal heuristic that found the solution, or NULL for LP solutions */
    )
 {
    assert(sol != NULL);
 
-   sol->heur = heur;
+   if( heur == NULL )
+      SCIPsolSetLPRelaxation(sol);
+   else
+   {
+      sol->type = SCIP_SOLTYPE_HEUR;
+      sol->creator.heur = heur;
+   }
+}
+
+/** gets information if solution was found by the LP, a primal heuristic, or a custom relaxator */
+SCIP_SOLTYPE SCIPsolGetType(
+   SCIP_SOL*             sol                 /**< primal CIP solution */
+   )
+{
+   assert(sol != NULL);
+
+   return sol->type;
+}
+
+/** gets relaxation handler that found this solution, or NULL if solution has different type than SCIP_SOLTYPE_RELAX */
+SCIP_RELAX* SCIPsolGetRelax(
+   SCIP_SOL*             sol                 /**< primal CIP solution */
+   )
+{
+   assert(sol != NULL);
+
+   return sol->type == SCIP_SOLTYPE_RELAX ? sol->creator.relax : NULL;
+}
+
+/** informs the solution that it now belongs to the given relaxation handler */
+void SCIPsolSetRelax(
+   SCIP_SOL*             sol,                /**< primal CIP solution */
+   SCIP_RELAX*           relax               /**< relaxator that found the solution */
+   )
+{
+   assert(sol != NULL);
+   assert(relax != NULL);
+
+   sol->type = SCIP_SOLTYPE_RELAX;
+   sol->creator.relax = relax;
+}
+
+/** informs the solution that it is an LP relaxation solution */
+void SCIPsolSetLPRelaxation(
+   SCIP_SOL*             sol                 /**< primal CIP solution */
+   )
+{
+   assert(sol != NULL);
+
+   sol->type = SCIP_SOLTYPE_LPRELAX;
+}
+
+/** informs the solution that it is a solution found during strong branching */
+void SCIPsolSetStrongbranching(
+   SCIP_SOL*             sol                 /**< primal CIP solution */
+   )
+{
+   assert(sol != NULL);
+
+   sol->type = SCIP_SOLTYPE_STRONGBRANCH;
+}
+
+/** informs the solution that it originates from a pseudo solution */
+void SCIPsolSetPseudo(
+   SCIP_SOL*             sol                 /**< primal CIP solution */
+   )
+{
+   assert(sol != NULL);
+
+   sol->type = SCIP_SOLTYPE_PSEUDO;
 }
 

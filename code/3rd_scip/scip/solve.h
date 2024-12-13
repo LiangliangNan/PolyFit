@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -25,24 +34,24 @@
 #define __SCIP_SOLVE_H__
 
 
-#include <stdio.h>
-
-#include "scip/def.h"
 #include "blockmemshell/memory.h"
-#include "scip/type_retcode.h"
-#include "scip/type_set.h"
-#include "scip/type_stat.h"
-#include "scip/type_event.h"
-#include "scip/type_lp.h"
-#include "scip/type_prob.h"
-#include "scip/type_primal.h"
-#include "scip/type_tree.h"
-#include "scip/type_reopt.h"
-#include "scip/type_pricestore.h"
-#include "scip/type_sepastore.h"
-#include "scip/type_cutpool.h"
+#include "scip/def.h"
 #include "scip/type_conflict.h"
 #include "scip/type_conflictstore.h"
+#include "scip/type_cutpool.h"
+#include "scip/type_event.h"
+#include "scip/type_lp.h"
+#include "scip/type_mem.h"
+#include "scip/type_message.h"
+#include "scip/type_pricestore.h"
+#include "scip/type_primal.h"
+#include "scip/type_prob.h"
+#include "scip/type_reopt.h"
+#include "scip/type_retcode.h"
+#include "scip/type_sepastore.h"
+#include "scip/type_set.h"
+#include "scip/type_stat.h"
+#include "scip/type_tree.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,7 +60,7 @@ extern "C" {
 /** returns whether the solving process will be / was stopped before proving optimality;
  *  if the solving process was stopped, stores the reason as status in stat
  */
-extern
+SCIP_EXPORT
 SCIP_Bool SCIPsolveIsStopped(
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_STAT*            stat,               /**< dynamic problem statistics */
@@ -59,14 +68,12 @@ SCIP_Bool SCIPsolveIsStopped(
    );
 
 /** applies domain propagation on current node and flushes the conflict store afterwards */
-extern
 SCIP_RETCODE SCIPpropagateDomains(
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_STAT*            stat,               /**< dynamic problem statistics */
    SCIP_PROB*            transprob,          /**< transformed problem */
    SCIP_PROB*            origprob,           /**< original problem */
-   SCIP_PRIMAL*          primal,             /**< primal data */
    SCIP_TREE*            tree,               /**< branch and bound tree */
    SCIP_REOPT*           reopt,              /**< reoptimization data structure */
    SCIP_LP*              lp,                 /**< LP data */
@@ -81,7 +88,6 @@ SCIP_RETCODE SCIPpropagateDomains(
    );
 
 /** puts all constraints with initial flag TRUE into the LP */
-extern
 SCIP_RETCODE SCIPinitConssLP(
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -103,7 +109,6 @@ SCIP_RETCODE SCIPinitConssLP(
    );
 
 /** constructs the LP of the current node, but does not load the LP state and warmstart information  */
-extern
 SCIP_RETCODE SCIPconstructCurrentLP(
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -125,7 +130,6 @@ SCIP_RETCODE SCIPconstructCurrentLP(
    );
 
 /** calls primal heuristics */
-extern
 SCIP_RETCODE SCIPprimalHeuristics(
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_STAT*            stat,               /**< dynamic problem statistics */
@@ -142,7 +146,6 @@ SCIP_RETCODE SCIPprimalHeuristics(
    );
 
 /** applies one round of separation on the given primal solution or on the LP solution */
-extern
 SCIP_RETCODE SCIPseparationRound(
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -164,7 +167,6 @@ SCIP_RETCODE SCIPseparationRound(
    );
 
 /** solves the current LP completely with pricing in new variables */
-extern
 SCIP_RETCODE SCIPpriceLoop(
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -195,7 +197,6 @@ SCIP_RETCODE SCIPpriceLoop(
    );
 
 /** main solving loop */
-extern
 SCIP_RETCODE SCIPsolveCIP(
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
    SCIP_SET*             set,                /**< global SCIP settings */

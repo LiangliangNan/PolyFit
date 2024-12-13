@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   cons_components.c
+ * @ingroup DEFPLUGINS_CONS
  * @brief  constraint handler for handling independent components
  * @author Gerald Gamrath
  *
@@ -24,11 +34,36 @@
 /*#define SCIP_MORE_DEBUG*/
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/cons_components.h"
 #include "scip/debug.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_sol.h"
+#include "scip/pub_tree.h"
+#include "scip/pub_var.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_datastructures.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_pricer.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define CONSHDLR_NAME          "components"
 #define CONSHDLR_DESC          "independent components constraint handler"
@@ -368,6 +403,7 @@ SCIP_RETCODE componentSetupWorkingSol(
 
    /* set up debug solution */
 #ifdef WITH_DEBUG_SOLUTION
+   if( SCIPdebugSolIsEnabled(component->problem->scip) )
    {
       PROBLEM* problem;
       SCIP* scip;
@@ -390,13 +426,19 @@ SCIP_RETCODE componentSetupWorkingSol(
 
          for( i = 0; i < component->nvars; ++i )
          {
-            SCIP_CALL( SCIPdebugGetSolVal(scip, component->vars[i], &val) );
-            SCIP_CALL( SCIPdebugAddSolVal(component->subscip, component->subvars[i], val) );
+            if( component->subvars[i] != NULL )
+            {
+               SCIP_CALL( SCIPdebugGetSolVal(scip, component->vars[i], &val) );
+               SCIP_CALL( SCIPdebugAddSolVal(component->subscip, component->subvars[i], val) );
+            }
          }
          for( i = 0; i < component->nfixedvars; ++i )
          {
-            SCIP_CALL( SCIPdebugGetSolVal(scip, component->fixedvars[i], &val) );
-            SCIP_CALL( SCIPdebugAddSolVal(component->subscip, component->fixedsubvars[i], val) );
+            if( component->fixedsubvars[i] != NULL )
+            {
+               SCIP_CALL( SCIPdebugGetSolVal(scip, component->fixedvars[i], &val) );
+               SCIP_CALL( SCIPdebugAddSolVal(component->subscip, component->fixedsubvars[i], val) );
+            }
          }
       }
    }
@@ -423,10 +465,10 @@ SCIP_RETCODE createSubscip(
    /* copy plugins, we omit pricers (because we do not run if there are active pricers) and dialogs */
 #ifdef SCIP_MORE_DEBUG /* we print statistics later, so we need to copy statistics tables */
    SCIP_CALL( SCIPcopyPlugins(scip, *subscip, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE,
-         TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, &success) );
+         TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, &success) );
 #else
    SCIP_CALL( SCIPcopyPlugins(scip, *subscip, TRUE, FALSE, TRUE, TRUE, TRUE, TRUE, TRUE,
-         TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, &success) );
+         TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, &success) );
 #endif
 
    /* the plugins were successfully copied */
@@ -536,7 +578,6 @@ SCIP_RETCODE copyToSubscip(
       if( !(*success) )
          return SCIP_OKAY;
    }
-   assert(nvars == SCIPgetNOrigVars(subscip));
 
    /* copy constraints */
    for( i = 0; i < nconss; ++i )
@@ -628,8 +669,8 @@ SCIP_RETCODE solveSubscip(
    )
 {
    SCIP_Real timelimit;
-   SCIP_Real softtimelimit;
    SCIP_Real memorylimit;
+   SCIP_Bool avoidmemout;
 
    assert(scip != NULL);
    assert(subscip != NULL);
@@ -642,15 +683,6 @@ SCIP_RETCODE solveSubscip(
       timelimit += SCIPgetSolvingTime(subscip);
    }
 
-   /* set soft time limit, if specified in main SCIP */
-   SCIP_CALL( SCIPgetRealParam(scip, "limits/softtime", &softtimelimit) );
-   if( softtimelimit > -0.5 )
-   {
-      softtimelimit -= SCIPgetSolvingTime(scip);
-      softtimelimit += SCIPgetSolvingTime(subscip);
-      softtimelimit = MAX(softtimelimit, 0.0);
-   }
-
    /* substract the memory already used by the main SCIP and the estimated memory usage of external software */
    /* @todo count memory of other components */
    SCIP_CALL( SCIPgetRealParam(scip, "limits/memory", &memorylimit) );
@@ -660,10 +692,19 @@ SCIP_RETCODE solveSubscip(
       memorylimit -= SCIPgetMemExternEstim(scip)/1048576.0;
    }
 
-   /* abort if no time is left or not enough memory to create a copy of SCIP, including external memory usage */
-   if( timelimit <= 0.0 || memorylimit <= 0.0)
+   /* check if mem limit needs to be avoided */
+   SCIP_CALL( SCIPgetBoolParam(scip, "misc/avoidmemout", &avoidmemout) );
+
+   /* abort if no time is left or not enough memory (we don't abort in this case if misc_avoidmemout == TRUE)
+    * to create a copy of SCIP, including external memory usage */
+   if( avoidmemout && memorylimit <= 0.0 )
    {
-      SCIPdebugMessage("--> not solved (not enough memory or time left)\n");
+      SCIPdebugMessage("--> not solved (not enough memory left)\n");
+      return SCIP_OKAY;
+   }
+   else if( timelimit <= 0.0 )
+   {
+      SCIPdebugMessage("--> not solved (not enough time left)\n");
       return SCIP_OKAY;
    }
 
@@ -674,7 +715,23 @@ SCIP_RETCODE solveSubscip(
 
    /* set time and memory limit for the subproblem */
    SCIP_CALL( SCIPsetRealParam(subscip, "limits/time", timelimit) );
-   SCIP_CALL( SCIPsetRealParam(subscip, "limits/softtime", softtimelimit) );
+
+   /* only set soft time limit if it exists */
+   if( SCIPgetParam(scip, "limits/softtime") != NULL )
+   {
+      SCIP_Real softtimelimit;
+
+       /* set soft time limit, if specified in main SCIP and if it exists */
+      SCIP_CALL( SCIPgetRealParam(scip, "limits/softtime", &softtimelimit) );
+      if( softtimelimit > -0.5 )
+      {
+         softtimelimit -= SCIPgetSolvingTime(scip);
+         softtimelimit += SCIPgetSolvingTime(subscip);
+         softtimelimit = MAX(softtimelimit, 0.0);
+      }
+
+      SCIP_CALL( SCIPsetRealParam(subscip, "limits/softtime", softtimelimit) );
+   }
 
    /* set gap limit */
    SCIP_CALL( SCIPsetRealParam(subscip, "limits/gap", gaplimit) );
@@ -831,7 +888,10 @@ SCIP_RETCODE solveAndEvalSubscip(
             /* set solution values of variables */
             for( i = 0; i < nvars; ++i )
             {
-               SCIP_CALL( SCIPsetSolVal(subscip, sol, subvars[i], fixvals[i]) );
+               if( subvars[i] != NULL )
+               {
+                  SCIP_CALL( SCIPsetSolVal(subscip, sol, subvars[i], fixvals[i]) );
+               }
             }
 
             /* check the solution; integrality and bounds should be fulfilled and do not have to be checked */
@@ -920,7 +980,8 @@ SCIP_RETCODE solveAndEvalSubscip(
 
          for( i = 0; i < nvars; ++i )
          {
-            assert(subvars[i] != NULL);
+            if( subvars[i] == NULL )
+               continue;
 
             SCIP_CALL( SCIPtightenVarLb(scip, vars[i], SCIPvarGetLbGlobal(subvars[i]), FALSE,
                   &infeasible, &tightened) );
@@ -995,12 +1056,16 @@ SCIP_RETCODE solveComponent(
       /* set solution values of component variables */
       for( v = 0; v < nvars; ++v )
       {
-         SCIP_CALL( SCIPsetSolVal(subscip, compsol, subvars[v], SCIPgetSolVal(scip, bestsol, vars[v])) );
+         if( subvars[v] != NULL )
+         {
+            SCIP_CALL( SCIPsetSolVal(subscip, compsol, subvars[v], SCIPgetSolVal(scip, bestsol, vars[v])) );
+         }
       }
 #ifndef NDEBUG
       for( v = 0; v < component->nfixedvars; ++v )
       {
-         assert(SCIPisEQ(scip, SCIPgetSolVal(subscip, compsol, component->fixedsubvars[v]),
+         if( component->fixedsubvars[v] != NULL )
+            assert(SCIPisEQ(scip, SCIPgetSolVal(subscip, compsol, component->fixedsubvars[v]),
                SCIPvarGetLbGlobal(component->fixedsubvars[v])));
       }
 #endif
@@ -1136,6 +1201,7 @@ SCIP_RETCODE solveComponent(
    case SCIP_STATUS_USERINTERRUPT:
       SCIP_CALL( SCIPinterruptSolve(scip) );
       break;
+   case SCIP_STATUS_TERMINATE:
    case SCIP_STATUS_UNKNOWN:
    case SCIP_STATUS_NODELIMIT:
    case SCIP_STATUS_TOTALNODELIMIT:
@@ -1218,8 +1284,10 @@ SCIP_RETCODE solveComponent(
             var = component->vars[v];
             subvar = component->subvars[v];
             assert(var != NULL);
-            assert(subvar != NULL);
             assert(SCIPvarIsActive(var));
+
+            if( subvar == NULL )
+               continue;
 
             SCIP_CALL( SCIPsetSolVal(scip, problem->bestsol, var, SCIPgetSolVal(subscip, sol, subvar)) );
          }
@@ -1295,7 +1363,7 @@ SCIP_RETCODE initProblem(
    /* create a priority queue for the components: we need exactly ncomponents slots in the queue so it should never be
     * resized
     */
-   SCIP_CALL( SCIPpqueueCreate(&(*problem)->compqueue, ncomponents, 1.2, componentSort) );
+   SCIP_CALL( SCIPpqueueCreate(&(*problem)->compqueue, ncomponents, 1.2, componentSort, NULL) );
 
    (*problem)->scip = scip;
    (*problem)->lowerbound = fixedvarsobjsum;
@@ -1309,7 +1377,7 @@ SCIP_RETCODE initProblem(
    if( SCIPgetDepth(scip) == 0 )
       (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "%s", SCIPgetProbName(scip));
    else
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "%s_node_%d", SCIPgetProbName(scip), SCIPnodeGetNumber(SCIPgetCurrentNode(scip)));
+      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "%s_node_%" SCIP_LONGINT_FORMAT, SCIPgetProbName(scip), SCIPnodeGetNumber(SCIPgetCurrentNode(scip)));
 
    SCIP_CALL( SCIPduplicateMemoryArray(scip, &(*problem)->name, name, strlen(name)+1) );
 
@@ -1905,7 +1973,8 @@ SCIP_RETCODE findComponents(
          {
             assert(nunfixedvars <= v);
             sortedvars[nunfixedvars] = vars[v];
-            varlocks[nunfixedvars] = 4 * (SCIPvarGetNLocksDown(vars[v]) + SCIPvarGetNLocksUp(vars[v]));
+            varlocks[nunfixedvars] = 4 * (SCIPvarGetNLocksDownType(vars[v], SCIP_LOCKTYPE_MODEL)
+               + SCIPvarGetNLocksUpType(vars[v], SCIP_LOCKTYPE_MODEL));
             unfixedvarpos[v] = nunfixedvars;
             ++nunfixedvars;
          }
@@ -2083,7 +2152,7 @@ SCIP_DECL_CONSPROP(consPropComponents)
       return SCIP_OKAY;
 
    /* the components constraint handler does kind of dual reductions */
-   if( !SCIPallowDualReds(scip) || !SCIPallowObjProp(scip) )
+   if( !SCIPallowStrongDualReds(scip) || !SCIPallowWeakDualReds(scip) )
       return SCIP_OKAY;
 
    problem = NULL;
@@ -2253,7 +2322,7 @@ SCIP_DECL_CONSPRESOL(consPresolComponents)
       return SCIP_OKAY;
 
    /* the components constraint handler does kind of dual reductions */
-   if( !SCIPallowDualReds(scip) || !SCIPallowObjProp(scip) )
+   if( !SCIPallowStrongDualReds(scip) || !SCIPallowWeakDualReds(scip) )
       return SCIP_OKAY;
 
    /* check for a reached timelimit */
@@ -2375,6 +2444,7 @@ SCIP_DECL_CONSPRESOL(consPresolComponents)
 
             /* set up debug solution */
 #ifdef WITH_DEBUG_SOLUTION
+         if( SCIPdebugSolIsEnabled(scip) )
          {
             SCIP_SOL* debugsol;
             SCIP_Real val;
@@ -2389,8 +2459,11 @@ SCIP_DECL_CONSPRESOL(consPresolComponents)
 
                for( i = 0; i < ncompvars; ++i )
                {
-                  SCIP_CALL( SCIPdebugGetSolVal(scip, compvars[i], &val) );
-                  SCIP_CALL( SCIPdebugAddSolVal(subscip, subvars[i], val) );
+                  if( subvars[i] != NULL )
+                  {
+                     SCIP_CALL( SCIPdebugGetSolVal(scip, compvars[i], &val) );
+                     SCIP_CALL( SCIPdebugAddSolVal(subscip, subvars[i], val) );
+                  }
                }
             }
          }
@@ -2433,18 +2506,12 @@ SCIP_DECL_CONSPRESOL(consPresolComponents)
 static
 SCIP_DECL_CONSDELETE(consDeleteComponents)
 {  /*lint --e{715}*/
-   PROBLEM* problem;
-
    assert(conshdlr != NULL);
    assert(strcmp(SCIPconshdlrGetName(conshdlr), CONSHDLR_NAME) == 0);
    assert(consdata != NULL);
    assert(*consdata != NULL);
 
-   problem = (PROBLEM*)(*consdata);
-
-   SCIP_CALL( freeProblem(&problem) );
-
-   *consdata = NULL;
+   SCIP_CALL( freeProblem((PROBLEM**) consdata) );
 
    return SCIP_OKAY;
 }
@@ -2482,13 +2549,6 @@ SCIP_DECL_CONSINITSOL(consInitsolComponents)
 #define consEnfolpComponents NULL
 #define consEnfopsComponents NULL
 #define consCheckComponents NULL
-
-/**@} */
-
-/**@name Interface methods
- *
- * @{
- */
 
 /** creates the components constraint handler and includes it in SCIP */
 SCIP_RETCODE SCIPincludeConshdlrComponents(
@@ -2550,7 +2610,6 @@ SCIP_RETCODE SCIPincludeConshdlrComponents(
          "constraints/" CONSHDLR_NAME "/feastolfactor",
          "factor to increase the feasibility tolerance of the main SCIP in all sub-SCIPs, default value 1.0",
          &conshdlrdata->feastolfactor, TRUE, DEFAULT_FEASTOLFACTOR, 0.0, 1000000.0, NULL, NULL) );
-
 
    return SCIP_OKAY;
 }

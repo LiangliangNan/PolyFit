@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -42,6 +51,9 @@ struct SCIP_History
    SCIP_Real             conflengthsum[2];   /**< overall length of all active conflicts for which the variable gave reason */
    SCIP_Real             inferencesum[2];    /**< degree of how often branching on the variable lead to inference of another bound */
    SCIP_Real             cutoffsum[2];       /**< degree of how often branching on the variable lead to an infeasible sub problem */
+   SCIP_Real             ratio;              /**< Most recently computed value of the unpowered ratio (phi^l) in the Treemodel rules */
+   SCIP_Real             balance;            /**< Most recently value of r/l used to compute a ratio in the Treemodel rules */
+   SCIP_Bool             ratiovalid;         /**< Whether the ratio value is valid for the Treemodel rules */
    SCIP_Longint          nactiveconflicts[2];/**< number of active conflicts for which the variable gave reason */
    SCIP_Longint          nbranchings[2];     /**< nr of times, the variable changed its bounds due to branching */
    SCIP_Longint          branchdepthsum[2];  /**< sum of depth levels, at which the branching bound changes took place */

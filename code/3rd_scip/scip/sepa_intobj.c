@@ -3,27 +3,53 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   sepa_intobj.c
+ * @ingroup DEFPLUGINS_SEPA
  * @brief  integer objective value separator
  * @author Tobias Achterberg
  * @author Timo Berthold
  */
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "scip/pub_event.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_sepa.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cut.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_message.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sepa.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_var.h"
 #include "scip/sepa_intobj.h"
+#include <string.h>
 
 
 #define SEPA_NAME              "intobj"
@@ -114,8 +140,9 @@ SCIP_RETCODE createObjRow(
       {
          SCIP_CALL( SCIPcreateVar(scip, &sepadata->objvar, "objvar", -SCIPinfinity(scip), SCIPinfinity(scip), 0.0,
                SCIP_VARTYPE_IMPLINT, FALSE, TRUE, NULL, NULL, NULL, NULL, NULL) );
+         SCIPvarMarkRelaxationOnly(sepadata->objvar);
          SCIP_CALL( SCIPaddVar(scip, sepadata->objvar) );
-         SCIP_CALL( SCIPaddVarLocks(scip, sepadata->objvar, +1, +1) );
+         SCIP_CALL( SCIPaddVarLocksType(scip, sepadata->objvar, SCIP_LOCKTYPE_MODEL, +1, +1) );
       }
       else
          attendobjvarbound = TRUE;
@@ -253,25 +280,6 @@ SCIP_DECL_SEPAFREE(sepaFreeIntobj)
 }
 
 
-/** deinitialization method of separator (called before transformed problem is freed) */
-static
-SCIP_DECL_SEPAEXIT(sepaExitIntobj)
-{  /*lint --e{715}*/
-   SCIP_SEPADATA* sepadata;
-
-   sepadata = SCIPsepaGetData(sepa);
-   assert(sepadata != NULL);
-
-   /* release objective variable */
-   if( sepadata->objvar != NULL )
-   {
-      SCIP_CALL( SCIPreleaseVar(scip, &sepadata->objvar) );
-   }
-
-   return SCIP_OKAY;
-}
-
-
 /** solving process deinitialization method of separator (called before branch and bound process data is freed) */
 static
 SCIP_DECL_SEPAEXITSOL(sepaExitsolIntobj)
@@ -287,6 +295,14 @@ SCIP_DECL_SEPAEXITSOL(sepaExitsolIntobj)
       SCIP_CALL( SCIPreleaseRow(scip, &sepadata->objrow) );
    }
 
+   /* release objective variable */
+   if( sepadata->objvar != NULL )
+   {
+      /* remove locks in createObjRow() */
+      SCIP_CALL( SCIPaddVarLocksType(scip, sepadata->objvar, SCIP_LOCKTYPE_MODEL, -1, -1) );
+      SCIP_CALL( SCIPreleaseVar(scip, &sepadata->objvar) );
+   }
+
    return SCIP_OKAY;
 }
 
@@ -295,7 +311,6 @@ SCIP_DECL_SEPAEXITSOL(sepaExitsolIntobj)
 static
 SCIP_DECL_SEPAEXECLP(sepaExeclpIntobj)
 {  /*lint --e{715}*/
-
    *result = SCIP_DIDNOTRUN;
 
    /* only call separator, if we are not close to terminating */
@@ -320,7 +335,6 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpIntobj)
 static
 SCIP_DECL_SEPAEXECSOL(sepaExecsolIntobj)
 {  /*lint --e{715}*/
-
    *result = SCIP_DIDNOTRUN;
 
    SCIP_CALL( separateCuts(scip, sepa, sol, result) );
@@ -390,7 +404,7 @@ SCIP_DECL_EVENTEXEC(eventExecIntobj)
       break;
 
    default:
-      SCIPerrorMessage("invalid event type %x\n", SCIPeventGetType(event));
+      SCIPerrorMessage("invalid event type %" SCIP_EVENTTYPE_FORMAT "\n", SCIPeventGetType(event));
       return SCIP_INVALIDDATA;
    }
 
@@ -426,7 +440,6 @@ SCIP_RETCODE SCIPincludeSepaIntobj(
    /* set non-NULL pointers to callback methods */
    SCIP_CALL( SCIPsetSepaCopy(scip, sepa, sepaCopyIntobj) );
    SCIP_CALL( SCIPsetSepaFree(scip, sepa, sepaFreeIntobj) );
-   SCIP_CALL( SCIPsetSepaExit(scip, sepa, sepaExitIntobj) );
    SCIP_CALL( SCIPsetSepaExitsol(scip, sepa, sepaExitsolIntobj) );
 
    /* include event handler for objective change events */

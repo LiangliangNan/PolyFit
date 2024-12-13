@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_SINH_OP_HPP
-# define CPPAD_SINH_OP_HPP
+# ifndef CPPAD_LOCAL_SINH_OP_HPP
+# define CPPAD_LOCAL_SINH_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,7 +13,7 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file sinh_op.hpp
 Forward and reverse mode calculations for z = sinh(x).
@@ -35,7 +34,7 @@ The auxillary result is
 The value of y, and its derivatives, are computed along with the value
 and derivatives of z.
 
-\copydetails forward_unary2_op
+\copydetails CppAD::local::forward_unary2_op
 */
 template <class Base>
 inline void forward_sinh_op(
@@ -69,14 +68,14 @@ inline void forward_sinh_op(
 	}
 	for(size_t j = p; j <= q; j++)
 	{
-		s[j] = Base(0);
-		c[j] = Base(0);
+		s[j] = Base(0.0);
+		c[j] = Base(0.0);
 		for(k = 1; k <= j; k++)
-		{	s[j] += Base(k) * x[k] * c[j-k];
-			c[j] += Base(k) * x[k] * s[j-k];
+		{	s[j] += Base(double(k)) * x[k] * c[j-k];
+			c[j] += Base(double(k)) * x[k] * s[j-k];
 		}
-		s[j] /= Base(j);
-		c[j] /= Base(j);
+		s[j] /= Base(double(j));
+		c[j] /= Base(double(j));
 	}
 }
 /*!
@@ -93,7 +92,7 @@ The auxillary result is
 The value of y, and its derivatives, are computed along with the value
 and derivatives of z.
 
-\copydetails forward_unary2_op_dir
+\copydetails CppAD::local::forward_unary2_op_dir
 */
 template <class Base>
 inline void forward_sinh_op_dir(
@@ -122,14 +121,14 @@ inline void forward_sinh_op_dir(
 	// (except that there is a sign difference for the hyperbolic case).
 	size_t m = (q-1) * r + 1;
 	for(size_t ell = 0; ell < r; ell++)
-	{	s[m+ell] = Base(q) * x[m + ell] * c[0];
-		c[m+ell] = Base(q) * x[m + ell] * s[0];
+	{	s[m+ell] = Base(double(q)) * x[m + ell] * c[0];
+		c[m+ell] = Base(double(q)) * x[m + ell] * s[0];
 		for(size_t k = 1; k < q; k++)
-		{	s[m+ell] += Base(k) * x[(k-1)*r+1+ell] * c[(q-k-1)*r+1+ell];
-			c[m+ell] += Base(k) * x[(k-1)*r+1+ell] * s[(q-k-1)*r+1+ell];
+		{	s[m+ell] += Base(double(k)) * x[(k-1)*r+1+ell] * c[(q-k-1)*r+1+ell];
+			c[m+ell] += Base(double(k)) * x[(k-1)*r+1+ell] * s[(q-k-1)*r+1+ell];
 		}
-		s[m+ell] /= Base(q);
-		c[m+ell] /= Base(q);
+		s[m+ell] /= Base(double(q));
+		c[m+ell] /= Base(double(q));
 	}
 }
 
@@ -146,7 +145,7 @@ The auxillary result is
 \endverbatim
 The value of y is computed along with the value of z.
 
-\copydetails forward_unary2_op_0
+\copydetails CppAD::local::forward_unary2_op_0
 */
 template <class Base>
 inline void forward_sinh_op_0(
@@ -181,7 +180,7 @@ The auxillary result is
 \endverbatim
 The value of y is computed along with the value of z.
 
-\copydetails reverse_unary2_op
+\copydetails CppAD::local::reverse_unary2_op
 */
 
 template <class Base>
@@ -219,15 +218,15 @@ inline void reverse_sinh_op(
 	size_t k;
 	while(j)
 	{
-		ps[j]   /= Base(j);
-		pc[j]   /= Base(j);
+		ps[j]   /= Base(double(j));
+		pc[j]   /= Base(double(j));
 		for(k = 1; k <= j; k++)
 		{
-			px[k]   += Base(k) * azmul(ps[j], c[j-k]);
-			px[k]   += Base(k) * azmul(pc[j], s[j-k]);
+			px[k]   += Base(double(k)) * azmul(ps[j], c[j-k]);
+			px[k]   += Base(double(k)) * azmul(pc[j], s[j-k]);
 
-			ps[j-k] += Base(k) * azmul(pc[j], x[k]);
-			pc[j-k] += Base(k) * azmul(ps[j], x[k]);
+			ps[j-k] += Base(double(k)) * azmul(pc[j], x[k]);
+			pc[j-k] += Base(double(k)) * azmul(ps[j], x[k]);
 
 		}
 		--j;
@@ -236,5 +235,5 @@ inline void reverse_sinh_op(
 	px[0] += azmul(pc[0], s[0]);
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -40,14 +49,12 @@ extern "C" {
 #endif
 
 /** copies the given statistics table to a new scip */
-extern
 SCIP_RETCODE SCIPtableCopyInclude(
    SCIP_TABLE*           table,              /**< statistics table */
    SCIP_SET*             set                 /**< SCIP_SET of SCIP to copy to */
    );
 
 /** creates a statistics table */
-extern
 SCIP_RETCODE SCIPtableCreate(
    SCIP_TABLE**          table,              /**< pointer to store statistics table */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -69,42 +76,36 @@ SCIP_RETCODE SCIPtableCreate(
    );
 
 /** frees memory of statistics table */
-extern
 SCIP_RETCODE SCIPtableFree(
    SCIP_TABLE**          table,              /**< pointer to statistics table data structure */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** initializes statistics table */
-extern
 SCIP_RETCODE SCIPtableInit(
    SCIP_TABLE*           table,              /**< statistics table */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** deinitializes statistics table */
-extern
 SCIP_RETCODE SCIPtableExit(
    SCIP_TABLE*           table,              /**< statistics table */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs statistics table that the branch and bound process is being started */
-extern
 SCIP_RETCODE SCIPtableInitsol(
    SCIP_TABLE*           table,              /**< statistics table */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** informs statistics table that the branch and bound process data is being freed */
-extern
 SCIP_RETCODE SCIPtableExitsol(
    SCIP_TABLE*           table,              /**< statistics table */
    SCIP_SET*             set                 /**< global SCIP settings */
    );
 
 /** output statistics table to screen */
-extern
 SCIP_RETCODE SCIPtableOutput(
    SCIP_TABLE*           table,              /**< statistics table */
    SCIP_SET*             set,                /**< global SCIP settings */

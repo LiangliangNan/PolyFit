@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.12)
 
 if (APPLE)
         set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum OS X deployment version" FORCE)
@@ -50,9 +50,7 @@ set(POLYFIT_glew_DIR                ${POLYFIT_ROOT}/3rd_glew)
 ### conditionally compile certain modules depending on libraries found on the system
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-if (POLICY CMP0074)
-        cmake_policy(SET CMP0074 NEW)
-endif ()
+cmake_policy(SET CMP0167 NEW)
 find_package(Boost REQUIRED)
 
 ################################################################################

@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_NEAR_EQUAL_HPP
-# define CPPAD_NEAR_EQUAL_HPP
+# ifndef CPPAD_UTILITY_NEAR_EQUAL_HPP
+# define CPPAD_UTILITY_NEAR_EQUAL_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -114,7 +113,7 @@ the $code CppAD$$ routines.
 
 $head Example$$
 $children%
-	example/near_equal.cpp
+	example/utility/near_equal.cpp
 %$$
 The file $cref near_equal.cpp$$ contains an example
 and test of $code NearEqual$$.
@@ -144,7 +143,7 @@ $end
 
 # include <limits>
 # include <complex>
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 # include <cppad/utility/check_numeric_type.hpp>
 
 namespace CppAD { // Begin CppAD namespace
@@ -213,7 +212,9 @@ bool NearEqual(
 	const              Type  & a )
 {
 	CheckNumericType<Type>();
+# ifndef NDEBUG
 	Type zero(0);
+# endif
 
 	CPPAD_ASSERT_KNOWN(
 		zero <= r,

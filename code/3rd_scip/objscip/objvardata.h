@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License.             */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -53,6 +62,12 @@ public:
    {
    }
 
+   /** assignment of polymorphic classes causes slicing and is therefore disabled. */
+   ObjVardata& operator=(const ObjVardata& o) = delete;
+
+   /** assignment of polymorphic classes causes slicing and is therefore disabled. */
+   ObjVardata& operator=(ObjVardata&& o) = delete;
+
    /** destructor of user variable data to free original user data (called when original variable is freed)
     *
     *  If the "deleteobject" flag in the SCIPcreateObjVar() method was set to TRUE, this method is not needed,
@@ -60,7 +75,7 @@ public:
     *  data object. If the "deleteobject" flag was set to FALSE, and the user variable data object stays alive
     *  after the SCIP variable is freed, this method should delete all the variable specific data that is no
     *  longer needed.
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_delorig(
       SCIP*              scip,               /**< SCIP data structure */
       SCIP_VAR*          var                 /**< original variable, the data to free is belonging to */
@@ -81,7 +96,7 @@ public:
     *   2. Call the copy constructor of the variable data object and return the created copy as transformed variable
     *      data object. In this case, he probably wants to set *deleteobject to TRUE, thus letting SCIP call the
     *      destructor of the object if the transformed variable data is no longer needed.
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_trans(
       SCIP*              scip,               /**< SCIP data structure */
       SCIP_VAR*          var,                /**< transformed variable, the data to create is belonging to */
@@ -99,7 +114,7 @@ public:
       *deleteobject = FALSE;
 
       return SCIP_OKAY;
-   }      
+   }
 
    /** destructor of user variable data to free transformed user data (called when transformed variable is freed)
     *
@@ -108,7 +123,7 @@ public:
     *  data object. If the "*deleteobject" flag was set to FALSE, and the user variable data object stays alive
     *  after the SCIP variable is freed, this method should delete all the variable specific data that is no
     *  longer needed.
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_deltrans(
       SCIP*              scip,               /**< SCIP data structure */
       SCIP_VAR*          var                 /**< transformed variable, the data to free is belonging to */
@@ -131,7 +146,7 @@ public:
     *  possible return values for *result:
     *  - SCIP_DIDNOTRUN  : the copying process was not performed
     *  - SCIP_SUCCESS    : the copying process was successfully performed
-    */
+    */ /*lint -e715*/
    virtual SCIP_RETCODE scip_copy(
       SCIP*              scip,               /**< SCIP data structure */
       SCIP*              sourcescip,         /**< source SCIP main data structure */
@@ -158,7 +173,7 @@ public:
 /** create and capture problem variable and associates the given variable data with the variable;
  *  if variable is of integral type, fractional bounds are automatically rounded
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateObjVar(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_VAR**            var,                /**< pointer to variable object */
@@ -177,7 +192,7 @@ SCIP_RETCODE SCIPcreateObjVar(
  *  Warning! This method should only be called after a variable was created with SCIPcreateObjVar().
  *  Otherwise, a segmentation fault may arise, or an undefined pointer is returned.
  */
-EXTERN
+SCIP_EXPORT
 scip::ObjVardata* SCIPgetObjVardata(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_VAR*             var                 /**< problem variable */

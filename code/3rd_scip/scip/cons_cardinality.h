@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -26,7 +35,11 @@
 #define __SCIP_CONS_CARDINALITY_H__
 
 
-#include "scip/scip.h"
+#include "scip/def.h"
+#include "scip/type_cons.h"
+#include "scip/type_retcode.h"
+#include "scip/type_scip.h"
+#include "scip/type_var.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,7 +49,7 @@ extern "C" {
  *
  * @ingroup ConshdlrIncludes
  * */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPincludeConshdlrCardinality(
    SCIP*                 scip                /**< SCIP data structure */
    );
@@ -67,7 +80,7 @@ SCIP_RETCODE SCIPincludeConshdlrCardinality(
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -113,7 +126,7 @@ SCIP_RETCODE SCIPcreateConsCardinality(
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsBasicCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -129,7 +142,7 @@ SCIP_RETCODE SCIPcreateConsBasicCardinality(
    );
 
 /** changes cardinality value of cardinality constraint (i.e., right hand side of cardinality constraint) */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE  SCIPchgCardvalCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons,               /**< pointer to hold the created constraint */
@@ -137,7 +150,7 @@ SCIP_RETCODE  SCIPchgCardvalCardinality(
    );
 
 /** adds variable to cardinality constraint, the position is determined by the given weight */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPaddVarCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons,               /**< constraint */
@@ -149,7 +162,7 @@ SCIP_RETCODE SCIPaddVarCardinality(
    );
 
 /** appends variable to cardinality constraint */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPappendVarCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons,               /**< constraint */
@@ -160,36 +173,36 @@ SCIP_RETCODE SCIPappendVarCardinality(
    );
 
 /** gets number of variables in cardinality constraint */
-EXTERN
+SCIP_EXPORT
 int SCIPgetNVarsCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint */
    );
 
 /** gets array of variables in cardinality constraint */
-EXTERN
+SCIP_EXPORT
 SCIP_VAR** SCIPgetVarsCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets cardinality value of cardinality constraint (i.e., right hand side of cardinality constraint) */
-EXTERN
+SCIP_EXPORT
 int SCIPgetCardvalCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets array of weights in cardinality constraint (or NULL if not existent) */
-EXTERN
+SCIP_EXPORT
 SCIP_Real* SCIPgetWeightsCardinality(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
-/* @} */
+/** @} */
 
-/* @} */
+/** @} */
 
 #ifdef __cplusplus
 }

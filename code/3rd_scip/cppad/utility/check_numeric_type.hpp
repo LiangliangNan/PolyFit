@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_CHECK_NUMERIC_TYPE_HPP
-# define CPPAD_CHECK_NUMERIC_TYPE_HPP
+# ifndef CPPAD_UTILITY_CHECK_NUMERIC_TYPE_HPP
+# define CPPAD_UTILITY_CHECK_NUMERIC_TYPE_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -53,7 +52,7 @@ can be used in $cref/parallel/ta_in_parallel/$$ mode.
 
 $head Example$$
 $children%
-	example/check_numeric_type.cpp
+	example/utility/check_numeric_type.cpp
 %$$
 The file $cref check_numeric_type.cpp$$
 contains an example and test of this function.
@@ -130,7 +129,7 @@ namespace CppAD {
 			check_NumericType_binary_division / x;
 
 		/*
-		computed assignment operators
+		compound assignment operators
 		*/
 		NumericType
 		check_NumericType_computed_assignment_addition(1);

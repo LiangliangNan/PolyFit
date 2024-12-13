@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   bandit.c
+ * @ingroup OTHER_CFILES
  * @brief  internal API of bandit algorithms and bandit virtual function tables
  * @author Gregor Hendel
  */
@@ -25,7 +35,7 @@
 #include "scip/bandit.h"
 #include "scip/pub_bandit.h"
 #include "scip/struct_bandit.h"
-#include "struct_set.h"
+#include "scip/struct_set.h"
 #include "scip/set.h"
 
 /** creates and resets bandit algorithm */
@@ -197,6 +207,40 @@ void SCIPbanditSetData(
    bandit->data = banditdata;
 }
 
+/** internal method to create a bandit VTable */
+static
+SCIP_RETCODE doBanditvtableCreate(
+   SCIP_BANDITVTABLE**   banditvtable,       /**< pointer to virtual table for bandit algorithm */
+   const char*           name,               /**< a name for the algorithm represented by this vtable */
+   SCIP_DECL_BANDITFREE  ((*banditfree)),    /**< callback to free bandit specific data structures */
+   SCIP_DECL_BANDITSELECT((*banditselect)),  /**< selection callback for bandit selector */
+   SCIP_DECL_BANDITUPDATE((*banditupdate)),  /**< update callback for bandit algorithms */
+   SCIP_DECL_BANDITRESET ((*banditreset))    /**< update callback for bandit algorithms */
+   )
+{
+   SCIP_BANDITVTABLE* banditvtableptr;
+
+   assert(banditvtable != NULL);
+   assert(name != NULL);
+   assert(banditfree != NULL);
+   assert(banditselect != NULL);
+   assert(banditupdate != NULL);
+   assert(banditreset != NULL);
+
+   /* allocate memory for this virtual function table */
+   SCIP_ALLOC( BMSallocMemory(banditvtable) );
+   BMSclearMemory(*banditvtable);
+
+   SCIP_ALLOC( BMSduplicateMemoryArray(&(*banditvtable)->name, name, strlen(name)+1) );
+   banditvtableptr = *banditvtable;
+   banditvtableptr->banditfree = banditfree;
+   banditvtableptr->banditselect = banditselect;
+   banditvtableptr->banditupdate = banditupdate;
+   banditvtableptr->banditreset = banditreset;
+
+   return SCIP_OKAY;
+}
+
 /** create a bandit VTable for bandit algorithm callback functions */
 SCIP_RETCODE SCIPbanditvtableCreate(
    SCIP_BANDITVTABLE**   banditvtable,       /**< pointer to virtual table for bandit algorithm */
@@ -207,7 +251,6 @@ SCIP_RETCODE SCIPbanditvtableCreate(
    SCIP_DECL_BANDITRESET ((*banditreset))    /**< update callback for bandit algorithms */
    )
 {
-   SCIP_BANDITVTABLE* banditvtableptr;
    assert(banditvtable != NULL);
    assert(name != NULL);
    assert(banditfree != NULL);
@@ -215,14 +258,8 @@ SCIP_RETCODE SCIPbanditvtableCreate(
    assert(banditupdate != NULL);
    assert(banditreset != NULL);
 
-   /* allocate memory for this virtual function table */
-   SCIP_ALLOC( BMSallocMemory(banditvtable) );
-   SCIP_ALLOC( BMSduplicateMemoryArray(&(*banditvtable)->name, name, strlen(name)+1) );
-   banditvtableptr = *banditvtable;
-   banditvtableptr->banditfree = banditfree;
-   banditvtableptr->banditselect = banditselect;
-   banditvtableptr->banditupdate = banditupdate;
-   banditvtableptr->banditreset = banditreset;
+   SCIP_CALL_FINALLY( doBanditvtableCreate(banditvtable, name, banditfree, banditselect, banditupdate, banditreset),
+      SCIPbanditvtableFree(banditvtable) );
 
    return SCIP_OKAY;
 }
@@ -234,9 +271,10 @@ void SCIPbanditvtableFree(
    )
 {
    assert(banditvtable != NULL);
-   assert(*banditvtable != NULL);
+   if( *banditvtable == NULL )
+      return;
 
-   BMSfreeMemoryArray(&(*banditvtable)->name);
+   BMSfreeMemoryArrayNull(&(*banditvtable)->name);
    BMSfreeMemory(banditvtable);
 }
 

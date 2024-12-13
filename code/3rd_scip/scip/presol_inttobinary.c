@@ -3,28 +3,47 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   presol_inttobinary.c
+ * @ingroup DEFPLUGINS_PRESOL
  * @brief  presolver that converts integer variables with domain [a,a+1] to binaries
  * @author Tobias Achterberg
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
+#include "scip/debug.h"
 #include "scip/presol_inttobinary.h"
-
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_presol.h"
+#include "scip/pub_var.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_presol.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define PRESOL_NAME            "inttobinary"
 #define PRESOL_DESC            "converts integer variables with domain [a,a+1] to binaries"
@@ -82,9 +101,7 @@ SCIP_DECL_PRESOLEXEC(presolExecInttobinary)
     */
    SCIP_CALL( SCIPduplicateBufferArray(scip, &vars, &scipvars[nbinvars], nintvars) );
 
-   /* scan the integer variables for possible conversion into binaries;
-    * we have to collect the variables first in an own 
-    */
+   /* scan the integer variables for possible conversion into binaries */
    for( v = 0; v < nintvars; ++v )
    {
       SCIP_Real lb;
@@ -96,8 +113,8 @@ SCIP_DECL_PRESOLEXEC(presolExecInttobinary)
       lb = SCIPvarGetLbGlobal(vars[v]);
       ub = SCIPvarGetUbGlobal(vars[v]);
 
-      /* check if bounds are exactly one apart */
-      if( SCIPisEQ(scip, lb, ub - 1.0) )
+      /* check if bounds are exactly one apart; if the lower bound is too large, aggregations will be rejected */
+      if( SCIPisEQ(scip, lb, ub - 1.0) && !SCIPisHugeValue(scip, REALABS(lb) / SCIPfeastol(scip)) )
       {
          SCIP_VAR* binvar;
          char binvarname[SCIP_MAXSTRLEN];
@@ -112,6 +129,24 @@ SCIP_DECL_PRESOLEXEC(presolExecInttobinary)
          SCIP_CALL( SCIPcreateVar(scip, &binvar, binvarname, 0.0, 1.0, 0.0, SCIP_VARTYPE_BINARY,
                SCIPvarIsInitial(vars[v]), SCIPvarIsRemovable(vars[v]), NULL, NULL, NULL, NULL, NULL) );
          SCIP_CALL( SCIPaddVar(scip, binvar) );
+
+                     /* set up debug solution */
+#ifdef WITH_DEBUG_SOLUTION
+         if( SCIPdebugSolIsEnabled(scip) )
+         {
+            SCIP_SOL* debugsol;
+
+            SCIP_CALL( SCIPdebugGetSol(scip, &debugsol) );
+
+            /* set solution value in the debug solution if it is available */
+            if( debugsol != NULL )
+            {
+               SCIP_Real val;
+               SCIP_CALL( SCIPdebugGetSolVal(scip, vars[v], &val) );
+               SCIP_CALL( SCIPdebugAddSolVal(scip, binvar, val - lb) );
+            }
+         }
+#endif
 
          /* aggregate integer and binary variable */
          SCIP_CALL( SCIPaggregateVars(scip, vars[v], binvar, 1.0, -1.0, lb, &infeasible, &redundant, &aggregated) );
@@ -130,12 +165,14 @@ SCIP_DECL_PRESOLEXEC(presolExecInttobinary)
             *result = SCIP_CUTOFF;
             break;
          }
+         else if( aggregated )
+         {
+            assert(redundant);
 
-         assert(redundant);
-         assert(aggregated);
-         (*nchgvartypes)++;
-         ++(*naggrvars);
-         *result = SCIP_SUCCESS;
+            (*nchgvartypes)++;
+            ++(*naggrvars);
+            *result = SCIP_SUCCESS;
+         }
       }
    }
 

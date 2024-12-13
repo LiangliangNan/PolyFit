@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   prop_dualfix.c
+ * @ingroup DEFPLUGINS_PROP
  * @brief  fixing roundable variables to best bound
  * @author Tobias Achterberg
  * @author Stefan Heinz
@@ -21,11 +31,19 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
 #include "scip/prop_dualfix.h"
-
+#include "scip/pub_message.h"
+#include "scip/pub_prop.h"
+#include "scip/pub_var.h"
+#include "scip/scip_general.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_prop.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define PROP_NAME                  "dualfix"
 #define PROP_DESC                  "roundable variables dual fixing"
@@ -33,7 +51,7 @@
 #define PROP_PRIORITY               +8000000 /**< propagation priority */
 #define PROP_FREQ                          0 /**< propagation frequency */
 #define PROP_DELAY                     FALSE /**< should propagation method be delayed, if other propagators found
-                                             *   reductions? */
+                                              *   reductions? */
 #define PROP_PRESOL_PRIORITY        +8000000 /**< priority of the propagator (>= 0: before, < 0: after constraint handlers) */
 #define PROP_PRESOL_MAXROUNDS             -1 /**< maximal number of propving rounds the propver participates in (-1: no limit) */
 #define PROP_PRESOLTIMING           SCIP_PRESOLTIMING_FAST /* timing of the presolving method (fast, medium, or exhaustive) */
@@ -79,8 +97,8 @@ SCIP_RETCODE performDualfix(
       if( SCIPvarIsDeleted(var) )
          continue;
 
-      /* ignore already fixed variables (use feasibility tolerance since this is used in SCIPfixVar() */
-      if( SCIPisFeasEQ(scip, SCIPvarGetLbLocal(var), SCIPvarGetUbLocal(var)) )
+      /* ignore already fixed variables */
+      if( SCIPisEQ(scip, SCIPvarGetLbLocal(var), SCIPvarGetUbLocal(var)) )
          continue;
 
       obj = SCIPvarGetObj(var);
@@ -132,7 +150,7 @@ SCIP_RETCODE performDualfix(
                    * consistently. We thus have to ignore this (should better be handled in presolving). */
                   continue;
                }
-               if ( SCIPisZero(scip, obj) && SCIPvarGetNLocksUp(var) == 1 )
+               if ( SCIPisZero(scip, obj) && SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL) == 1 )
                {
                   /* Variable is only contained in one constraint: we hope that the corresponding constraint handler is
                    * clever enough to set/aggregate the variable to something more useful than -infinity and do nothing
@@ -141,7 +159,7 @@ SCIP_RETCODE performDualfix(
                }
             }
             SCIPdebugMsg(scip, "fixing variable <%s> with objective %g and %d uplocks to lower bound %g\n",
-               SCIPvarGetName(var), SCIPvarGetObj(var), SCIPvarGetNLocksUp(var), bound);
+               SCIPvarGetName(var), SCIPvarGetObj(var), SCIPvarGetNLocksUpType(var, SCIP_LOCKTYPE_MODEL), bound);
          }
          else if( SCIPvarMayRoundUp(var) && !SCIPisPositive(scip, obj) )
          {
@@ -155,7 +173,7 @@ SCIP_RETCODE performDualfix(
                    * consistently. We thus have to ignore this (should better be handled in presolving). */
                   continue;
                }
-               if ( SCIPisZero(scip, obj) && SCIPvarGetNLocksDown(var) == 1 )
+               if ( SCIPisZero(scip, obj) && SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL) == 1 )
                {
                   /* Variable is only contained in one constraint: we hope that the corresponding constraint handler is
                    * clever enough to set/aggregate the variable to something more useful than +infinity and do nothing
@@ -164,7 +182,7 @@ SCIP_RETCODE performDualfix(
                }
             }
             SCIPdebugMsg(scip, "fixing variable <%s> with objective %g and %d downlocks to upper bound %g\n",
-               SCIPvarGetName(var), SCIPvarGetObj(var), SCIPvarGetNLocksDown(var), bound);
+               SCIPvarGetName(var), SCIPvarGetObj(var), SCIPvarGetNLocksDownType(var, SCIP_LOCKTYPE_MODEL), bound);
          }
          else
             continue;
@@ -191,8 +209,11 @@ SCIP_RETCODE performDualfix(
          return SCIP_OKAY;
       }
 
-      assert(fixed || (SCIPgetStage(scip) == SCIP_STAGE_SOLVING && SCIPisFeasEQ(scip, bound, SCIPvarGetLbLocal(var))
-            && SCIPisFeasEQ(scip, bound, SCIPvarGetUbLocal(var))));
+      /* SCIPfixVar only changes bounds if not already feaseq.
+       * Only if in presolve and not probing, variables will always be fixed.
+       */
+      assert(fixed || (SCIPisFeasEQ(scip, bound, SCIPvarGetLbLocal(var))
+         && SCIPisFeasEQ(scip, bound, SCIPvarGetUbLocal(var))));
       (*nfixedvars)++;
    }
 
@@ -234,7 +255,7 @@ SCIP_DECL_PROPPRESOL(propPresolDualfix)
 
    *result = SCIP_DIDNOTRUN;
 
-   if( !SCIPallowDualReds(scip) )
+   if( !SCIPallowStrongDualReds(scip) )
       return SCIP_OKAY;
 
    cutoff = FALSE;
@@ -274,7 +295,7 @@ SCIP_DECL_PROPEXEC(propExecDualfix)
     *
     *  do not run if propagation w.r.t. current objective is not allowed
     */
-   if( SCIPinProbing(scip) || SCIPinRepropagation(scip) || !SCIPallowDualReds(scip) )
+   if( SCIPinProbing(scip) || SCIPinRepropagation(scip) || !SCIPallowStrongDualReds(scip) )
       return SCIP_OKAY;
 
    cutoff = FALSE;
@@ -299,10 +320,6 @@ SCIP_DECL_PROPEXEC(propExecDualfix)
 
 /**@} */
 
-/**@name Interface methods
- *
- * @{
- */
 
 /** creates the dual fixing propagator and includes it in SCIP */
 SCIP_RETCODE SCIPincludePropDualfix(
@@ -320,5 +337,3 @@ SCIP_RETCODE SCIPincludePropDualfix(
 
    return SCIP_OKAY;
 }
-
-/**@} */

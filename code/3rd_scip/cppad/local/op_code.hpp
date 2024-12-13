@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_OP_CODE_HPP
-# define CPPAD_OP_CODE_HPP
+# ifndef CPPAD_LOCAL_OP_CODE_HPP
+# define CPPAD_LOCAL_OP_CODE_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -16,13 +15,14 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 # include <sstream>
 # include <iomanip>
 
-# include <cppad/local/define.hpp>
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/define.hpp>
+# include <cppad/core/cppad_assert.hpp>
+# include <cppad/local/pod_vector.hpp>
 
 // needed before one can use CPPAD_ASSERT_FIRST_CALL_NOT_PARALLEL
 # include <cppad/utility/thread_alloc.hpp>
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file op_code.hpp
 Defines the OpCode enum type and functions related to it.
@@ -47,7 +47,7 @@ operand is a parameter and the right operand is a variable.
 */
 // alphabetical order is checked by bin/check_op_code.sh
 enum OpCode {
-	AbsOp,    // abs(variable)
+	AbsOp,    // fabs(variable)
 	AcosOp,   // acos(variable)
 	AcoshOp,  // acosh(variable)
 	AddpvOp,  // parameter  + variable
@@ -98,7 +98,7 @@ enum OpCode {
 	ExpOp,    // exp(variable)
 	Expm1Op,  // expm1(variable)
 	InvOp,    // independent variable
-	LdpOp,    // z[parameter]
+	LdpOp,    // z[parameter] (parameter converted to index)
 	LdvOp,    // z[variable]
 	LepvOp,   // parameter <= variable
 	LevpOp,   // variable  <= parameter
@@ -121,8 +121,8 @@ enum OpCode {
 	SinOp,    // sin(variable)
 	SinhOp,   // sinh(variable)
 	SqrtOp,   // sqrt(variable)
-	StppOp,   // z[parameter] = parameter
-	StpvOp,   // z[parameter] = variable
+	StppOp,   // z[parameter] = parameter (first parameter converted to index)
+	StpvOp,   // z[parameter] = variable  (parameter converted to index)
 	StvpOp,   // z[variable]  = parameter
 	StvvOp,   // z[variable]  = variable
 	SubpvOp,  // parameter  - variable
@@ -133,7 +133,7 @@ enum OpCode {
 	// user atomic operation codes
 	UserOp,   // start of a user atomic operaiton
 	// arg[0] = index of the operation if atomic_base<Base> class
-	// arg[1] = extra information passed trough by deprecated old atomic class
+	// arg[1] = extra information passed through by deprecated old atomic class
 	// arg[2] = number of arguments to this atomic function
 	// arg[3] = number of results for this atomic function
 	UsrapOp,  // this user atomic argument is a parameter
@@ -147,6 +147,9 @@ enum OpCode {
 };
 // Note that bin/check_op_code.sh assumes the pattern '^\tNumberOp$' occurs
 // at the end of this list and only at the end of this list.
+
+/// specialize is_pod<OpCode> to be true
+template <> inline bool is_pod<OpCode>(void) { return true; }
 
 /*!
 Number of arguments for a specified operator.
@@ -248,9 +251,6 @@ inline size_t NumArg( OpCode op)
 	if( first )
 	{	CPPAD_ASSERT_UNKNOWN( size_t(NumberOp) + 1 ==
 			sizeof(NumArgTable) / sizeof(NumArgTable[0])
-		);
-		CPPAD_ASSERT_UNKNOWN( size_t(NumberOp) <=
-			std::numeric_limits<CPPAD_OP_CODE_TYPE>::max()
 		);
 		first = false;
 	}
@@ -489,7 +489,7 @@ void printOpField(
 	os << leader;
 
 	// print the value into an internal buffer
-	buffer << std::setw(width) << value;
+	buffer << std::setw( int(width) ) << value;
 	str = buffer.str();
 
 	// length of the string
@@ -546,7 +546,7 @@ is the vector of argument indices for this operation
 template <class Base>
 void printOp(
 	std::ostream&          os     ,
-	const player<Base>*    play   ,
+	const local::player<Base>* play,
 	size_t                 i_op   ,
 	size_t                 i_var  ,
 	OpCode                 op     ,
@@ -864,207 +864,261 @@ void printOpResult(
 }
 
 /*!
-If NDEBUG is not defined, assert that arguments come before result.
+Determines which arguments are variaibles for an operator.
 
 \param op
-Operator for which we are checking order.
-All the operators are checked except for those of the form UserOp or Usr..Op.
-
-\param result
-is the variable index for the result.
+is the operator. Note that CSkipOp and CSumOp are special cases
+because the true number of arguments is not equal to NumArg(op)
+and the true number of arguments num_arg can be large.
+It may be more efficient to handle these cases separately
+(see below).
 
 \param arg
-is a vector of lenght NumArg(op) pointing to the arguments
-for this operation.
+is the argument vector for this operator.
+
+\param is_variable
+If the input value of the elements in this vector do not matter.
+Upon return, for j < NumArg(op), the j-th argument for this operator is a
+variable index if and only if is_variable[j] is true. Note that the variable
+index 0, for the BeginOp, does not correspond to a real variable and false
+is returned for this case.
+
+\return
+The return value is the true number of arguments num_arg.
+If op is CSkipOp or CSumOp, see below.
+Otherwise the true number of arguments num_arg = NumArg(op).
+If the input size of is_variable is less than num_arg,
+is_variable.extend is used to increase its size to be num_arg.
+
+\par CSkipOp
+In the case of CSkipOp,
+\code
+		num_arg        = 7 + arg[4] + arg[5];
+		is_variable[2] = (arg[1] & 1) != 0;
+		is_variable[3] = (arg[1] & 2) != 0;
+\endcode
+and all the other is_variable values are false.
+
+\par CSumOp
+In the case of CSumOp,
+\code
+		num_arg = 4 + arg[0] + arg[1];
+		for(size_t i = 3; i < num_arg - 1; ++i)
+			is_variable[i] = true;
+\endcode
+and all the other is_variable values are false.
 */
-inline void assert_arg_before_result(
-	OpCode op, const addr_t* arg, size_t result
-)
-{
-	switch( op )
+inline size_t arg_is_variable(
+	OpCode            op          ,
+	const addr_t*     arg         ,
+	pod_vector<bool>& is_variable )
+{	size_t num_arg = NumArg(op);
+	if( is_variable.size() < num_arg )
+		is_variable.extend( num_arg - is_variable.size() );
+	//
+	switch(op)
 	{
+		// -------------------------------------------------------------------
+		// cases where true number of arugments = NumArg(op) == 0
 
-		// These cases are not included below
-		case UserOp:
-		case UsrapOp:
-		case UsravOp:
-		case UsrrpOp:
-		case UsrrvOp:
-		break;
-		// ------------------------------------------------------------------
-
-		// 0 arguments
-		case CSkipOp:
-		case CSumOp:
 		case EndOp:
 		case InvOp:
-		break;
-		// ------------------------------------------------------------------
-
-		// 1 argument, but is not used
-		case BeginOp:
+		case UsrrvOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 0 );
 		break;
 
-		// 1 argument , 1 result
+		// -------------------------------------------------------------------
+		// cases where NumArg(op) == 1
 		case AbsOp:
-		case ExpOp:
-		case Expm1Op:
-		case LogOp:
-		case Log1pOp:
-		case ParOp:
-		case SignOp:
-		case SqrtOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) < result );
-		break;
-
-		// 1 argument, 2 results
-		case AcosOp:
 		case AcoshOp:
-		case AsinOp:
+		case AcosOp:
 		case AsinhOp:
-		case AtanOp:
+		case AsinOp:
 		case AtanhOp:
-		case CosOp:
+		case AtanOp:
 		case CoshOp:
-		case SinOp:
+		case CosOp:
+		case Expm1Op:
+		case ExpOp:
+		case Log1pOp:
+		case LogOp:
+		case SignOp:
 		case SinhOp:
-		case TanOp:
+		case SinOp:
+		case SqrtOp:
 		case TanhOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) + 1 < result );
+		case TanOp:
+		case UsravOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 1 );
+		is_variable[0] = true;
 		break;
 
-		// 1 argument, 5 results
-		case ErfOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) + 4 < result );
-		break;
-		// ------------------------------------------------------------------
-		// 2 arguments, no results
-		case LepvOp:
-		case LtpvOp:
-		case EqpvOp:
-		case NepvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) <= result );
-		break;
-		//
-		case LevpOp:
-		case LtvpOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) <= result );
-		break;
-		//
-		case LevvOp:
-		case LtvvOp:
-		case EqvvOp:
-		case NevvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) <= result );
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) <= result );
+		case BeginOp:
+		case ParOp:
+		case UsrapOp:
+		case UsrrpOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 1 );
+		is_variable[0] = false;
 		break;
 
-		// 2 arguments (both variables), 1 results
-		case AddvvOp:
-		case DivvvOp:
-		case MulvvOp:
-		case SubvvOp:
-		case ZmulvvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) < result );
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) < result );
-		break;
 
-		// 2 arguments (first variables), 1 results
-		case DivvpOp:
-		case SubvpOp:
-		case ZmulvpOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) < result );
-		break;
+		// -------------------------------------------------------------------
+		// cases where NumArg(op) == 2
 
-		// 2 arguments (second variables), 1 results
 		case AddpvOp:
 		case DisOp:
 		case DivpvOp:
+		case EqpvOp:
+		case LepvOp:
+		case LtpvOp:
 		case MulpvOp:
+		case NepvOp:
+		case PowpvOp:
 		case SubpvOp:
 		case ZmulpvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) < result );
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 2 );
+		is_variable[0] = false;
+		is_variable[1] = true;
 		break;
 
-		// 2 arguments (both variables), 3 results
-		case PowvvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) + 2 < result );
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) + 2 < result );
-		break;
-
-		// 2 arguments (first variable), 3 results
+		case DivvpOp:
+		case LevpOp:
+		case LtvpOp:
 		case PowvpOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[0]) + 2 < result );
+		case SubvpOp:
+		case ZmulvpOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 2 );
+		is_variable[0] = true;
+		is_variable[1] = false;
 		break;
 
-		// 2 arguments (second variable), 3 results
-		case PowpvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) + 2 < result );
+		case AddvvOp:
+		case DivvvOp:
+		case EqvvOp:
+		case LevvOp:
+		case LtvvOp:
+		case MulvvOp:
+		case NevvOp:
+		case PowvvOp:
+		case SubvvOp:
+		case ZmulvvOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 2 );
+		is_variable[0] = true;
+		is_variable[1] = true;
 		break;
-		// ------------------------------------------------------------------
 
-		// 3 arguments, none variables
+		case ErfOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 3 );
+		is_variable[0] = false; // parameter index corresponding to zero
+		is_variable[1] = false; // parameter index corresponding to one
+		is_variable[2] = true;
+		break;
+
+		// --------------------------------------------------------------------
+		// cases where NumArg(op) == 3
+
 		case LdpOp:
 		case StppOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 3 );
+		is_variable[0] = false;
+		is_variable[1] = false;
+		is_variable[2] = false;
 		break;
 
-		// 3 arguments, second variable, 1 result
 		case LdvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) < result );
-		break;
-
-		// 3 arguments, third variable, no result
-		case StpvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[2]) <= result );
-		break;
-
-		// 3 arguments, second variable, no result
 		case StvpOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) <= result );
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 3 );
+		is_variable[0] = false;
+		is_variable[1] = true;
+		is_variable[2] = false;
 		break;
 
-		// 3 arguments, second and third variable, no result
+		case StpvOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 3 );
+		is_variable[0] = false;
+		is_variable[1] = false;
+		is_variable[2] = true;
+		break;
+
 		case StvvOp:
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) <= result );
-		CPPAD_ASSERT_UNKNOWN( size_t(arg[2]) <= result );
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 3 );
+		is_variable[0] = false;
+		is_variable[1] = true;
+		is_variable[2] = true;
 		break;
-		// ------------------------------------------------------------------
 
-		// 5 arguments, no result
+		// --------------------------------------------------------------------
+		// case where NumArg(op) == 4
+		case UserOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 4 );
+		for(size_t i = 0; i < 4; i++)
+			is_variable[i] = false;
+		break;
+
+		// --------------------------------------------------------------------
+		// case where NumArg(op) == 5
 		case PriOp:
-		if( arg[0] & 1 )
-		{	CPPAD_ASSERT_UNKNOWN( size_t(arg[1]) <= result );
-		}
-		if( arg[0] & 2 )
-		{	CPPAD_ASSERT_UNKNOWN( size_t(arg[3]) <= result );
-		}
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 5 );
+		is_variable[0] = false;
+		is_variable[1] = (arg[0] & 1) != 0;
+		is_variable[2] = false;
+		is_variable[3] = (arg[0] & 2) != 0;
+		is_variable[4] = false;
 		break;
-		// ------------------------------------------------------------------
 
-		// 6 arguments, 1 result
+		// --------------------------------------------------------------------
+		// case where NumArg(op) == 6
 		case CExpOp:
-		if( arg[1] & 1 )
-		{	CPPAD_ASSERT_UNKNOWN( size_t(arg[2]) < result );
-		}
-		if( arg[1] & 2 )
-		{	CPPAD_ASSERT_UNKNOWN( size_t(arg[3]) < result );
-		}
-		if( arg[1] & 4 )
-		{	CPPAD_ASSERT_UNKNOWN( size_t(arg[4]) < result );
-		}
-		if( arg[1] & 8 )
-		{	CPPAD_ASSERT_UNKNOWN( size_t(arg[5]) < result );
-		}
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 6 );
+		is_variable[0] = false;
+		is_variable[1] = false;
+		is_variable[2] = (arg[0] & 1) != 0;
+		is_variable[3] = (arg[0] & 2) != 0;
+		is_variable[4] = (arg[0] & 4) != 0;
+		is_variable[5] = (arg[0] & 8) != 0;
 		break;
-		// ------------------------------------------------------------------
 
+		// -------------------------------------------------------------------
+		// CSkipOp:
+		case CSkipOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 0 )
+		//
+		// true number of arguments
+		num_arg = 7 + arg[4] + arg[5];
+		if( is_variable.size() < num_arg )
+			is_variable.extend( num_arg - is_variable.size() );
+		is_variable[0] = false;
+		is_variable[1] = false;
+		is_variable[2] = (arg[1] & 1) != 0;
+		is_variable[3] = (arg[1] & 2) != 0;
+		for(size_t i = 4; i < num_arg; ++i)
+			is_variable[i] = false;
+		break;
+
+		// -------------------------------------------------------------------
+		// CSumOp:
+		case CSumOp:
+		CPPAD_ASSERT_UNKNOWN( NumArg(op) == 0 )
+		//
+		// true number of arguments
+		num_arg = 4 + arg[0] + arg[1];
+		if( is_variable.size() < num_arg )
+			is_variable.extend( num_arg - is_variable.size() );
+		is_variable[0] = false;
+		is_variable[1] = false;
+		is_variable[2] = false;
+		for(size_t i = 3; i < num_arg - 1; ++i)
+			is_variable[i] = true;
+		is_variable[num_arg - 1] = false;
+		break;
+
+		// --------------------------------------------------------------------
 		default:
 		CPPAD_ASSERT_UNKNOWN(false);
 		break;
-
 	}
-	return;
+	return num_arg;
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

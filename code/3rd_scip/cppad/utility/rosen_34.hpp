@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_ROSEN_34_HPP
-# define CPPAD_ROSEN_34_HPP
+# ifndef CPPAD_UTILITY_ROSEN_34_HPP
+# define CPPAD_UTILITY_ROSEN_34_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -265,7 +264,7 @@ must not be $cref/parallel/ta_in_parallel/$$ execution mode.
 
 $head Example$$
 $children%
-	example/rosen_34.cpp
+	example/general/rosen_34.cpp
 %$$
 The file
 $cref rosen_34.cpp$$
@@ -281,7 +280,7 @@ $end
 */
 
 # include <cstddef>
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 # include <cppad/utility/check_simple_vector.hpp>
 # include <cppad/utility/check_numeric_type.hpp>
 # include <cppad/utility/vector.hpp>

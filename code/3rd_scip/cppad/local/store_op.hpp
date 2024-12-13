@@ -1,9 +1,9 @@
-// $Id$
-# ifndef CPPAD_STORE_OP_HPP
-# define CPPAD_STORE_OP_HPP
+// $Id: store_op.hpp 3865 2017-01-19 01:57:55Z bradbell $
+# ifndef CPPAD_LOCAL_STORE_OP_HPP
+# define CPPAD_LOCAL_STORE_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -13,7 +13,7 @@ A copy of this license is included in the COPYING file of this distribution.
 Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file store_op.hpp
 Changing the current value of a VecAD element.
@@ -144,7 +144,7 @@ op = StpvOp or StvvOp (not called).
 
 \tparam Vector_set
 is the type used for vectors of sets. It can be either
-\c sparse_pack, \c sparse_set, or \c sparse_list.
+sparse_pack or sparse_list.
 
 \param op
 is the code corresponding to this operator;
@@ -213,7 +213,7 @@ inline void sparse_store_op(
 /*!
 Zero order forward mode implementation of op = StppOp.
 
-\copydetails forward_store_op_0
+\copydetails CppAD::local::forward_store_op_0
 */
 template <class Base>
 inline void forward_store_pp_op_0(
@@ -242,7 +242,7 @@ inline void forward_store_pp_op_0(
 /*!
 Zero order forward mode implementation of op = StpvOp.
 
-\copydetails forward_store_op_0
+\copydetails CppAD::local::forward_store_op_0
 */
 template <class Base>
 inline void forward_store_pv_op_0(
@@ -270,7 +270,7 @@ inline void forward_store_pv_op_0(
 /*!
 Zero order forward mode implementation of op = StvpOp.
 
-\copydetails forward_store_op_0
+\copydetails CppAD::local::forward_store_op_0
 */
 template <class Base>
 inline void forward_store_vp_op_0(
@@ -300,7 +300,7 @@ inline void forward_store_vp_op_0(
 /*!
 Zero order forward mode implementation of op = StvvOp.
 
-\copydetails forward_store_op_0
+\copydetails CppAD::local::forward_store_op_0
 */
 template <class Base>
 inline void forward_store_vv_op_0(
@@ -346,7 +346,7 @@ where i_vec is defined under the heading arg[1] below:
 \param dependency
 is this a dependency (or sparsity) calculation.
 
-\copydetails sparse_store_op
+\copydetails CppAD::local::sparse_store_op
 */
 template <class Vector_set>
 inline void forward_sparse_store_op(
@@ -402,7 +402,7 @@ sparsity patterns for
 \param dependency
 is this a dependency (or sparsity) calculation.
 
-\copydetails sparse_store_op
+\copydetails CppAD::local::sparse_store_op
 */
 template <class Vector_set>
 inline void reverse_sparse_jacobian_store_op(
@@ -454,7 +454,7 @@ and it uses them to compute the sparsity patterns for
 	H(y , w , u , ... ) = G[ v[x], y , w , u , ... ]
 \endverbatim
 
-\copydetails sparse_store_op
+\copydetails CppAD::local::sparse_store_op
 
 \param var_jacobian
 \a var_jacobian[ \a arg[2] ]
@@ -494,5 +494,5 @@ inline void reverse_sparse_hessian_store_op(
 	return;
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

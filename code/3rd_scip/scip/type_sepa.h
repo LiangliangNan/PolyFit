@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -17,6 +26,11 @@
  * @ingroup TYPEDEFINITIONS
  * @brief  type definitions for separators
  * @author Tobias Achterberg
+ */
+
+/** @defgroup DEFPLUGINS_SEPA Default Separators
+ *  @ingroup DEFPLUGINS
+ *  @brief implementation files (.c files) of the default separators of SCIP
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
@@ -102,6 +116,12 @@ typedef struct SCIP_SepaData SCIP_SEPADATA;       /**< locally defined separator
  *  - sepa            : the separator itself
  *  - result          : pointer to store the result of the separation call
  *  - allowlocal      : should the separator allow local cuts?
+ *  - depth           : preteneded depth of current node
+ *
+ *  @note The depth argument shouldn't be use to determine whether the cut is globally valid or not.  The value of depth
+ *  could be 0 even though we are not in the root node! The purpose of depth is to control the behavior of the
+ *  separator. Usually separators will have different limits on the number of cuts to be applied in the root node, etc.
+ *  These limits should be checked against depth and not against the actual depth of the current node.
  *
  *  possible return values for *result (if more than one applies, the first in the list should be used):
  *  - SCIP_CUTOFF     : the node is infeasible in the variable's bounds and can be cut off
@@ -113,7 +133,7 @@ typedef struct SCIP_SepaData SCIP_SEPADATA;       /**< locally defined separator
  *  - SCIP_DIDNOTRUN  : the separator was skipped
  *  - SCIP_DELAYED    : the separator was skipped, but should be called again
  */
-#define SCIP_DECL_SEPAEXECLP(x) SCIP_RETCODE x (SCIP* scip, SCIP_SEPA* sepa, SCIP_RESULT* result, SCIP_Bool allowlocal)
+#define SCIP_DECL_SEPAEXECLP(x) SCIP_RETCODE x (SCIP* scip, SCIP_SEPA* sepa, SCIP_RESULT* result, SCIP_Bool allowlocal, int depth)
 
 /** arbitrary primal solution separation method of separator
  *
@@ -126,6 +146,12 @@ typedef struct SCIP_SepaData SCIP_SEPADATA;       /**< locally defined separator
  *  - sol             : primal solution that should be separated
  *  - result          : pointer to store the result of the separation call
  *  - allowlocal      : should the separator allow local cuts?
+ *  - depth           : preteneded depth of current node
+ *
+ *  @note The depth argument shouldn't be use to determine whether the cut is globally valid or not.  The value of depth
+ *  could be 0 even though we are not in the root node! The purpose of depth is to control the behavior of the
+ *  separator. Usually separators will have different limits on the number of cuts to be applied in the root node, etc.
+ *  These limits should be checked against depth and not against the actual depth of the current node.
  *
  *  possible return values for *result (if more than one applies, the first in the list should be used):
  *  - SCIP_CUTOFF     : the node is infeasible in the variable's bounds and can be cut off
@@ -137,7 +163,7 @@ typedef struct SCIP_SepaData SCIP_SEPADATA;       /**< locally defined separator
  *  - SCIP_DIDNOTRUN  : the separator was skipped
  *  - SCIP_DELAYED    : the separator was skipped, but should be called again
  */
-#define SCIP_DECL_SEPAEXECSOL(x) SCIP_RETCODE x (SCIP* scip, SCIP_SEPA* sepa, SCIP_SOL* sol, SCIP_RESULT* result, SCIP_Bool allowlocal)
+#define SCIP_DECL_SEPAEXECSOL(x) SCIP_RETCODE x (SCIP* scip, SCIP_SEPA* sepa, SCIP_SOL* sol, SCIP_RESULT* result, SCIP_Bool allowlocal, int depth)
 
 #ifdef __cplusplus
 }

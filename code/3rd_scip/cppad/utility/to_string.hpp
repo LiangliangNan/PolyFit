@@ -1,8 +1,7 @@
-// $Id$
-# ifndef CPPAD_TO_STRING_HPP
-# define CPPAD_TO_STRING_HPP
+# ifndef CPPAD_UTILITY_TO_STRING_HPP
+# define CPPAD_UTILITY_TO_STRING_HPP
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -47,6 +46,10 @@ If $code <cppad/cppad.hpp>$$ is included,
 and it has been extended to a $icode Base$$ type,
 it automatically extends to the
 $cref/AD types above Base/glossary/AD Type Above Base/$$.
+$lnext
+For integer types, conversion to a string is exact.
+For floating point types, conversion to a string yields a value
+that has relative error within machine epsilon.
 $lend
 
 $head value$$
@@ -87,7 +90,7 @@ enough digits are used in the representation so that
 the result is accurate to withing round off error.
 
 $children%
-	example/to_string.cpp
+	example/utility/to_string.cpp
 %$$
 $head Example$$
 The file $cref to_string.cpp$$
@@ -100,7 +103,7 @@ $end
 # include <cmath>
 # include <iomanip>
 # include <sstream>
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 
 # define CPPAD_SPECIALIZE_TO_STRING_INTEGER(Type) \
 template <> struct to_string_struct<Type>\
@@ -115,8 +118,7 @@ template <> struct to_string_struct<Type>\
 template <> struct to_string_struct<Float>\
 {	std::string operator()(const Float& value) \
 	{	std::stringstream os;\
-		Float epsilon    = std::numeric_limits<Float>::epsilon();\
-		size_t n_digits = 1 - int( std::log10(epsilon) );\
+		int n_digits = 1 + std::numeric_limits<Float>::digits10;\
 		os << std::setprecision(n_digits);\
 		os << value;\
 		return os.str();\

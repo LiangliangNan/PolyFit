@@ -64,7 +64,7 @@ namespace Numeric {
 #ifdef WIN32
 		return (_isnan(x) != 0) || (_finite(x) == 0) ;
 #else
-        return std::isnan(x) || !finite(x);
+        return std::isnan(x) || !std::isfinite(x);
 #endif
 	}
 
@@ -72,7 +72,7 @@ namespace Numeric {
 #ifdef WIN32
 		return (_isnan(x) != 0) || (_finite(x) == 0) ;
 #else
-        return std::isnan(x) || !finite(x);
+        return std::isnan(x) || !std::isfinite(x);
 #endif
 	}    
 

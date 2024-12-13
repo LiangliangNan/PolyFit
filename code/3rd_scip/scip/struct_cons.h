@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -36,9 +45,6 @@ extern "C" {
 /** constraint data structure */
 struct SCIP_Cons
 {
-#ifndef NDEBUG
-   SCIP*                 scip;               /**< SCIP data structure */
-#endif
    SCIP_Real             age;                /**< age of constraint: number of successive times, the constraint was irrelevant */
    char*                 name;               /**< name of the constraint */
    SCIP_CONSHDLR*        conshdlr;           /**< constraint handler for this constraint */
@@ -54,8 +60,8 @@ struct SCIP_Cons
    int                   enfoconsspos;       /**< position of constraint in the handler's enfoconss array */
    int                   checkconsspos;      /**< position of constraint in the handler's checkconss array */
    int                   propconsspos;       /**< position of constraint in the handler's propconss array */
-   int                   nlockspos;          /**< number of times, the constraint locked rounding of its variables */
-   int                   nlocksneg;          /**< number of times, the constraint locked vars for the constraint's negation */
+   int                   nlockspos[NLOCKTYPES]; /**< array of times, the constraint locked rounding of its variables */
+   int                   nlocksneg[NLOCKTYPES]; /**< array of times, the constraint locked vars for the constraint's negation */
    int                   activedepth;        /**< depth level of constraint activation (-2: inactive, -1: problem constraint) */
    int                   validdepth;         /**< depth level where constraint is valid (-1: equals activedepth) */
    int                   nuses;              /**< number of times, this constraint is referenced */
@@ -100,6 +106,9 @@ struct SCIP_Cons
    unsigned int          updateunmarkpropagate:1;/**< TRUE iff constraint has to be unmarked to be propagated in update phase */
    unsigned int          nupgradelocks:28;   /**< number of times, a constraint is locked against an upgrade
                                               *   (e.g. linear -> logicor), 0 means a constraint can be upgraded */
+#ifndef NDEBUG
+   SCIP*                 scip;               /**< SCIP data structure */
+#endif
 };
 
 /** tracks additions and removals of the set of active constraints */
@@ -276,7 +285,7 @@ struct SCIP_Conshdlr
    SCIP_PRESOLTIMING     presoltiming;       /**< timing mask of the constraint handler's presolving method */
 };
 
-/**< linear constraint classification statistics used for MIPLIB */
+/** linear constraint classification statistics used for MIPLIB */
 struct SCIP_LinConsStats
 {
    int                   counter[SCIP_NLINCONSTYPES]; /**< count statistics per type of linear constraint */

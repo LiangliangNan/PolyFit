@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   event_solvingphase.c
+ * @ingroup DEFPLUGINS_EVENT
  * @brief  event handler for solving phase dependent parameter adjustment
  * @author Gregor Hendel
  *
@@ -41,8 +51,26 @@
 /*--+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
 #include "scip/event_solvingphase.h"
-#include "string.h"
+#include "scip/pub_disp.h"
+#include "scip/pub_event.h"
+#include "scip/pub_message.h"
 #include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_paramset.h"
+#include "scip/pub_tree.h"
+#include "scip/scip_disp.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include "scip/scip_tree.h"
+#include <string.h>
 
 #define EVENTHDLR_NAME         "solvingphase"
 #define EVENTHDLR_DESC         "event handler to adjust settings depending on current stage"
@@ -475,7 +503,6 @@ SCIP_RETCODE ensureDepthInfoArraySize(
       for( c = oldsize; c < newsize; ++c )
       {
          SCIP_CALL( createDepthinfo(scip, &(eventhdlrdata->depthinfos[c])) );
-
       }
 
       eventhdlrdata->maxdepth = newsize;
@@ -493,14 +520,12 @@ SCIP_RETCODE releaseNodeInformation(
    SCIP_NODE*            node                /**< node to be removed from the data structures of the event handler */
    )
 {
-
    assert(scip != NULL);
    assert(node != NULL);
    assert(eventhdlrdata != NULL);
 
    /* ensure the depth info data structure can hold this node */
    SCIP_CALL( ensureDepthInfoArraySize(scip, eventhdlrdata, node) );
-
 
    /* in case that selected nodes were cut off in between two calls to this method, build data structures from scratch again */
    if( SCIPgetNDelayedCutoffs(scip) > eventhdlrdata->lastndelayedcutoffs || eventhdlrdata->newbestsol
@@ -903,7 +928,7 @@ SCIP_RETCODE changeParametersUsingSettingsFiles(
    }
 
    return SCIP_OKAY;
-}
+} /*lint !e593*/
 
 /** fix/unfix relevant solving parameters that should not accidentally be set to default values */
 static
@@ -1025,11 +1050,9 @@ SCIP_RETCODE applySolvingPhase(
    /* determine current solving phase */
    determineSolvingPhase(scip, eventhdlrdata);
 
-
    /* nothing has changed */
    if( oldsolvingphase == eventhdlrdata->solvingphase )
       return SCIP_OKAY;
-
 
    /* check if the solving process should be interrupted when the current solution is optimal */
    if( eventhdlrdata->solvingphase == SOLVINGPHASE_PROOF && eventhdlrdata->transitionmethod == 'o' &&
@@ -1061,7 +1084,6 @@ SCIP_RETCODE applySolvingPhase(
    SCIPverbMessage(scip, SCIP_VERBLEVEL_NORMAL, NULL,"Changed solving phase to phase %d.\n", eventhdlrdata->solvingphase);
 
    return SCIP_OKAY;
-
 }
 
 /** update the logarithmic regression */
@@ -1244,8 +1266,8 @@ SCIP_DECL_EVENTFREE(eventFreeSolvingphase)
 static
 SCIP_DECL_EVENTINITSOL(eventInitsolSolvingphase)
 {  /*lint --e{715}*/
-
    SCIP_EVENTHDLRDATA* eventhdlrdata;
+
    assert(scip != NULL);
    eventhdlrdata = SCIPeventhdlrGetData(eventhdlr);
    eventhdlrdata->depthinfos = NULL;
@@ -1323,13 +1345,11 @@ SCIP_RETCODE collectNondefaultParams(
             eventhdlrdata->nondefaultparamssize *= 2;
             SCIP_CALL( SCIPreallocBlockMemoryArray(scip, &eventhdlrdata->nondefaultparams, \
                   eventhdlrdata->nnondefaultparams, eventhdlrdata->nondefaultparamssize) );
-
          }
 
          eventhdlrdata->nondefaultparams[eventhdlrdata->nnondefaultparams++] = param;
       }
    }
-
 
    return SCIP_OKAY;
 }
@@ -1416,7 +1436,6 @@ SCIP_DECL_EVENTEXEC(eventExecSolvingphase)
    assert(eventtype & (EVENTHDLR_EVENT));
    assert(eventtype != SCIP_EVENTTYPE_NODEFOCUSED || SCIPeventGetNode(event) == SCIPgetCurrentNode(scip));
 
-
    /* update data structures depending on the event */
    SCIP_CALL( updateDataStructures(scip, eventhdlrdata, eventtype) );
 
@@ -1425,7 +1444,6 @@ SCIP_DECL_EVENTEXEC(eventExecSolvingphase)
    {
       SCIP_CALL( applySolvingPhase(scip, eventhdlrdata) );
    }
-
 
    /* in test mode, we check every transition criterion */
    if( eventhdlrdata->testmode )

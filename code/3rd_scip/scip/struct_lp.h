@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -213,7 +222,7 @@ struct SCIP_Row
    SCIP_Longint          activeinlpcounter;  /**< counter for the number of times this row was active in an optimal LP solution */
    SCIP_Longint          nlpsaftercreation;  /**< counter for the number of LPs after the row has been created */
    SCIP_ROWSOLVALS*      storedsolvals;      /**< values stored before entering diving or probing mode */
-   void*                 origin;             /**< pointer to constraint handler or separator who created the row (NULL if unkown) */
+   void*                 origin;             /**< pointer to constraint handler or separator who created the row (NULL if unknown) */
    char*                 name;               /**< name of the row */
    SCIP_COL**            cols;               /**< columns of row entries, that may have a nonzero primal solution value */
    int*                  cols_index;         /**< copy of cols[i]->index for avoiding expensive dereferencing */
@@ -237,6 +246,7 @@ struct SCIP_Row
    int                   numminval;          /**< number of coefs with absolute value equal to minval, zero if minval invalid */
    int                   age;                /**< number of successive times this row was in LP and was not sharp in solution */
    int                   rank;               /**< rank of the row (upper bound, to be precise) */
+   unsigned int          fromcutpool:1;      /**< added from cutpool to sepastore */
    unsigned int          basisstatus:2;      /**< basis status of row in last LP solution, invalid for non-LP rows */
    unsigned int          lpcolssorted:1;     /**< are the linked LP columns in the cols array sorted by non-decreasing index? */
    unsigned int          nonlpcolssorted:1;  /**< are the non-LP/not linked columns sorted by non-decreasing index? */
@@ -251,8 +261,8 @@ struct SCIP_Row
    unsigned int          removable:1;        /**< is row removable from the LP (due to aging or cleanup)? */
    unsigned int          inglobalcutpool:1;  /**< is row contained in the global cut pool? */
    unsigned int          normunreliable:1;   /**< is the objective product of the row unreliable? */
-   unsigned int          nlocks:15;          /**< number of sealed locks of an unmodifiable row */
-   unsigned int          origintype:2;       /**< origin of row (0: unkown, 1: constraint handler, 2: separator) */
+   unsigned int          nlocks:13;          /**< number of sealed locks of an unmodifiable row */
+   unsigned int          origintype:3;       /**< origin of row (0: unknown, 1: constraint handler, 2: constraint, 3: separator, 4: reoptimization) */
 };
 
 /** current LP data */
@@ -272,13 +282,17 @@ struct SCIP_Lp
    SCIP_Real             rootlpobjval;       /**< objective value of root LP without loose variables, or SCIP_INVALID */
    SCIP_Real             rootlooseobjval;    /**< objective value of loose variables in root node, or SCIP_INVALID */
    SCIP_Real             cutoffbound;        /**< upper objective limit of LP (copy of primal->cutoffbound) */
+   SCIP_Real             feastol;            /**< current feasibility tolerance */
    SCIP_Real             lpiobjlim;          /**< current objective limit in LPI */
    SCIP_Real             lpifeastol;         /**< current feasibility tolerance in LPI */
    SCIP_Real             lpidualfeastol;     /**< current reduced costs feasibility tolerance in LPI */
    SCIP_Real             lpibarrierconvtol;  /**< current convergence tolerance used in barrier algorithm in LPI */
    SCIP_Real             lpiconditionlimit;  /**< current condition number limit in LPI */
+   SCIP_Real             lpimarkowitz;       /**< current markowitz threshold */
    SCIP_Real             objsqrnorm;         /**< squared Euclidean norm of objective function vector of problem variables */
    SCIP_Real             objsumnorm;         /**< sum norm of objective function vector of problem variables */
+   SCIP_Real             degeneracy;         /**< share of degenerate non-basic variables in the current LP */
+   SCIP_Real             varconsratio;       /**< variable-constraint ratio of the optimal face */
    SCIP_LPI*             lpi;                /**< LP solver interface */
    SCIP_COL**            lpicols;            /**< array with columns currently stored in the LP solver */
    SCIP_ROW**            lpirows;            /**< array with rows currently stored in the LP solver */
@@ -287,13 +301,17 @@ struct SCIP_Lp
    SCIP_COL**            cols;               /**< array with current LP columns in correct order */
    SCIP_COL**            lazycols;           /**< array with current LP lazy columns */
    SCIP_ROW**            rows;               /**< array with current LP rows in correct order */
+   SCIP_Real*            soldirection;       /**< normalized vector in direction of primal solution from current LP solution */
    SCIP_LPISTATE*        divelpistate;       /**< stores LPI state (basis information) before diving starts */
    SCIP_Real*            divechgsides;       /**< stores the lhs/rhs changed in the current diving */
    SCIP_SIDETYPE*        divechgsidetypes;   /**< stores the side type of the changes done in the current diving */
    SCIP_ROW**            divechgrows;        /**< stores the rows changed in the current diving */
    SCIP_LPSOLVALS*       storedsolvals;      /**< collected values of the LP data which depend on the LP solution */
+   SCIP_SOL*             validsoldirsol;     /**< primal solution for which the currently stored solution direction vector is valid */
    SCIP_Longint          validsollp;         /**< LP number for which the currently stored solution values are valid */
    SCIP_Longint          validfarkaslp;      /**< LP number for which the currently stored Farkas row multipliers are valid */
+   SCIP_Longint          validsoldirlp;      /**< LP number for which the currently stored solution direction vector is valid */
+   SCIP_Longint          validdegeneracylp;  /**< LP number for which the currently stored degeneracy information is valid */
    SCIP_Longint          divenolddomchgs;    /**< number of domain changes before diving has started */
    int                   lpicolssize;        /**< available slots in lpicols vector */
    int                   nlpicols;           /**< number of columns in the LP solver */
@@ -306,6 +324,7 @@ struct SCIP_Lp
    int                   chgrowssize;        /**< available slots in chgrows vector */
    int                   nchgrows;           /**< current number of chgrows (number of used slots in chgrows vector) */
    int                   colssize;           /**< available slots in cols vector */
+   int                   soldirectionsize;   /**< available slots in soldirection vector */
    int                   ncols;              /**< current number of LP columns (number of used slots in cols vector) */
    int                   lazycolssize;       /**< available slots in lazycols vector */
    int                   nlazycols;          /**< current number of LP lazy columns (number of used slots in lazycols vector) */
@@ -361,7 +380,7 @@ struct SCIP_Lp
    SCIP_Bool             diving;             /**< LP is used for diving: col bounds and obj don't correspond to variables */
    SCIP_Bool             divingobjchg;       /**< objective values were changed in diving or probing: LP objective is invalid */
    SCIP_Bool             divinglazyapplied;  /**< lazy bounds were applied to the LP during diving */
-   SCIP_Bool             resolvelperror;     /**< an error occured during resolving the LP after diving or probing */
+   SCIP_Bool             resolvelperror;     /**< an error occurred during resolving the LP after diving or probing */
    SCIP_Bool             adjustlpval;        /**< does an infinite LP objective value has been adjusted so far? */
    SCIP_Bool             lpifromscratch;     /**< current FROMSCRATCH setting in LPI */
    SCIP_Bool             lpipresolving;      /**< current PRESOLVING setting in LPI */

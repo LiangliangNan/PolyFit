@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_HASH_CODE_HPP
-# define CPPAD_HASH_CODE_HPP
+# ifndef CPPAD_LOCAL_HASH_CODE_HPP
+# define CPPAD_LOCAL_HASH_CODE_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -12,20 +11,14 @@ the terms of the
 A copy of this license is included in the COPYING file of this distribution.
 Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
-
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+# include <cppad/core/base_hash.hpp>
 /*!
-\file hash_code.hpp
+\file local/hash_code.hpp
 CppAD hashing utility.
 */
 
-/*!
-\def CPPAD_HASH_TABLE_SIZE
-the codes retruned by hash_code are between zero and CPPAD_HASH_TABLE_SIZE
-minus one.
-*/
-# define CPPAD_HASH_TABLE_SIZE 10000
 
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 General purpose hash code for an arbitrary value.
 
@@ -37,6 +30,8 @@ not pointed to by the object.
 
 \param value
 the value that we are generating a hash code for.
+All of the fields in value should have been set before the hash code
+is computed (otherwise undefined values are used).
 
 \return
 is a hash code that is between zero and CPPAD_HASH_TABLE_SIZE - 1.
@@ -46,9 +41,8 @@ is a hash code that is between zero and CPPAD_HASH_TABLE_SIZE - 1.
 \li \c sizeof(value) is even
 \li \c sizeof(unsigned short)  == 2
 */
-
 template <class Value>
-unsigned short hash_code(const Value& value)
+unsigned short local_hash_code(const Value& value)
 {	CPPAD_ASSERT_UNKNOWN(
 		std::numeric_limits<unsigned short>::max()
 		>=
@@ -56,18 +50,21 @@ unsigned short hash_code(const Value& value)
 	);
 	CPPAD_ASSERT_UNKNOWN( sizeof(unsigned short) == 2 );
 	CPPAD_ASSERT_UNKNOWN( sizeof(value) % 2  == 0 );
-	#
+	//
 	const unsigned short* v
 	         = reinterpret_cast<const unsigned short*>(& value);
-	#
+	//
 	size_t i = sizeof(value) / 2 - 1;
-	#
-	unsigned short code = v[i];
-	#
+	//
+	size_t sum = v[i];
+	//
 	while(i--)
-		code += v[i];
-
-	return code % CPPAD_HASH_TABLE_SIZE;
+		sum += v[i];
+	//
+	unsigned short code = static_cast<unsigned short>(
+		sum % CPPAD_HASH_TABLE_SIZE
+	);
+	return code;
 }
 
 /*!
@@ -122,7 +119,7 @@ is a hash code that is between zero and CPPAD_HASH_TABLE_SIZE - 1.
 */
 
 template <class Base>
-unsigned short hash_code(
+unsigned short local_hash_code(
 	OpCode        op      ,
 	const addr_t* arg     ,
 	size_t npar           ,
@@ -249,5 +246,6 @@ unsigned short hash_code(
 	return code % CPPAD_HASH_TABLE_SIZE;
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
+
 # endif

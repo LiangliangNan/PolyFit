@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   cons_xor.c
+ * @ingroup DEFPLUGINS_CONS
  * @brief  Constraint handler for "xor" constraints,  \f$rhs = x_1 \oplus x_2 \oplus \dots  \oplus x_n\f$
  * @author Tobias Achterberg
  * @author Stefan Heinz
@@ -29,20 +39,49 @@
  * where \f$x_i\f$ is a binary variable for all \f$i\f$ and \f$rhs\f$ is bool. The variables \f$x\f$'s are called
  * operators. This constraint is satisfied if \f$rhs\f$ is TRUE and an odd number of the operators are TRUE or if the
  * \f$rhs\f$ is FALSE and a even number of operators are TRUE. Hence, if the sum of \f$rhs\f$ and operators is even.
+ *
+ * @todo reduce code duplication
+ *       - unified treatment of constraint with 0/1/2 binary variables
+ *       - static functions for certain operations that respect deleteintvar flag properly (e.g., deletion of constraints)
+ * @todo add offset for activity which might allow to handle intvar in a more unified way
+ *       (right now, we do not remove fixed variables from the constraint, because we must ensure that the intvar gets
+ *       the correct value in the end)
+ * @todo check if preprocessConstraintPairs can also be executed for non-artificial intvars (after the previous changes)
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
-#include "scip/pub_misc.h"
-#include "scip/cons_xor.h"
-#include "scip/cons_setppc.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_linear.h"
-#include "scip/heur_trysol.h"
+#include "scip/cons_setppc.h"
+#include "scip/cons_xor.h"
 #include "scip/debug.h"
-
+#include "scip/heur_trysol.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_event.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_var.h"
+#include "scip/scip_conflict.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_cut.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 /* constraint handler properties */
 #define CONSHDLR_NAME          "xor"
@@ -151,6 +190,8 @@ SCIP_RETCODE lockRounding(
    SCIP_VAR*             var                 /**< variable of constraint entry */
    )
 {
+   assert(!SCIPconsIsLockedType(cons, SCIP_LOCKTYPE_CONFLICT));
+
    /* rounding in both directions may violate the constraint */
    SCIP_CALL( SCIPlockVarCons(scip, var, cons, TRUE, TRUE) );
 
@@ -165,6 +206,8 @@ SCIP_RETCODE unlockRounding(
    SCIP_VAR*             var                 /**< variable of constraint entry */
    )
 {
+   assert(!SCIPconsIsLockedType(cons, SCIP_LOCKTYPE_CONFLICT));
+
    /* rounding in both directions may violate the constraint */
    SCIP_CALL( SCIPunlockVarCons(scip, var, cons, TRUE, TRUE) );
 
@@ -193,7 +236,7 @@ SCIP_RETCODE conshdlrdataCreate(
 
 /** frees constraint handler data */
 static
-SCIP_RETCODE conshdlrdataFree(
+void conshdlrdataFree(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONSHDLRDATA**   conshdlrdata        /**< pointer to the constraint handler data */
    )
@@ -202,8 +245,6 @@ SCIP_RETCODE conshdlrdataFree(
    assert(*conshdlrdata != NULL);
 
    SCIPfreeBlockMemory(scip, conshdlrdata);
-
-   return SCIP_OKAY;
 }
 
 /** stores the given variable numbers as watched variables, and updates the event processing */
@@ -470,7 +511,7 @@ SCIP_RETCODE consdataPrint(
    SCIP_CALL( SCIPwriteVarsList(scip, file, consdata->vars, consdata->nvars, TRUE, ',') );
 
    /* close variable list and write right hand side */
-   SCIPinfoMessage(scip, file, ") = %d", consdata->rhs);
+   SCIPinfoMessage(scip, file, ") = %u", consdata->rhs);
 
    /* write integer variable if it exists */
    if( consdata->intvar != NULL )
@@ -828,8 +869,7 @@ SCIP_DECL_HASHKEYVAL(hashKeyValXorcons)
     * SCIPvarCompareActiveAndNegated (see var.c)
     */
 
-   return SCIPhashTwo(SCIPcombineTwoInt(consdata->nvars, minidx),
-                      SCIPcombineTwoInt(mididx, maxidx));
+   return SCIPhashFour(consdata->nvars, minidx, mididx, maxidx);
 }
 
 /** deletes all fixed variables and all pairs of equal variables */
@@ -942,7 +982,8 @@ SCIP_RETCODE applyFixings(
          /* need to update integer variable, consider the following case:
           * xor(x1, x2, x3, x4, x5) = 0  (and x1 == x2) was change above to
           * xor(        x3, x4, x5) = 0
-          * assuming we have an integer variable y it needs to be replaced by z with y = x1 + z and z in [lb_y, ub_y]
+          * assuming we have an integer variable y it needs to be replaced by z with y = x1 + z and
+          * z in [max(lb_y-ub_x1, 0), ub_y-lb_x1]
           */
          if( consdata->intvar != NULL )
          {
@@ -954,8 +995,8 @@ SCIP_RETCODE applyFixings(
             char consname[SCIP_MAXSTRLEN];
 
             (void) SCIPsnprintf(varname, SCIP_MAXSTRLEN, "agg_%s", SCIPvarGetName(consdata->intvar));
-            lb = SCIPvarGetLbGlobal(consdata->intvar);
-            ub = SCIPvarGetUbGlobal(consdata->intvar);
+            lb = MAX(SCIPvarGetLbGlobal(consdata->intvar) - SCIPvarGetUbGlobal(newvars[2]), 0); /*lint !e666*/
+            ub = MAX(SCIPvarGetUbGlobal(consdata->intvar) - SCIPvarGetLbGlobal(newvars[2]), 0); /*lint !e666*/
             vartype = SCIPvarGetType(consdata->intvar);
 
             SCIP_CALL( SCIPcreateVar(scip, &newvars[0], varname, lb, ub, 0.0, vartype,
@@ -997,7 +1038,7 @@ SCIP_RETCODE applyFixings(
          /* need to update integer variable, consider the following case:
           * xor(x1, x2, x3, x4, x5) = 0  (and x1 = ~x2) was change above to
           * xor(        x3, x4, x5) = 1
-          * assuming we have an integer variable y it needs to be replaced by z with y = 1 + z and z in [lb_y, ub_y - 1]
+          * assuming we have an integer variable y it needs to be replaced by z with y = 1 + z and z in [max(lb_y - 1, 0), ub_y - 1]
           */
          if( consdata->rhs && consdata->intvar != NULL )
          {
@@ -1011,8 +1052,9 @@ SCIP_RETCODE applyFixings(
             SCIP_Bool redundant;
 
             (void) SCIPsnprintf(varname, SCIP_MAXSTRLEN, "agg_%s", SCIPvarGetName(consdata->intvar));
-            ub = SCIPvarGetUbGlobal(consdata->intvar) - 1;
-            lb = MIN(ub, SCIPvarGetLbGlobal(consdata->intvar)); /*lint !e666*/
+            /* avoid infeasible cutoffs and guarantee non-negative bounds for the new artificial integer variable */
+            lb = MAX(SCIPvarGetLbGlobal(consdata->intvar) - 1, 0); /*lint !e666*/
+            ub = MAX(SCIPvarGetUbGlobal(consdata->intvar) - 1, 0); /*lint !e666*/
             vartype = (lb == 0 && ub == 1) ? SCIP_VARTYPE_BINARY : SCIPvarGetType(consdata->intvar);
 
             SCIP_CALL( SCIPcreateVar(scip, &newvar, varname, lb, ub, 0.0, vartype,
@@ -1025,6 +1067,7 @@ SCIP_RETCODE applyFixings(
 
             if( infeasible )
             {
+               SCIP_CALL( SCIPreleaseVar(scip, &newvar) );
                *cutoff = TRUE;
                break;
             }
@@ -1107,6 +1150,7 @@ static
 SCIP_RETCODE addExtendedFlowFormulation(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons,               /**< constraint to check */
+   int*                  naggrvars,          /**< pointer to add up the number of aggregated variables */
    int*                  naddedconss         /**< number of added constraints */
    )
 {
@@ -1184,6 +1228,7 @@ SCIP_RETCODE addExtendedFlowFormulation(
          assert( ! infeasible );
          assert( redundant );
          assert( aggregated );
+         ++(*naggrvars);
       }
       else
       {
@@ -1209,6 +1254,7 @@ SCIP_RETCODE addExtendedFlowFormulation(
                assert( ! infeasible );
                assert( redundant );
                assert( aggregated );
+               ++(*naggrvars);
             }
             else
             {
@@ -1230,6 +1276,7 @@ SCIP_RETCODE addExtendedFlowFormulation(
                assert( ! infeasible );
                assert( redundant );
                assert( aggregated );
+               ++(*naggrvars);
             }
          }
          else
@@ -1412,6 +1459,7 @@ static
 SCIP_RETCODE addExtendedAsymmetricFormulation(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons,               /**< constraint to check */
+   int*                  naggrvars,          /**< pointer to add up the number of aggregated variables */
    int*                  naddedconss         /**< number of added constraints */
    )
 {
@@ -1491,6 +1539,7 @@ SCIP_RETCODE addExtendedAsymmetricFormulation(
          assert( ! infeasible );
          assert( redundant );
          assert( aggregated );
+         ++(*naggrvars);
       }
       else
       {
@@ -1642,7 +1691,7 @@ SCIP_RETCODE createRelaxation(
 
       /* create LP row */
       rhsval = (consdata->rhs ? 1.0 : 0.0);
-      SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[0], SCIPconsGetHdlr(cons), SCIPconsGetName(cons), rhsval, rhsval,
+      SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[0], cons, SCIPconsGetName(cons), rhsval, rhsval,
             SCIPconsIsLocal(cons), SCIPconsIsModifiable(cons), SCIPconsIsRemovable(cons)) );
       SCIP_CALL( SCIPaddVarToRow(scip, consdata->rows[0], consdata->intvar, -2.0) );
       SCIP_CALL( SCIPaddVarsToRowSameCoef(scip, consdata->rows[0], consdata->nvars, consdata->vars, 1.0) );
@@ -1658,7 +1707,7 @@ SCIP_RETCODE createRelaxation(
          int v;
 
          (void) SCIPsnprintf(rowname, SCIP_MAXSTRLEN, "%s_%d", SCIPconsGetName(cons), r);
-         SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[r], SCIPconsGetHdlr(cons), rowname, -SCIPinfinity(scip), 0.0,
+         SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[r], cons, rowname, -SCIPinfinity(scip), 0.0,
                SCIPconsIsLocal(cons), SCIPconsIsModifiable(cons), SCIPconsIsRemovable(cons)) );
          for( v = 0; v < 3; ++v )
          {
@@ -1668,14 +1717,14 @@ SCIP_RETCODE createRelaxation(
 
       /* create the <= 2 row with all positive signs */
       (void) SCIPsnprintf(rowname, SCIP_MAXSTRLEN, "%s_3", SCIPconsGetName(cons));
-      SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[3], SCIPconsGetHdlr(cons), rowname, -SCIPinfinity(scip), 2.0,
+      SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[3], cons, rowname, -SCIPinfinity(scip), 2.0,
             SCIPconsIsLocal(cons), SCIPconsIsModifiable(cons), SCIPconsIsRemovable(cons)) );
       SCIP_CALL( SCIPaddVarsToRowSameCoef(scip, consdata->rows[3], consdata->nvars, consdata->vars, 1.0) );
 
       /* create extra LP row if integer variable exists */
       if( consdata->intvar != NULL )
       {
-         SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[4], SCIPconsGetHdlr(cons), SCIPconsGetName(cons), 0.0, 0.0,
+         SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[4], cons, SCIPconsGetName(cons), 0.0, 0.0,
                SCIPconsIsLocal(cons), SCIPconsIsModifiable(cons), SCIPconsIsRemovable(cons)) );
          SCIP_CALL( SCIPaddVarToRow(scip, consdata->rows[4], consdata->intvar, -2.0) );
          SCIP_CALL( SCIPaddVarsToRowSameCoef(scip, consdata->rows[4], consdata->nvars, consdata->vars, 1.0) );
@@ -1692,7 +1741,7 @@ SCIP_RETCODE createRelaxation(
          int v;
 
          (void) SCIPsnprintf(rowname, SCIP_MAXSTRLEN, "%s_%d", SCIPconsGetName(cons), r);
-         SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[r], SCIPconsGetHdlr(cons), rowname, -SCIPinfinity(scip), 1.0,
+         SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[r], cons, rowname, -SCIPinfinity(scip), 1.0,
                SCIPconsIsLocal(cons), SCIPconsIsModifiable(cons), SCIPconsIsRemovable(cons)) );
          for( v = 0; v < 3; ++v )
          {
@@ -1702,14 +1751,14 @@ SCIP_RETCODE createRelaxation(
 
       /* create the <= -1 row with all negative signs */
       (void) SCIPsnprintf(rowname, SCIP_MAXSTRLEN, "%s_3", SCIPconsGetName(cons));
-      SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[3], SCIPconsGetHdlr(cons), rowname, -SCIPinfinity(scip), -1.0,
+      SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[3], cons, rowname, -SCIPinfinity(scip), -1.0,
             SCIPconsIsLocal(cons), SCIPconsIsModifiable(cons), SCIPconsIsRemovable(cons)) );
       SCIP_CALL( SCIPaddVarsToRowSameCoef(scip, consdata->rows[3], consdata->nvars, consdata->vars, -1.0) );
 
       /* create extra LP row if integer variable exists */
       if( consdata->intvar != NULL )
       {
-         SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[4], SCIPconsGetHdlr(cons), SCIPconsGetName(cons), 1.0, 1.0,
+         SCIP_CALL( SCIPcreateEmptyRowCons(scip, &consdata->rows[4], cons, SCIPconsGetName(cons), 1.0, 1.0,
                SCIPconsIsLocal(cons), SCIPconsIsModifiable(cons), SCIPconsIsRemovable(cons)) );
          SCIP_CALL( SCIPaddVarToRow(scip, consdata->rows[4], consdata->intvar, -2.0) );
          SCIP_CALL( SCIPaddVarsToRowSameCoef(scip, consdata->rows[4], consdata->nvars, consdata->vars, 1.0) );
@@ -1978,7 +2027,7 @@ SCIP_RETCODE separateCons(
       }
 
       /* if size of set does not have the same parity as rhs (e.g., size is odd if rhs is 0) */
-      if ( (cnt - consdata->rhs) % 2 == 1 )
+      if ( (cnt - (int) consdata->rhs) % 2 == 1 )
       {
          if ( SCIPisEfficacious(scip, 1.0 - sum) )
          {
@@ -1987,7 +2036,7 @@ SCIP_RETCODE separateCons(
             SCIPdebugMsg(scip, "found violated parity cut (efficiacy: %f)\n", 1.0 - sum);
 
             (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "parity#%s", SCIPconsGetName(cons));
-            SCIP_CALL( SCIPcreateEmptyRowCons(scip, &row, SCIPconsGetHdlr(cons), name, -SCIPinfinity(scip), (SCIP_Real) (cnt - 1), FALSE, FALSE, TRUE) );
+            SCIP_CALL( SCIPcreateEmptyRowCons(scip, &row, cons, name, -SCIPinfinity(scip), (SCIP_Real) (cnt - 1), FALSE, FALSE, TRUE) );
             SCIP_CALL( SCIPcacheRowExtensions(scip, row) );
 
             /* fill in row */
@@ -2023,7 +2072,7 @@ SCIP_RETCODE separateCons(
 
             /* the rhs of the inequality is the corrected set size minus 1 */
             (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "parity#%s", SCIPconsGetName(cons));
-            SCIP_CALL( SCIPcreateEmptyRowCons(scip, &row, SCIPconsGetHdlr(cons), name, -SCIPinfinity(scip), (SCIP_Real) (cnt - 2), FALSE, FALSE, TRUE) );
+            SCIP_CALL( SCIPcreateEmptyRowCons(scip, &row, cons, name, -SCIPinfinity(scip), (SCIP_Real) (cnt - 2), FALSE, FALSE, TRUE) );
             SCIP_CALL( SCIPcacheRowExtensions(scip, row) );
 
             /* fill in row */
@@ -2059,7 +2108,7 @@ SCIP_RETCODE separateCons(
 
             /* the rhs of the inequality is the size of the corrected set */
             (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "parity#%s", SCIPconsGetName(cons));
-            SCIP_CALL( SCIPcreateEmptyRowCons(scip, &row, SCIPconsGetHdlr(cons), name, -SCIPinfinity(scip), (SCIP_Real) cnt, FALSE, FALSE, TRUE) );
+            SCIP_CALL( SCIPcreateEmptyRowCons(scip, &row, cons, name, -SCIPinfinity(scip), (SCIP_Real) cnt, FALSE, FALSE, TRUE) );
             SCIP_CALL( SCIPcacheRowExtensions(scip, row) );
 
             /* fill in row */
@@ -2095,7 +2144,7 @@ SCIP_RETCODE separateCons(
    return SCIP_OKAY;
 }
 
-/** Transform linear system \f$A x = b\f$ into row echolon form via the Gauss algorithm with row pivoting over GF2
+/** Transform linear system \f$A x = b\f$ into row echelon form via the Gauss algorithm with row pivoting over GF2
  *  @returns the rank of @p A
  *
  *  Here, \f$A \in R^{m \times n},\; b \in R^m\f$. On exit, the vector @p p contains a permutation of the row indices
@@ -2103,12 +2152,12 @@ SCIP_RETCODE separateCons(
  *  s[i] contains the column index of the first nonzero in row @p i.
  */
 static
-int computeRowEcholonGF2(
+int computeRowEchelonGF2(
    SCIP*                 scip,               /**< SCIP data structure */
    int                   m,                  /**< number of rows */
    int                   n,                  /**< number of columns */
    int*                  p,                  /**< row permutation */
-   int*                  s,                  /**< steps indicators of the row echolon form */
+   int*                  s,                  /**< steps indicators of the row echelon form */
    Type**                A,                  /**< matrix */
    Type*                 b                   /**< rhs */
    )
@@ -2130,7 +2179,7 @@ int computeRowEcholonGF2(
       s[i] = i;
    }
 
-   /* loop through possible steps in echolon form (stop at min {n, m}) */
+   /* loop through possible steps in echelon form (stop at min {n, m}) */
    for (i = 0; i < m && i < n; ++i)
    {
       assert( s[i] == i );
@@ -2188,8 +2237,8 @@ int computeRowEcholonGF2(
          if ( A[pk][s[i]] != 0 )
          {
             for (j = s[i]; j < n; ++j)
-               A[pk][j] = A[pk][j] ^ A[pi][j];
-            b[pk] = b[pk] ^ b[pi];
+               A[pk][j] = A[pk][j] ^ A[pi][j];  /*lint !e732*/
+            b[pk] = b[pk] ^ b[pi];  /*lint !e732*/
          }
       }
 
@@ -2208,16 +2257,16 @@ int computeRowEcholonGF2(
    return m;
 }
 
-/** Construct solution from matrix in row echolon form over GF2
+/** Construct solution from matrix in row echelon form over GF2
  *
- *  Compute solution of \f$A x = b\f$, which is already in row echolon form (@see computeRowEcholonGF2()) */
+ *  Compute solution of \f$A x = b\f$, which is already in row echelon form (@see computeRowEchelonGF2()) */
 static
-void solveRowEcholonGF2(
+void solveRowEchelonGF2(
    int                   m,                  /**< number of rows */
    int                   n,                  /**< number of columns */
    int                   r,                  /**< rank of matrix */
    int*                  p,                  /**< row permutation */
-   int*                  s,                  /**< steps indicators of the row echolon form */
+   int*                  s,                  /**< steps indicators of the row echelon form */
    Type**                A,                  /**< matrix */
    Type*                 b,                  /**< rhs */
    Type*                 x                   /**< solution vector on exit */
@@ -2237,11 +2286,8 @@ void solveRowEcholonGF2(
    for (k = 0; k < n; ++k)
       x[k] = 0;
 
-   /* init last entry */
-   x[s[r-1]] = b[p[r-1]];
-
    /* loop backwards through solution vector */
-   for (i = r-2; i >= 0; --i)
+   for (i = r-1; i >= 0; --i)
    {
       Type val;
 
@@ -2253,7 +2299,7 @@ void solveRowEcholonGF2(
       {
          assert( i <= s[k] && s[k] <= n );
          if ( A[p[i]][s[k]] != 0 )
-            val = val ^ x[s[k]];
+            val = val ^ x[s[k]];  /*lint !e732*/
       }
 
       /* store solution */
@@ -2264,11 +2310,11 @@ void solveRowEcholonGF2(
 /** solve equation system over GF 2 by Gauss algorithm and create solution out of it or return cutoff
  *
  *  Collect all information in xor constraints into a linear system over GF2. Then solve the system by computing a row
- *  echolon form. If the system is infeasible, the current node is infeasible. Otherwise, we can compute a solution for
+ *  echelon form. If the system is infeasible, the current node is infeasible. Otherwise, we can compute a solution for
  *  the xor constraints given. We check whether this gives a solution for the whole problem.
  *
  *  We sort the columns with respect to the product of the objective coefficients and 1 minus the current LP solution
- *  value. The idea is that columns that are likely to provide the steps in the row echolon form should appear towards
+ *  value. The idea is that columns that are likely to provide the steps in the row echelon form should appear towards
  *  the front of the matrix. The smaller the product, the more it makes sense to set the variable to 1 (because the
  *  solution value is already close to 1 and the objective function is small).
  *
@@ -2340,22 +2386,25 @@ SCIP_RETCODE checkSystemGF2(
 
          var = consdata->vars[j];
          assert( var != NULL );
-         assert( SCIPvarGetType(var) == SCIP_VARTYPE_BINARY );
+         assert( SCIPvarIsBinary(var) );
 
          /* replace negated variables */
          if ( SCIPvarIsNegated(var) )
             var = SCIPvarGetNegatedVar(var);
          assert( var != NULL );
 
+         /* get the active variable */
+         while ( var != NULL && SCIPvarGetStatus(var) == SCIP_VARSTATUS_AGGREGATED )
+            var = SCIPisEQ(scip, SCIPvarGetAggrScalar(var), 0.0) ? NULL : SCIPvarGetAggrVar(var);
          /* consider nonfixed variables */
-         if ( SCIPcomputeVarLbLocal(scip, var) < 0.5 && SCIPcomputeVarUbLocal(scip, var) > 0.5 )
+         if ( var != NULL && SCIPcomputeVarLbLocal(scip, var) < 0.5 && SCIPcomputeVarUbLocal(scip, var) > 0.5 )
          {
             /* consider active variables and collect only new ones */
             if ( SCIPvarIsActive(var) && ! SCIPhashmapExists(varhash, var) )
             {
                /* add variable in map */
-               SCIP_CALL( SCIPhashmapInsert(varhash, var, (void*) (size_t) nvarsmat) );
-               assert( nvarsmat == (int) (size_t) SCIPhashmapGetImage(varhash, var) );
+               SCIP_CALL( SCIPhashmapInsertInt(varhash, var, nvarsmat) );
+               assert( nvarsmat == SCIPhashmapGetImageInt(varhash, var) );
                xorvals[nvarsmat] = SCIPvarGetObj(var) * (1.0 - SCIPgetSolVal(scip, currentsol, var));
                xorvars[nvarsmat++] = var;
             }
@@ -2412,7 +2461,7 @@ SCIP_RETCODE checkSystemGF2(
 
    /* Sort variables non-decreasingly with respect to product of objective and 1 minus the current solution value: the
     * smaller the value the better it would be to set the variable to 1. This is more likely if the variable appears
-    * towards the front of the matrix, because only the entries on the steps in the row echolon form will have the
+    * towards the front of the matrix, because only the entries on the steps in the row echelon form will have the
     * chance to be nonzero.
     */
    SCIPsortRealIntPtr(xorvals, xoridx, (void**) xorvars, nvarsmat);
@@ -2459,7 +2508,6 @@ SCIP_RETCODE checkSystemGF2(
             assert( var != NULL );
             b[nconssmat] = ! b[nconssmat];
          }
-
 
          /* replace aggregated variables */
          while( SCIPvarGetStatus(var) == SCIP_VARSTATUS_AGGREGATED )
@@ -2513,7 +2561,7 @@ SCIP_RETCODE checkSystemGF2(
             if ( SCIPvarIsActive(var) && SCIPcomputeVarUbLocal(scip, var) > 0.5 )
             {
                assert( SCIPhashmapExists(varhash, var) );
-               idx = (int) (size_t) SCIPhashmapGetImage(varhash, var);
+               idx = SCIPhashmapGetImageInt(varhash, var);
                assert( idx < nvarsmat );
                assert( 0 <= xorbackidx[idx] && xorbackidx[idx] < nvarsmat );
                A[nconssmat][xorbackidx[idx]] = 1;
@@ -2543,7 +2591,7 @@ SCIP_RETCODE checkSystemGF2(
    rank = -1;
    if ( ! SCIPisStopped(scip) )
    {
-      rank = computeRowEcholonGF2(scip, nconssmat, nvarsmat, p, s, A, b);
+      rank = computeRowEchelonGF2(scip, nconssmat, nvarsmat, p, s, A, b);
       assert( rank <= nconssmat && rank <= nvarsmat );
    }
 
@@ -2584,7 +2632,7 @@ SCIP_RETCODE checkSystemGF2(
 
             /* construct solution */
             SCIP_CALL( SCIPallocBufferArray(scip, &x, nvarsmat) );
-            solveRowEcholonGF2(nconssmat, nvarsmat, rank, p, s, A, b, x);
+            solveRowEchelonGF2(nconssmat, nvarsmat, rank, p, s, A, b, x);
 
 #ifdef SCIP_OUTPUT
             SCIPinfoMessage(scip, NULL, "Solution:\n");
@@ -2596,8 +2644,8 @@ SCIP_RETCODE checkSystemGF2(
             /* fix variables according to computed unique solution */
             for( j = 0; j < nvarsmat; ++j )
             {
-               assert( (int) (size_t) SCIPhashmapGetImage(varhash, xorvars[j]) < nvars );
-               assert( xorbackidx[(int) (size_t) SCIPhashmapGetImage(varhash, xorvars[j])] == j );
+               assert( SCIPhashmapGetImageInt(varhash, xorvars[j]) < nvars );
+               assert( xorbackidx[SCIPhashmapGetImageInt(varhash, xorvars[j])] == j );
                assert( SCIPcomputeVarLbLocal(scip, xorvars[j]) < 0.5 );
                if( x[j] == 0 )
                {
@@ -2634,7 +2682,7 @@ SCIP_RETCODE checkSystemGF2(
 
                /* construct solution */
                SCIP_CALL( SCIPallocBufferArray(scip, &x, nvarsmat) );
-               solveRowEcholonGF2(nconssmat, nvarsmat, rank, p, s, A, b, x);
+               solveRowEchelonGF2(nconssmat, nvarsmat, rank, p, s, A, b, x);
 
 #ifdef SCIP_OUTPUT
                SCIPinfoMessage(scip, NULL, "Solution:\n");
@@ -2651,8 +2699,8 @@ SCIP_RETCODE checkSystemGF2(
                {
                   if ( x[j] != 0 )
                   {
-                     assert( (int) (size_t) SCIPhashmapGetImage(varhash, xorvars[j]) < nvars );
-                     assert( xorbackidx[(int) (size_t) SCIPhashmapGetImage(varhash, xorvars[j])] == j );
+                     assert( SCIPhashmapGetImageInt(varhash, xorvars[j]) < nvars );
+                     assert( xorbackidx[SCIPhashmapGetImageInt(varhash, xorvars[j])] == j );
                      assert( SCIPcomputeVarLbLocal(scip, xorvars[j]) < 0.5 );
                      SCIP_CALL( SCIPsetSolVal(scip, sol, xorvars[j], 1.0) );
                   }
@@ -2676,7 +2724,8 @@ SCIP_RETCODE checkSystemGF2(
                   consdata = SCIPconsGetData(conss[i]);
                   assert(consdata != NULL);
 
-                  if ( xoractive[i] && consdata->intvar != NULL )
+                  /* only try for active constraints and integral variable; hope for the best if they are not active */
+                  if ( xoractive[i] && consdata->intvar != NULL && SCIPvarIsActive(consdata->intvar) )
                   {
                      SCIP_Real val;
                      int nones = 0;
@@ -2690,7 +2739,7 @@ SCIP_RETCODE checkSystemGF2(
                      assert( ! noaggr || nones % 2 == (int) consdata->rhs );
                      if ( (unsigned int) nones != consdata->rhs )
                      {
-                        val = (SCIP_Real) (nones - consdata->rhs)/2;
+                        val = (SCIP_Real) (nones - (int) consdata->rhs)/2;
                         if ( SCIPisGE(scip, val, SCIPvarGetLbGlobal(consdata->intvar)) && SCIPisLE(scip, val, SCIPvarGetUbGlobal(consdata->intvar)) )
                         {
                            SCIP_CALL( SCIPsetSolVal(scip, sol, consdata->intvar, val) );
@@ -3025,9 +3074,9 @@ SCIP_RETCODE propagateCons(
             int fixval;
 
             assert( ! *cutoff );
-            assert( (nfixedones - consdata->rhs) % 2 == 0 );
+            assert( (nfixedones - (int) consdata->rhs) % 2 == 0 );
 
-            fixval = (nfixedones - consdata->rhs)/2; /*lint !e713*/
+            fixval = (nfixedones - (int) consdata->rhs)/2; /*lint !e713*/
 
             SCIPdebugMsg(scip, "fix integral variable <%s> to %d\n", SCIPvarGetName(consdata->intvar), fixval);
 
@@ -3054,7 +3103,7 @@ SCIP_RETCODE propagateCons(
 
                *cutoff = TRUE;
             }
-            else
+            else if( SCIPvarGetStatus(consdata->intvar) != SCIP_VARSTATUS_MULTAGGR )
             {
                if ( ! SCIPisEQ(scip, SCIPvarGetLbLocal(consdata->intvar), (SCIP_Real) fixval) )
                {
@@ -3097,8 +3146,8 @@ SCIP_RETCODE propagateCons(
 
       (*nfixedvars)++;
 
-      /* fix integral variable if present */
-      if ( consdata->intvar != NULL && !consdata->deleteintvar )
+      /* fix integral variable if present and not multi-aggregated */
+      if ( consdata->intvar != NULL && !consdata->deleteintvar && SCIPvarGetStatus(consdata->intvar) != SCIP_VARSTATUS_MULTAGGR )
       {
          int fixval;
 
@@ -3106,9 +3155,9 @@ SCIP_RETCODE propagateCons(
          if ( odd )
             ++nfixedones;
 
-         assert( (nfixedones - consdata->rhs) % 2 == 0 );
+         assert( (nfixedones - (int) consdata->rhs) % 2 == 0 );
 
-         fixval = (nfixedones - consdata->rhs)/2; /*lint !e713*/
+         fixval = (nfixedones - (int) consdata->rhs)/2; /*lint !e713*/
          SCIPdebugMsg(scip, "should fix integral variable <%s> to %d\n", SCIPvarGetName(consdata->intvar), fixval);
 
          /* check whether value to fix is outside bounds */
@@ -3174,8 +3223,8 @@ SCIP_RETCODE propagateCons(
       assert( SCIPisFeasIntegral(scip, SCIPvarGetLbLocal(consdata->intvar)) );
       assert( SCIPisFeasIntegral(scip, SCIPvarGetUbLocal(consdata->intvar)) );
 
-      nonesmin = 2 * (int)(SCIPvarGetLbLocal(consdata->intvar) + 0.5) + consdata->rhs; /*lint !e713*/
-      nonesmax = 2 * (int)(SCIPvarGetUbLocal(consdata->intvar) + 0.5) + consdata->rhs; /*lint !e713*/
+      nonesmin = 2 * (int)(SCIPvarGetLbLocal(consdata->intvar) + 0.5) + (int) consdata->rhs; /*lint !e713*/
+      nonesmax = 2 * (int)(SCIPvarGetUbLocal(consdata->intvar) + 0.5) + (int) consdata->rhs; /*lint !e713*/
 
       /* the number of possible variables that can get value 1 is less than the minimum bound */
       if ( nvars - nfixedzeros < nonesmin )
@@ -3203,80 +3252,83 @@ SCIP_RETCODE propagateCons(
          return SCIP_OKAY;
       }
 
-      /* compute new bounds on the integral variable */
-      newlb = (SCIP_Real)((nfixedones + 1 - consdata->rhs) / 2); /*lint !e653*/
-      newub = (SCIP_Real)((nvars - nfixedzeros - consdata->rhs) / 2); /*lint !e653*/
-
-      /* new lower bound is better */
-      if( newlb > SCIPvarGetLbLocal(consdata->intvar) + 0.5 )
+      if( SCIPvarGetStatus(consdata->intvar) != SCIP_VARSTATUS_MULTAGGR )
       {
-         SCIPdebugMsg(scip, "constraint <%s>: propagated lower bound of integral variable <%s> to %g\n", SCIPconsGetName(cons), SCIPvarGetName(consdata->intvar), newlb);
-         SCIP_CALL( SCIPinferVarLbCons(scip, consdata->intvar, newlb, cons, (int)PROPRULE_INTUB, TRUE, &infeasible, &tightened) );
-         assert(tightened);
-         assert(!infeasible);
+         /* compute new bounds on the integral variable */
+         newlb = (SCIP_Real)((nfixedones + 1 - (int) consdata->rhs) / 2); /*lint !e653*/
+         newub = (SCIP_Real)((nvars - nfixedzeros - (int) consdata->rhs) / 2); /*lint !e653*/
 
-         ++(*nchgbds);
-
-         nonesmin = 2 * (int)(SCIPvarGetLbLocal(consdata->intvar) + 0.5) + consdata->rhs; /*lint !e713*/
-      }
-
-      /* new upper bound is better */
-      if( newub < SCIPvarGetUbLocal(consdata->intvar) - 0.5 )
-      {
-         SCIPdebugMsg(scip, "constraint <%s>: propagated upper bound of integral variable <%s> to %g\n", SCIPconsGetName(cons), SCIPvarGetName(consdata->intvar), newub);
-         SCIP_CALL( SCIPinferVarUbCons(scip, consdata->intvar, newub, cons, (int)PROPRULE_INTLB, TRUE, &infeasible, &tightened) );
-         assert(tightened);
-         assert(!infeasible);
-
-         ++(*nchgbds);
-
-         nonesmax = 2 * (int)(SCIPvarGetUbLocal(consdata->intvar) + 0.5) + consdata->rhs; /*lint !e713*/
-      }
-
-      assert(nvars - nfixedzeros >= nonesmin);
-      assert(nfixedones <= nonesmax);
-
-      /* the number of variables that are free or fixed to 1 is exactly the minimum required -> fix free variables to 1 */
-      if ( nvars - nfixedzeros == nonesmin )
-      {
-         SCIPdebugMsg(scip, "constraint <%s>: fix %d free variables to 1 to reach lower bound of %d\n", SCIPconsGetName(cons), nvars - nfixedzeros - nfixedones, nonesmin);
-
-         for (i = 0; i < nvars; ++i)
+         /* new lower bound is better */
+         if( newlb > SCIPvarGetLbLocal(consdata->intvar) + 0.5 )
          {
-            if ( SCIPvarGetLbLocal(vars[i]) < 0.5 && SCIPvarGetUbLocal(vars[i]) > 0.5 )
-            {
-               SCIP_CALL( SCIPinferBinvarCons(scip, vars[i], TRUE, cons, (int)PROPRULE_INTLB, &infeasible, &tightened) );
-               assert( !infeasible );
-               assert( tightened );
+            SCIPdebugMsg(scip, "constraint <%s>: propagated lower bound of integral variable <%s> to %g\n", SCIPconsGetName(cons), SCIPvarGetName(consdata->intvar), newlb);
+            SCIP_CALL( SCIPinferVarLbCons(scip, consdata->intvar, newlb, cons, (int)PROPRULE_INTUB, TRUE, &infeasible, &tightened) );
+            assert(tightened);
+            assert(!infeasible);
 
-               ++(*nfixedvars);
-            }
+            ++(*nchgbds);
+
+            nonesmin = 2 * (int)(SCIPvarGetLbLocal(consdata->intvar) + 0.5) + (int) consdata->rhs; /*lint !e713*/
          }
-         SCIP_CALL( SCIPresetConsAge(scip, cons) );
-         SCIP_CALL( SCIPdelConsLocal(scip, cons) );
 
-         return SCIP_OKAY;
-      }
-
-      /* the number of variables that are fixed to 1 is exactly the maximum required -> fix free variables to 0 */
-      if ( nfixedones == nonesmax )
-      {
-         SCIPdebugMsg(scip, "constraint <%s>: fix %d free variables to 0 to guarantee upper bound of %d\n", SCIPconsGetName(cons), nvars - nfixedzeros - nfixedones, nonesmax);
-
-         for (i = 0; i < nvars; ++i)
+         /* new upper bound is better */
+         if( newub < SCIPvarGetUbLocal(consdata->intvar) - 0.5 )
          {
-            if ( SCIPvarGetLbLocal(vars[i]) < 0.5 && SCIPvarGetUbLocal(vars[i]) > 0.5 )
-            {
-               SCIP_CALL( SCIPinferBinvarCons(scip, vars[i], FALSE, cons, (int)PROPRULE_INTUB, &infeasible, &tightened) );
-               assert(!infeasible);
-               assert(tightened);
-               ++(*nfixedvars);
-            }
-         }
-         SCIP_CALL( SCIPresetConsAge(scip, cons) );
-         SCIP_CALL( SCIPdelConsLocal(scip, cons) );
+            SCIPdebugMsg(scip, "constraint <%s>: propagated upper bound of integral variable <%s> to %g\n", SCIPconsGetName(cons), SCIPvarGetName(consdata->intvar), newub);
+            SCIP_CALL( SCIPinferVarUbCons(scip, consdata->intvar, newub, cons, (int)PROPRULE_INTLB, TRUE, &infeasible, &tightened) );
+            assert(tightened);
+            assert(!infeasible);
 
-         return SCIP_OKAY;
+            ++(*nchgbds);
+
+            nonesmax = 2 * (int)(SCIPvarGetUbLocal(consdata->intvar) + 0.5) + (int) consdata->rhs; /*lint !e713*/
+         }
+
+         assert(nvars - nfixedzeros >= nonesmin);
+         assert(nfixedones <= nonesmax);
+
+         /* the number of variables that are free or fixed to 1 is exactly the minimum required -> fix free variables to 1 */
+         if ( nvars - nfixedzeros == nonesmin )
+         {
+            SCIPdebugMsg(scip, "constraint <%s>: fix %d free variables to 1 to reach lower bound of %d\n", SCIPconsGetName(cons), nvars - nfixedzeros - nfixedones, nonesmin);
+
+            for (i = 0; i < nvars; ++i)
+            {
+               if ( SCIPvarGetLbLocal(vars[i]) < 0.5 && SCIPvarGetUbLocal(vars[i]) > 0.5 )
+               {
+                  SCIP_CALL( SCIPinferBinvarCons(scip, vars[i], TRUE, cons, (int)PROPRULE_INTLB, &infeasible, &tightened) );
+                  assert( !infeasible );
+                  assert( tightened );
+
+                  ++(*nfixedvars);
+               }
+            }
+            SCIP_CALL( SCIPresetConsAge(scip, cons) );
+            SCIP_CALL( SCIPdelConsLocal(scip, cons) );
+
+            return SCIP_OKAY;
+         }
+
+         /* the number of variables that are fixed to 1 is exactly the maximum required -> fix free variables to 0 */
+         if ( nfixedones == nonesmax )
+         {
+            SCIPdebugMsg(scip, "constraint <%s>: fix %d free variables to 0 to guarantee upper bound of %d\n", SCIPconsGetName(cons), nvars - nfixedzeros - nfixedones, nonesmax);
+
+            for (i = 0; i < nvars; ++i)
+            {
+               if ( SCIPvarGetLbLocal(vars[i]) < 0.5 && SCIPvarGetUbLocal(vars[i]) > 0.5 )
+               {
+                  SCIP_CALL( SCIPinferBinvarCons(scip, vars[i], FALSE, cons, (int)PROPRULE_INTUB, &infeasible, &tightened) );
+                  assert(!infeasible);
+                  assert(tightened);
+                  ++(*nfixedvars);
+               }
+            }
+            SCIP_CALL( SCIPresetConsAge(scip, cons) );
+            SCIP_CALL( SCIPdelConsLocal(scip, cons) );
+
+            return SCIP_OKAY;
+         }
       }
    }
 
@@ -3467,7 +3519,7 @@ SCIP_RETCODE cliquePresolve(
    }
 
    /* at least nvars-1 variables are in one clique */
-   if( !breaked )
+   if( !breaked ) /*lint !e774*/
    {
       /* all variables are in one clique, case 1 */
       if( posnotinclq1 == -1 )
@@ -3614,6 +3666,7 @@ SCIP_RETCODE detectRedundantConstraints(
    int                   nconss,             /**< number of constraints in constraint set */
    int*                  firstchange,        /**< pointer to store first changed constraint */
    int*                  nchgcoefs,          /**< pointer to add up the number of changed coefficients */
+   int*                  nfixedvars,         /**< pointer to add up the number of found domain reductions */
    int*                  naggrvars,          /**< pointer to add up the number of aggregated variables */
    int*                  ndelconss,          /**< pointer to count number of deleted constraints */
    int*                  naddconss,          /**< pointer to count number of added constraints */
@@ -3667,6 +3720,52 @@ SCIP_RETCODE detectRedundantConstraints(
 
       assert(consdata0 != NULL);
 
+      /* applyFixings() led to an empty or trivial constraint */
+      if( consdata0->nvars <= 1 )
+      {
+         if( consdata0->nvars == 0 )
+         {
+            /* the constraints activity cannot match an odd right hand side */
+            if( consdata0->rhs )
+            {
+               *cutoff = TRUE;
+               break;
+            }
+         }
+         else
+         {
+            /* exactly 1 variable left. */
+            SCIP_Bool infeasible;
+            SCIP_Bool fixed;
+
+            /* fix remaining variable */
+            SCIP_CALL( SCIPfixVar(scip, consdata0->vars[0], (SCIP_Real) consdata0->rhs, &infeasible, &fixed) );
+            assert(!infeasible);
+
+            if( fixed )
+               ++(*nfixedvars);
+         }
+
+         /* fix integral variable if present */
+         if( consdata0->intvar != NULL && !consdata0->deleteintvar )
+         {
+            SCIP_Bool infeasible;
+            SCIP_Bool fixed;
+
+            SCIP_CALL( SCIPfixVar(scip, consdata0->intvar, 0.0, &infeasible, &fixed) );
+            assert(!infeasible);
+
+            if( fixed )
+               ++(*nfixedvars);
+         }
+
+         /* delete empty constraint */
+         SCIP_CALL( SCIPdelCons(scip, cons0) );
+         ++(*ndelconss);
+
+         continue;
+      }
+
       /* sort the constraint */
       consdataSort(consdata0);
       assert(consdata0->sorted);
@@ -3695,7 +3794,40 @@ SCIP_RETCODE detectRedundantConstraints(
             goto TERMINATE;
          }
 
+         /* aggregate parity variables into each other */
+         if( consdata0->intvar != consdata1->intvar && consdata0->intvar != NULL )
+         {
+            if( consdata1->intvar != NULL )
+            {
+               SCIP_Bool redundant;
+               SCIP_Bool aggregated;
+               SCIP_Bool infeasible;
+
+               SCIP_CALL( SCIPaggregateVars(scip, consdata0->intvar, consdata1->intvar, 1.0, -1.0, 0.0, &infeasible, &redundant, &aggregated) );
+
+               if( aggregated )
+               {
+                  ++(*naggrvars);
+               }
+               if( infeasible )
+               {
+                  *cutoff = TRUE;
+                  goto TERMINATE;
+               }
+            }
+            /* the special case that only cons0 has a parity variable 'intvar' is treated by swapping cons0 and cons1 */
+            else
+            {
+               SCIP_CALL( SCIPhashtableInsert(hashtable, (void *)cons0) );
+               assert(SCIPhashtableRetrieve(hashtable, (void *)cons1) == cons0);
+
+               SCIPswapPointers((void**)&cons0, (void**)(&cons1));
+               SCIPswapPointers((void**)&consdata0, (void**)(&consdata1));
+            }
+         }
+
          /* delete cons0 and update flags of cons1 s.t. nonredundant information doesn't get lost */
+         /* coverity[swapped_arguments] */
          SCIP_CALL( SCIPupdateConsFlags(scip, cons1, cons0) );
          SCIP_CALL( SCIPdelCons(scip, cons0) );
          (*ndelconss)++;
@@ -3840,6 +3972,15 @@ SCIP_RETCODE preprocessConstraintPairs(
          }
          else
          {
+            /* fix integral variable if present */
+            if( consdata1->intvar != NULL && !consdata1->deleteintvar )
+            {
+               SCIP_CALL( SCIPfixVar(scip, consdata1->intvar, 0.0, &infeasible, &fixed) );
+               assert(!infeasible);
+               if( fixed )
+                  ++(*nfixedvars);
+            }
+
             /* delete empty constraint */
             SCIP_CALL( SCIPdelCons(scip, cons1) );
             ++(*ndelconss);
@@ -3855,6 +3996,15 @@ SCIP_RETCODE preprocessConstraintPairs(
 
          if( fixed )
             ++(*nfixedvars);
+
+         /* fix integral variable if present */
+         if( consdata1->intvar != NULL && !consdata1->deleteintvar )
+         {
+            SCIP_CALL( SCIPfixVar(scip, consdata1->intvar, 0.0, &infeasible, &fixed) );
+            assert(!infeasible);
+            if( fixed )
+               ++(*nfixedvars);
+         }
 
          SCIP_CALL( SCIPdelCons(scip, cons1) );
          ++(*ndelconss);
@@ -3902,8 +4052,42 @@ SCIP_RETCODE preprocessConstraintPairs(
 
          if( redundant )
          {
-            SCIP_CALL( SCIPdelCons(scip, cons1) );
-            ++(*ndelconss);
+            /* fix or aggregate the intvar, if it exists */
+            if( consdata1->intvar != NULL && !consdata1->deleteintvar )
+            {
+               /* we have var0 + var1 - 2 * intvar = 1, and aggregated var1 = 1 - var0,
+                * thus, intvar is always 0 */
+               if( consdata1->rhs )
+               {
+                  SCIP_CALL( SCIPfixVar(scip, consdata1->intvar, 0.0, &infeasible, &fixed) );
+                  assert(!infeasible);
+                  if( fixed )
+                     ++(*nfixedvars);
+               }
+               /* we have var0 + var1 - 2 * intvar = 0, and aggregated var1 = var0,
+                * i.e., 2 * var0 - 2 * intvar = 0, so intvar = var0 holds and we aggregate */
+               else
+               {
+                  assert(!consdata1->rhs);
+
+                  /* aggregate intvar == var0 */
+                  SCIP_CALL( SCIPaggregateVars(scip, consdata1->vars[0], consdata1->intvar, 1.0, -1.0, 0.0,
+                        &infeasible, &redundant, &aggregated) );
+                  assert(!infeasible);
+                  assert(redundant || SCIPdoNotAggr(scip));
+
+                  if( aggregated )
+                  {
+                     ++(*naggrvars);
+                  }
+               }
+            }
+
+            if( redundant )
+            {
+               SCIP_CALL( SCIPdelCons(scip, cons1) );
+               ++(*ndelconss);
+            }
          }
 
          continue;
@@ -4243,7 +4427,6 @@ SCIP_RETCODE preprocessConstraintPairs(
       if( *cutoff )
          return SCIP_OKAY;
 #endif
-
       }
    }
 
@@ -4318,16 +4501,37 @@ SCIP_RETCODE createConsXorIntvar(
 
 /** tries to upgrade a linear constraint into an xor constraint
  *
- *  Assuming the only coefficients with an absolute value unequal to one is two in absolute value we can transform:
+ *  Assuming all variables are binary and have coefficients with an absolute value 1, except for an integer (or binary) variable
+ *  \f$z\f$ which has coefficient \f$a \in \{-2,2\}\f$ with absolute value 2 and appears only in this constraint,
+ *  we can transform:
  *  \f[
  *    \begin{array}{ll}
- *                     & -\sum_{i \in I} x_i + \sum_{j \in J} x_j + a \cdot z = rhs \\
- *     \Leftrightarrow & \sum_{i \in I} ~x_i + \sum_j x_{j \in J} + a \cdot z = rhs + |I| \\
- *     \Leftrightarrow & \sum_{i \in I} ~x_i + \sum_j x_{j \in J} - 2 \cdot y = (rhs + |I|) mod 2 \\
- *                     & z \in [lb_z,ub_z] \Rightarrow y \in (\left\lfloor \frac{rhs + |I|}{2} \right\rfloor + (a = -2\; ?\; lb_z : -ub_z), \left\lfloor \frac{rhs + |I|}{2} \right\rfloor + (a = -2\; ?\; ub_z : -lb_z) ) \\
- *                     & z = (a = -2\; ?\; y - \left\lfloor \frac{rhs + |I|}{2} \right\rfloor\; :\; -y + \left\lfloor \frac{rhs + |I|}{2} \right\rfloor)
+ *                     & -\sum_{i \in I} x_i + \sum_{j \in J} x_j + a \cdot z = r \\
+ *     \Leftrightarrow & \sum_{i \in I} \bar{x}_i + \sum_{j \in J} x_j + a \cdot z = r + |I| \\
+ *     \Leftrightarrow & \sum_{i \in I} \bar{x}_i + \sum_{j \in J} x_j - 2 \cdot y = (r + |I|) \text{ mod } 2,
  *    \end{array}
  *  \f]
+ *  where
+ *  \f[
+ *    y = \begin{cases}
+ *            \left\lfloor \frac{r + |I|}{2} \right\rfloor + z & \text{if }a = -2\\
+ *            \left\lfloor \frac{r + |I|}{2} \right\rfloor - z & \text{if }a = 2.
+ *        \end{cases}
+ *  \f]
+ *  If \f$a = -2\f$ and \f$z \in [\ell_z, u_z]\f$, then \f$y \in [\ell_y, u_y]\f$, where \f$\ell_y = \left\lfloor
+ *  \frac{r + |I|}{2} \right\rfloor + \ell_z\f$ and \f$u_y = \left\lfloor \frac{r + |I|}{2} \right\rfloor + u_z\f$.
+ *
+ *  If \f$a = 2\f$, then \f$\ell_y = \left\lfloor \frac{r + |I|}{2} \right\rfloor - u_z\f$ and \f$u_y = \left\lfloor
+ *  \frac{r + |I|}{2} \right\rfloor - \ell_z\f$.
+ *
+ *  Then consider the resulting XOR-constraint
+ *  \f[
+ *      \bigoplus_{i \in I} \bar{x}_i \oplus \bigoplus_{j \in j} x_j = (r + |I|) \text{ mod } 2.
+ *  \f]
+ *  If \f$\ell_y \leq 0\f$ and \f$u_y \geq (|I| + |J|)/2\f$, then the XOR constraint is a reformulation of the above
+ *  transformed constraint, otherwise it is a relaxation because the bounds on the \f$y\f$-variable may disallow
+ *  too many (or too few) operators set to 1. Therefore, the XOR constraint handler verifies in this case that the linear
+ *  equation holds, ie., that the \f$y\f$-variable has the correct value.
  */
 static
 SCIP_DECL_LINCONSUPGD(linconsUpgdXor)
@@ -4391,25 +4595,29 @@ SCIP_DECL_LINCONSUPGD(linconsUpgdXor)
             assert(cnt == nvars - 1);
 
             /* check whether parity variable is present only in this constraint */
-            if ( SCIPvarGetNLocksDown(parityvar) <= 1 && SCIPvarGetNLocksUp(parityvar) <= 1 )
+            if ( SCIPvarGetNLocksDownType(parityvar, SCIP_LOCKTYPE_MODEL) <= 1
+               && SCIPvarGetNLocksUpType(parityvar, SCIP_LOCKTYPE_MODEL) <= 1 )
             {
                SCIP_VAR* intvar;
                SCIP_Bool rhsparity;
                SCIP_Bool neednew;
                int intrhs;
 
-               SCIPdebugMsg(scip, "upgrading constraint <%s> to an XOR constraint\n", SCIPconsGetName(cons));
-
                /* adjust the side, since we negated all binary variables with -1.0 as a coefficient */
                rhs += ncoeffsnone;
 
                intrhs = (int) SCIPfloor(scip, rhs);
                rhsparity = ((SCIP_Bool) (intrhs % 2)); /*lint !e571*/
-               neednew = (intrhs != 1 && intrhs != 0);
+
+               /* we need a new variable if the rhs is not 0 or 1 or if the coefficient was +2, since in these cases, we
+                * need to aggregate the variables (flipping signs and/or shifting */
+               if ( (intrhs != 1 && intrhs != 0) || postwo )
+                  neednew = TRUE;
+               else
+                  neednew = FALSE;
 
                /* check if we can use the parity variable as integer variable of the XOR constraint or do we need to
-                * create a new variable
-                */
+                * create a new variable and aggregate */
                if( neednew )
                {
                   char varname[SCIP_MAXSTRLEN];
@@ -4443,7 +4651,7 @@ SCIP_DECL_LINCONSUPGD(linconsUpgdXor)
 
                   isbinary = (SCIPisZero(scip, lb) && SCIPisEQ(scip, ub, 1.0));
 
-                  /* you must not create an artificial integer variable if parity variable is already binary */
+                  /* something is wrong if parity variable is already binary, but artificial variable is not */
                   if( SCIPvarIsBinary(parityvar) && !isbinary )
                   {
                      SCIPfreeBufferArray(scip, &xorvars);
@@ -4473,16 +4681,25 @@ SCIP_DECL_LINCONSUPGD(linconsUpgdXor)
                   assert(redundant);
                   assert(SCIPvarIsActive(intvar));
 
-                  SCIPdebugMsg(scip, "aggregated: %s = %g * %s + %g\n", SCIPvarGetName(parityvar),
-                     SCIPvarGetAggrScalar(parityvar), SCIPvarGetName(SCIPvarGetAggrVar(parityvar)),
-                     SCIPvarGetAggrConstant(parityvar));
+#ifdef SCIP_DEBUG
+                  if( SCIPvarGetStatus(parityvar) == SCIP_VARSTATUS_AGGREGATED )
+                  {
+                     SCIPdebugMsg(scip, "aggregated: <%s> = %g * <%s> + %g\n", SCIPvarGetName(parityvar),
+                        SCIPvarGetAggrScalar(parityvar), SCIPvarGetName(SCIPvarGetAggrVar(parityvar)),
+                        SCIPvarGetAggrConstant(parityvar));
+                  }
+                  else
+                  {
+                     assert( SCIPvarGetStatus(parityvar) == SCIP_VARSTATUS_NEGATED );
+                     SCIPdebugMsg(scip, "negated: <%s> = 1 - <%s>\n", SCIPvarGetName(parityvar),
+                        SCIPvarGetName(SCIPvarGetNegatedVar(parityvar)));
+                  }
+#endif
                }
                else
                   intvar = parityvar;
 
                assert(intvar != NULL);
-
-               SCIPdebugMsg(scip, "upgrading constraint <%s> to XOR constraint\n", SCIPconsGetName(cons));
 
                SCIP_CALL( createConsXorIntvar(scip, upgdcons, SCIPconsGetName(cons), rhsparity, nvars - 1, xorvars, intvar,
                         SCIPconsIsInitial(cons), SCIPconsIsSeparated(cons), SCIPconsIsEnforced(cons),
@@ -4490,6 +4707,7 @@ SCIP_DECL_LINCONSUPGD(linconsUpgdXor)
                         SCIPconsIsLocal(cons), SCIPconsIsModifiable(cons),
                         SCIPconsIsDynamic(cons), SCIPconsIsRemovable(cons), SCIPconsIsStickingAtNode(cons)) );
 
+               SCIPdebugMsg(scip, "upgraded constraint <%s> to XOR constraint:\n", SCIPconsGetName(cons));
                SCIPdebugPrintCons(scip, *upgdcons, NULL);
 
                if( neednew )
@@ -4538,7 +4756,7 @@ SCIP_DECL_CONSFREE(consFreeXor)
    conshdlrdata = SCIPconshdlrGetData(conshdlr);
    assert(conshdlrdata != NULL);
 
-   SCIP_CALL( conshdlrdataFree(scip, &conshdlrdata) );
+   conshdlrdataFree(scip, &conshdlrdata);
 
    SCIPconshdlrSetData(conshdlr, NULL);
 
@@ -4830,7 +5048,7 @@ SCIP_DECL_CONSCHECK(consCheckXor)
 
             if( consdata->intvar != NULL )
             {
-               SCIPinfoMessage(scip, NULL, ";\nviolation: %d operands are set to TRUE but integer variable has value of %g\n", SCIPgetSolVal(scip, sol, consdata->intvar));
+               SCIPinfoMessage(scip, NULL, ";\nviolation: %d operands are set to TRUE but integer variable has value of %g\n", sum, SCIPgetSolVal(scip, sol, consdata->intvar));
             }
             else
             {
@@ -5098,7 +5316,8 @@ SCIP_DECL_CONSPRESOL(consPresolXor)
       if( firstchange < nconss && conshdlrdata->presolusehashing )
       {
          /* detect redundant constraints; fast version with hash table instead of pairwise comparison */
-         SCIP_CALL( detectRedundantConstraints(scip, SCIPblkmem(scip), conss, nconss, &firstchange, nchgcoefs, naggrvars, ndelconss, naddconss, &cutoff) );
+         SCIP_CALL( detectRedundantConstraints(scip, SCIPblkmem(scip), conss, nconss, &firstchange, nchgcoefs,
+               nfixedvars, naggrvars, ndelconss, naddconss, &cutoff) );
       }
       if( conshdlrdata->presolpairwise )
       {
@@ -5154,11 +5373,11 @@ SCIP_DECL_CONSPRESOL(consPresolXor)
 
          if ( conshdlrdata->addflowextended )
          {
-            SCIP_CALL( addExtendedFlowFormulation(scip, cons, &naddedconss) );
+            SCIP_CALL( addExtendedFlowFormulation(scip, cons, naggrvars, &naddedconss) );
          }
          else
          {
-            SCIP_CALL( addExtendedAsymmetricFormulation(scip, cons, &naddedconss) );
+            SCIP_CALL( addExtendedAsymmetricFormulation(scip, cons, naggrvars, &naddedconss) );
          }
          (*naddconss) += naddedconss;
       }
@@ -5185,19 +5404,21 @@ SCIP_DECL_CONSLOCK(consLockXor)
    SCIP_CONSDATA* consdata;
    int i;
 
+   assert(locktype == SCIP_LOCKTYPE_MODEL);
+
    consdata = SCIPconsGetData(cons);
    assert(consdata != NULL);
 
    /* external variables */
    for( i = 0; i < consdata->nvars; ++i )
    {
-      SCIP_CALL( SCIPaddVarLocks(scip, consdata->vars[i], nlockspos + nlocksneg, nlockspos + nlocksneg) );
+      SCIP_CALL( SCIPaddVarLocksType(scip, consdata->vars[i], locktype, nlockspos + nlocksneg, nlockspos + nlocksneg) );
    }
 
    /* internal variable */
    if( consdata->intvar != NULL )
    {
-      SCIP_CALL( SCIPaddVarLocks(scip, consdata->intvar, nlockspos + nlocksneg, nlockspos + nlocksneg) );
+      SCIP_CALL( SCIPaddVarLocksType(scip, consdata->intvar, locktype, nlockspos + nlocksneg, nlockspos + nlocksneg) );
    }
 
    return SCIP_OKAY;
@@ -5257,9 +5478,12 @@ SCIP_DECL_CONSCOPY(consCopyXor)
          SCIP_CALL( SCIPgetVarCopy(sourcescip, scip, intvar, &targetintvar, varmap, consmap, global, valid) );
          assert(!(*valid) || targetintvar != NULL);
 
-         SCIPdebugMsg(scip, "Copied integral variable <%s> (bounds: [%g,%g])\n", SCIPvarGetName(targetintvar),
-            global ? SCIPvarGetLbGlobal(intvar) : SCIPvarGetLbLocal(intvar),
-            global ? SCIPvarGetUbGlobal(intvar) : SCIPvarGetUbLocal(intvar));
+         if( targetintvar != NULL )
+         {
+            SCIPdebugMsg(scip, "Copied integral variable <%s> (bounds: [%g,%g])\n", SCIPvarGetName(targetintvar),
+               global ? SCIPvarGetLbGlobal(intvar) : SCIPvarGetLbLocal(intvar),
+               global ? SCIPvarGetUbGlobal(intvar) : SCIPvarGetUbLocal(intvar));
+         }
       }
 
       if( *valid )
@@ -5707,6 +5931,8 @@ int SCIPgetNVarsXor(
 {
    SCIP_CONSDATA* consdata;
 
+   assert(scip != NULL);
+
    if( strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), CONSHDLR_NAME) != 0 )
    {
       SCIPerrorMessage("constraint is not an xor constraint\n");
@@ -5727,6 +5953,8 @@ SCIP_VAR** SCIPgetVarsXor(
    )
 {
    SCIP_CONSDATA* consdata;
+
+   assert(scip != NULL);
 
    if( strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), CONSHDLR_NAME) != 0 )
    {
@@ -5749,6 +5977,8 @@ SCIP_VAR* SCIPgetIntVarXor(
 {
    SCIP_CONSDATA* consdata;
 
+   assert(scip != NULL);
+
    if( strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), CONSHDLR_NAME) != 0 )
    {
       SCIPerrorMessage("constraint is not an xor constraint\n");
@@ -5769,6 +5999,8 @@ SCIP_Bool SCIPgetRhsXor(
    )
 {
    SCIP_CONSDATA* consdata;
+
+   assert(scip != NULL);
 
    if( strcmp(SCIPconshdlrGetName(SCIPconsGetHdlr(cons)), CONSHDLR_NAME) != 0 )
    {

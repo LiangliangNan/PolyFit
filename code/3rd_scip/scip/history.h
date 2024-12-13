@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -41,27 +50,23 @@ extern "C" {
 #endif
 
 /** creates an empty history entry */
-extern
 SCIP_RETCODE SCIPhistoryCreate(
    SCIP_HISTORY**        history,            /**< pointer to store branching and inference history */
    BMS_BLKMEM*           blkmem              /**< block memory */
    );
 
 /** frees a history entry */
-extern
 void SCIPhistoryFree(
    SCIP_HISTORY**        history,            /**< pointer to branching and inference history */
    BMS_BLKMEM*           blkmem              /**< block memory */
    );
 
 /** resets history entry to zero */
-extern
 void SCIPhistoryReset(
    SCIP_HISTORY*         history             /**< branching and inference history */
    );
 
 /** unites two history entries by adding the values of the second one to the first one */
-extern
 void SCIPhistoryUnite(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_HISTORY*         addhistory,         /**< history values to add to history */
@@ -71,7 +76,6 @@ void SCIPhistoryUnite(
 /** updates the pseudo costs for a change of "solvaldelta" in the variable's LP solution value and a change of "objdelta"
  *  in the LP's objective value
  */
-extern
 void SCIPhistoryUpdatePseudocost(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -89,21 +93,18 @@ void SCIPhistoryUpdatePseudocost(
  */
 
 /** creates an empty value history */
-extern
 SCIP_RETCODE SCIPvaluehistoryCreate(
    SCIP_VALUEHISTORY**   valuehistory,       /**< pointer to store the value based branching and inference histories */
    BMS_BLKMEM*           blkmem              /**< block memory */
    );
 
 /** frees a value history */
-extern
 void SCIPvaluehistoryFree(
    SCIP_VALUEHISTORY**   valuehistory,       /**< pointer to value based history */
    BMS_BLKMEM*           blkmem              /**< block memory */
    );
 
 /** finds for the given domain value the history if it does not exist yet it will be created */
-extern
 SCIP_RETCODE SCIPvaluehistoryFind(
    SCIP_VALUEHISTORY*    valuehistory,       /**< value based history */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -113,7 +114,6 @@ SCIP_RETCODE SCIPvaluehistoryFind(
    );
 
 /** scales the conflict score values with the given scalar for each value history entry */
-extern
 void SCIPvaluehistoryScaleVSIDS(
    SCIP_VALUEHISTORY*    valuehistory,       /**< value based history */
    SCIP_Real             scalar              /**< scalar to multiply the conflict scores with */
@@ -122,20 +122,17 @@ void SCIPvaluehistoryScaleVSIDS(
 /**@} */
 
 /** returns the opposite direction of the given branching direction */
-extern
 SCIP_BRANCHDIR SCIPbranchdirOpposite(
    SCIP_BRANCHDIR        dir                 /**< branching direction */
    );
 
 /** returns the expected dual gain for moving the corresponding variable by "solvaldelta" */
-extern
 SCIP_Real SCIPhistoryGetPseudocost(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_Real             solvaldelta         /**< difference of variable's new LP value - old LP value */
    );
 
 /** returns the variance of pseudo costs about the mean. */
-extern
 SCIP_Real SCIPhistoryGetPseudocostVariance(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        direction           /**< direction of variable: 1 for upwards history, 0 for downwards history */
@@ -144,21 +141,18 @@ SCIP_Real SCIPhistoryGetPseudocostVariance(
 /** returns the (possible fractional) number of (partial) pseudo cost updates performed on this pseudo cost entry in 
  *  the given branching direction
  */
-extern
 SCIP_Real SCIPhistoryGetPseudocostCount(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir                 /**< branching direction (downwards, or upwards) */
    );
 
 /** returns whether the pseudo cost entry is empty in the given branching direction (whether no value was added yet) */
-extern
 SCIP_Bool SCIPhistoryIsPseudocostEmpty(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir                 /**< branching direction (downwards, or upwards) */
    );
 
 /** increases the conflict score of the history entry by the given weight */
-extern
 void SCIPhistoryIncVSIDS(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir,                /**< branching direction */
@@ -166,14 +160,12 @@ void SCIPhistoryIncVSIDS(
    );
 
  /** scales the conflict score values with the given scalar */
-extern
 void SCIPhistoryScaleVSIDS(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_Real             scalar              /**< scalar to multiply the conflict scores with */
    );
 
 /** increases the number of active conflicts by one and the overall length of the history entry by the given weight */
-extern
 void SCIPhistoryIncNActiveConflicts(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir,                /**< branching direction */
@@ -181,21 +173,12 @@ void SCIPhistoryIncNActiveConflicts(
    );
 
 /** gets the number of active conflicts of the history entry */
-extern
 SCIP_Longint SCIPhistoryGetNActiveConflicts(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir                 /**< branching direction */
    );
 
-/** gets the average conflict length of the history entry */
-extern
-SCIP_Real SCIPhistoryGetAvgConflictlength(
-   SCIP_HISTORY*         history,            /**< branching and inference history */
-   SCIP_BRANCHDIR        dir                 /**< branching direction */
-   );
-
 /** increases the number of branchings counter */
-extern
 void SCIPhistoryIncNBranchings(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir,                /**< branching direction (downwards, or upwards) */
@@ -203,7 +186,6 @@ void SCIPhistoryIncNBranchings(
    );
 
 /** increases the number of inferences counter */
-extern
 void SCIPhistoryIncInferenceSum(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir,                /**< branching direction (downwards, or upwards) */
@@ -212,7 +194,6 @@ void SCIPhistoryIncInferenceSum(
 
 
 /** increases the number of cutoffs counter */
-extern
 void SCIPhistoryIncCutoffSum(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir,                /**< branching direction (downwards, or upwards) */
@@ -220,39 +201,51 @@ void SCIPhistoryIncCutoffSum(
    );
 
 /** get number of branchings counter */
-extern
 SCIP_Longint SCIPhistoryGetNBranchings(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir                 /**< branching direction (downwards, or upwards) */
    );
 
-/** get number of inferences counter */
-extern
-SCIP_Real SCIPhistoryGetInferenceSum(
-   SCIP_HISTORY*         history,            /**< branching and inference history */
-   SCIP_BRANCHDIR        dir                 /**< branching direction (downwards, or upwards) */
-   );
-
 /** returns the average number of inferences per branching */
-extern
 SCIP_Real SCIPhistoryGetAvgInferences(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir                 /**< branching direction (downwards, or upwards) */
    );
 
 /** returns the average number of cutoffs per branching */
-extern
 SCIP_Real SCIPhistoryGetAvgCutoffs(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir                 /**< branching direction (downwards, or upwards) */
    );
 
 /** returns the average depth of bound changes due to branching */
-extern
 SCIP_Real SCIPhistoryGetAvgBranchdepth(
    SCIP_HISTORY*         history,            /**< branching and inference history */
    SCIP_BRANCHDIR        dir                 /**< branching direction (downwards, or upwards) */
    );
+
+/** returns true if the given history contains a valid ratio */
+SCIP_Bool SCIPhistoryIsRatioValid(
+   SCIP_HISTORY*         history             /**< branching and inference history */
+);
+
+/** returns the most recent ratio computed given the variable history */
+SCIP_Real SCIPhistoryGetLastRatio(
+   SCIP_HISTORY*         history             /**< branching and inference history */
+);
+
+/** returns the most recent value of r/l used to compute this variable's ratio */
+SCIP_Real SCIPhistoryGetLastBalance(
+   SCIP_HISTORY*         history             /**< branching and inference history */
+);
+
+/** sets the ratio history for a particular variable */
+void SCIPhistorySetRatioHistory(
+   SCIP_HISTORY*         history,            /**< branching and inference history */
+   SCIP_Bool             valid,              /**< True iff the ratio computed is valid */
+   SCIP_Real             ratio,              /**< Ratio of the characteristic polynomial with gains (1, rightgain/leftgain) */
+   SCIP_Real             balance             /**< The value of rightgain/leftgain */
+);
 
 #ifdef NDEBUG
 
@@ -280,21 +273,22 @@ SCIP_Real SCIPhistoryGetAvgBranchdepth(
 #define SCIPhistoryIncNActiveConflicts(history,dir,length) { (history)->nactiveconflicts[dir]++; \
       (history)->conflengthsum[dir] += length; }
 #define SCIPhistoryGetNActiveConflicts(history,dir) ((history)->nactiveconflicts[dir])
-#define SCIPhistoryGetAvgConflictlength(history,dir) ((history)->conflengthsum[dir] > 0.0 \
-      ? (SCIP_Real)(history)->nactiveconflicts[dir]/(SCIP_Real)(history)->conflengthsum[dir] : 0.0)
 #define SCIPhistoryIncNBranchings(history,dir,depth) { (history)->nbranchings[dir]++; \
       (history)->branchdepthsum[dir] += depth; }
 #define SCIPhistoryIncInferenceSum(history,dir,weight)     (history)->inferencesum[dir] += (weight)
 #define SCIPhistoryIncCutoffSum(history,dir,weight)        (history)->cutoffsum[dir] += (weight)
 #define SCIPhistoryGetNBranchings(history,dir)     ((history)->nbranchings[dir])
-#define SCIPhistoryGetInferenceSum(history,dir)     ((history)->inferencesum[dir])
 #define SCIPhistoryGetAvgInferences(history,dir)   ((history)->nbranchings[dir] > 0 \
       ? (SCIP_Real)(history)->inferencesum[dir]/(SCIP_Real)(history)->nbranchings[dir] : 0.0)
-#define SCIPhistoryGetCutoffSum(history,dir)        ((history)->cutoffsum[dir])
 #define SCIPhistoryGetAvgCutoffs(history,dir)      ((history)->nbranchings[dir] > 0 \
       ? (SCIP_Real)(history)->cutoffsum[dir]/(SCIP_Real)(history)->nbranchings[dir] : 0.0)
 #define SCIPhistoryGetAvgBranchdepth(history,dir)  ((history)->nbranchings[dir] > 0 \
       ? (SCIP_Real)(history)->branchdepthsum[dir]/(SCIP_Real)(history)->nbranchings[dir] : 1.0)
+#define SCIPhistoryIsRatioValid(history) ((history)->ratiovalid)
+#define SCIPhistoryGetLastRatio(history) ((history)->ratio)
+#define SCIPhistorySetRatioHistory(history,newvalid,newratio,newbalance) (history)->ratiovalid = newvalid, \
+    (history)->ratio = newratio, (history)->balance = newbalance
+#define SCIPhistoryGetLastBalance(history) ((history)->balance)
 
 #endif
 

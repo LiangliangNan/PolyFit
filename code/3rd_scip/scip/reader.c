@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   reader.c
+ * @ingroup OTHER_CFILES
  * @brief  interface for input file readers
  * @author Tobias Achterberg
  */
@@ -39,6 +49,7 @@
 #include "scip/var.h"
 #include "scip/pub_cons.h"
 #include "scip/cons.h"
+#include "scip/pub_message.h"
 
 #include "scip/struct_reader.h"
 
@@ -61,8 +72,9 @@ SCIP_RETCODE SCIPreaderCopyInclude(
    return SCIP_OKAY;
 }
 
-/** creates a reader */
-SCIP_RETCODE SCIPreaderCreate(
+/** internal method to create a reader */
+static
+SCIP_RETCODE doReaderCreate(
    SCIP_READER**         reader,             /**< pointer to store reader */
    const char*           name,               /**< name of reader */
    const char*           desc,               /**< description of reader */
@@ -80,6 +92,8 @@ SCIP_RETCODE SCIPreaderCreate(
    assert(extension != NULL);
 
    SCIP_ALLOC( BMSallocMemory(reader) );
+   BMSclearMemory(*reader);
+
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*reader)->name, name, strlen(name)+1) );
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*reader)->desc, desc, strlen(desc)+1) );
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*reader)->extension, extension, strlen(extension)+1) );
@@ -95,6 +109,32 @@ SCIP_RETCODE SCIPreaderCreate(
    return SCIP_OKAY;
 }
 
+/** creates a reader */
+SCIP_RETCODE SCIPreaderCreate(
+   SCIP_READER**         reader,             /**< pointer to store reader */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   const char*           name,               /**< name of reader */
+   const char*           desc,               /**< description of reader */
+   const char*           extension,          /**< file extension that reader processes */
+   SCIP_DECL_READERCOPY  ((*readercopy)),    /**< copy method of reader or NULL if you don't want to copy your plugin into sub-SCIPs */
+   SCIP_DECL_READERFREE  ((*readerfree)),    /**< destructor of reader */
+   SCIP_DECL_READERREAD  ((*readerread)),    /**< read method */
+   SCIP_DECL_READERWRITE ((*readerwrite)),   /**< write method */
+   SCIP_READERDATA*      readerdata          /**< reader data */
+   )
+{
+   assert(reader != NULL);
+   assert(set != NULL);
+   assert(name != NULL);
+   assert(desc != NULL);
+   assert(extension != NULL);
+
+   SCIP_CALL_FINALLY( doReaderCreate(reader, name, desc, extension, readercopy, readerfree, readerread, readerwrite,
+      readerdata), (void) SCIPreaderFree(reader, set) );
+
+   return SCIP_OKAY;
+}
+
 /** frees memory of reader */
 SCIP_RETCODE SCIPreaderFree(
    SCIP_READER**         reader,             /**< pointer to reader data structure */
@@ -102,8 +142,10 @@ SCIP_RETCODE SCIPreaderFree(
    )
 {
    assert(reader != NULL);
-   assert(*reader != NULL);
    assert(set != NULL);
+
+   if( *reader == NULL )
+      return SCIP_OKAY;
 
    /* call destructor of reader */
    if( (*reader)->readerfree != NULL )
@@ -111,12 +153,13 @@ SCIP_RETCODE SCIPreaderFree(
       SCIP_CALL( (*reader)->readerfree(set->scip, *reader) );
    }
 
+   BMSfreeMemoryArrayNull(&(*reader)->name);
+   BMSfreeMemoryArrayNull(&(*reader)->desc);
+   BMSfreeMemoryArrayNull(&(*reader)->extension);
+
    /* free clock */
    SCIPclockFree(&(*reader)->readingtime);
 
-   BMSfreeMemoryArray(&(*reader)->name);
-   BMSfreeMemoryArray(&(*reader)->desc);
-   BMSfreeMemoryArray(&(*reader)->extension);
    BMSfreeMemory(reader);
 
    return SCIP_OKAY;
@@ -245,25 +288,20 @@ SCIP_RETCODE SCIPreaderWrite(
    /* check, if reader is applicable on the given file */
    if( readerIsApplicable(reader, extension) && reader->readerwrite != NULL )
    {
-      SCIP_VAR** vars;
-      int nvars;
-      SCIP_VAR** fixedvars;
-      int nfixedvars;
-      SCIP_CONS** conss;
-      int nconss;
-      int i;
-
-      SCIP_CONS* cons;
-
-      char* name;
       const char* consname;
-      const char** varnames;
-      const char** fixedvarnames;
-      const char** consnames;
-
-      varnames = NULL;
-      fixedvarnames = NULL; 
-      consnames = NULL;
+      const char** varnames = NULL;
+      const char** fixedvarnames = NULL;
+      const char** consnames = NULL;
+      SCIP_VAR** vars;
+      SCIP_VAR** fixedvars;
+      SCIP_CONS** conss;
+      SCIP_CONS* cons;
+      SCIP_Real objscale;
+      char* name;
+      int nfixedvars;
+      int nconss;
+      int nvars;
+      int i;
 
       vars = prob->vars;
       nvars = prob->nvars;
@@ -293,7 +331,6 @@ SCIP_RETCODE SCIPreaderWrite(
          }
 
          SCIPsetDebugMsg(set, "Writing %d constraints.\n", nconss);
-
 
          SCIP_CALL( SCIPsetAllocBufferArray(set, &conss, nconss) );
 
@@ -388,11 +425,16 @@ SCIP_RETCODE SCIPreaderWrite(
          }
       }
 
+      /* adapt objective scale for transformed problem (for the original no change is necessary) */
+      objscale = prob->objscale;
+      if( prob->transformed && prob->objsense == SCIP_OBJSENSE_MAXIMIZE )
+         objscale *= -1.0;
+
       /* call reader to write problem */
       retcode = reader->readerwrite(set->scip, reader, file, prob->name, prob->probdata, prob->transformed,
-         prob->transformed ? SCIP_OBJSENSE_MINIMIZE : prob->objsense, prob->objscale, prob->objoffset,
-         vars, nvars, prob->nbinvars, prob->nintvars, prob->nimplvars, prob->ncontvars, 
-         fixedvars, nfixedvars, prob->startnvars, 
+         prob->objsense, objscale, prob->objoffset,
+         vars, nvars, prob->nbinvars, prob->nintvars, prob->nimplvars, prob->ncontvars,
+         fixedvars, nfixedvars, prob->startnvars,
          conss, nconss, prob->maxnconss, prob->startnconss, genericnames, result);
 
       /* reset variable and constraint names to original names */

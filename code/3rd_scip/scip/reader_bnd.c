@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   reader_bnd.c
+ * @ingroup DEFPLUGINS_READER
  * @brief  file reader for variable bounds
  * @author Ambros Gleixner
  * @author Ingmar Vierhaus
@@ -33,15 +43,25 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
+#include "scip/pub_fileio.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_reader.h"
+#include "scip/pub_var.h"
+#include "scip/reader_bnd.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_reader.h"
+#include "scip/scip_var.h"
 #include <string.h>
-#if defined(_WIN32) || defined(_WIN64)
-#else
-#include <strings.h> /*lint --e{766}*/
+
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <strings.h> /*lint --e{766}*/ /* needed for strncasecmp() */
 #endif
 
-#include "scip/reader_bnd.h"
-#include "scip/pub_misc.h"
 
 #define READER_NAME             "bndreader"
 #define READER_DESC             "file reader for variable bounds"
@@ -69,6 +89,7 @@ SCIP_RETCODE readBounds(
    SCIP_READERDATA*      readerdata          /**< pointer to the data of the reader */
    )
 {
+   SCIP_RETCODE retcode;
    SCIP_FILE* file;
    SCIP_Bool error;
    SCIP_Bool unknownvariablemessage;
@@ -121,10 +142,16 @@ SCIP_RETCODE readBounds(
       (void) SCIPsnprintf(format, SCIP_MAXSTRLEN, "%%%ds %%%ds %%%ds\n", SCIP_MAXSTRLEN, SCIP_MAXSTRLEN, SCIP_MAXSTRLEN);
       (void) sscanf(buffer, format, varname, lbstring, ubstring);
 
-      SCIP_CALL( SCIPparseVarName(scip, buffer, &var, &endptr) );
+      retcode = SCIPparseVarName(scip, buffer, &var, &endptr);
+      if( retcode != SCIP_OKAY )
+      {
+         SCIPerrorMessage("Error parsing variable name in line %d of bounds file <%s>\n", lineno, fname);
+         error = TRUE;
+         break;
+      }
 
-      /* cppcheck-suppress invalidscanf */
-      nread = sscanf(endptr, "%s %s\n", lbstring, ubstring);
+      (void) SCIPsnprintf(format, SCIP_MAXSTRLEN, "%%%ds %%%ds\n", SCIP_MAXSTRLEN, SCIP_MAXSTRLEN);
+      nread = sscanf(endptr, format, lbstring, ubstring);
       if( nread < 1 )
       {
          SCIPerrorMessage("invalid input line %d in bounds file <%s>: <%s>\n", lineno, fname, buffer);
@@ -172,6 +199,7 @@ SCIP_RETCODE readBounds(
          ub = -SCIPinfinity(scip);
       else
       {
+         /* coverity[secure_coding] */
          nread = sscanf(ubstring, "%lf", &ub);
          if( nread != 1 )
          {
@@ -203,8 +231,21 @@ SCIP_RETCODE readBounds(
       }
 
       /* note that we don't need to check if lb > ub in SCIPchgVar{Lb,Ub} */
-      SCIP_CALL( SCIPchgVarLb(scip, var, lb) );
-      SCIP_CALL( SCIPchgVarUb(scip, var, ub) );
+      retcode = SCIPchgVarLb(scip, var, lb);
+      if( retcode != SCIP_OKAY )
+      {
+         SCIPerrorMessage("Error changing lower bound for variable <%s> in line %d of bounds file <%s>\n", varname, lineno, fname);
+         error = TRUE;
+         break;
+      }
+
+      retcode = SCIPchgVarUb(scip, var, ub);
+      if( retcode != SCIP_OKAY )
+      {
+         SCIPerrorMessage("Error changing upper bound for variable <%s> in line %d of bounds file <%s>\n", varname, lineno, fname);
+         error = TRUE;
+         break;
+      }
    }
 
    /* close input file */

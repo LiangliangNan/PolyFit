@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   nodesel.c
+ * @ingroup OTHER_CFILES
  * @brief  methods for node selectors
  * @author Tobias Achterberg
  * @author Timo Berthold
@@ -99,6 +109,7 @@ SCIP_RETCODE SCIPnodepqCreate(
    )
 {  /*lint --e{715}*/
    assert(nodepq != NULL);
+   assert(set != NULL);
 
    SCIP_ALLOC( BMSallocMemory(nodepq) );
    (*nodepq)->nodesel = nodesel;
@@ -132,6 +143,7 @@ SCIP_RETCODE SCIPnodepqFree(
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_STAT*            stat,               /**< problem statistics */
+   SCIP_EVENTFILTER*     eventfilter,        /**< event filter for global (not variable dependent) events */
    SCIP_EVENTQUEUE*      eventqueue,         /**< event queue */
    SCIP_TREE*            tree,               /**< branch and bound tree */
    SCIP_LP*              lp                  /**< current LP data */
@@ -141,7 +153,7 @@ SCIP_RETCODE SCIPnodepqFree(
    assert(*nodepq != NULL);
 
    /* free the nodes of the queue */
-   SCIP_CALL( SCIPnodepqClear(*nodepq, blkmem, set, stat, eventqueue, tree, lp) );
+   SCIP_CALL( SCIPnodepqClear(*nodepq, blkmem, set, stat, eventfilter, eventqueue, tree, lp) );
 
    /* free the queue data structure */
    SCIPnodepqDestroy(nodepq);
@@ -155,6 +167,7 @@ SCIP_RETCODE SCIPnodepqClear(
    BMS_BLKMEM*           blkmem,             /**< block memory buffers */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_STAT*            stat,               /**< problem statistics */
+   SCIP_EVENTFILTER*     eventfilter,        /**< event filter for global (not variable dependent) events */
    SCIP_EVENTQUEUE*      eventqueue,         /**< event queue */
    SCIP_TREE*            tree,               /**< branch and bound tree */
    SCIP_LP*              lp                  /**< current LP data */
@@ -178,7 +191,7 @@ SCIP_RETCODE SCIPnodepqClear(
          assert(nodepq->slots[i] != NULL);
          assert(SCIPnodeGetType(nodepq->slots[i]) == SCIP_NODETYPE_LEAF);
 
-         SCIP_CALL( SCIPnodeFree(&nodepq->slots[i], blkmem, set, stat, eventqueue, tree, lp) );
+         SCIP_CALL( SCIPnodeFree(&nodepq->slots[i], blkmem, set, stat, eventfilter, eventqueue, tree, lp) );
       }
    }
 
@@ -628,6 +641,7 @@ SCIP_RETCODE SCIPnodepqBound(
    BMS_BLKMEM*           blkmem,             /**< block memory buffer */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_STAT*            stat,               /**< dynamic problem statistics */
+   SCIP_EVENTFILTER*     eventfilter,        /**< event filter for global (not variable dependent) events */
    SCIP_EVENTQUEUE*      eventqueue,         /**< event queue */
    SCIP_TREE*            tree,               /**< branch and bound tree */
    SCIP_REOPT*           reopt,              /**< reoptimization data structure */
@@ -649,7 +663,7 @@ SCIP_RETCODE SCIPnodepqBound(
       node = nodepq->slots[pos];
       assert(node != NULL);
       assert(SCIPnodeGetType(node) == SCIP_NODETYPE_LEAF);
-      if( SCIPsetIsGE(set, SCIPnodeGetLowerbound(node), cutoffbound) )
+      if( SCIPsetIsInfinity(set, SCIPnodeGetLowerbound(node)) || SCIPsetIsGE(set, SCIPnodeGetLowerbound(node), cutoffbound) )
       {
          SCIPsetDebugMsg(set, "free node in slot %d (len=%d) at depth %d with lowerbound=%g\n",
             pos, nodepq->len, SCIPnodeGetDepth(node), SCIPnodeGetLowerbound(node));
@@ -684,7 +698,7 @@ SCIP_RETCODE SCIPnodepqBound(
          }
 
          /* free memory of the node */
-         SCIP_CALL( SCIPnodeFree(&node, blkmem, set, stat, eventqueue, tree, lp) );
+         SCIP_CALL( SCIPnodeFree(&node, blkmem, set, stat, eventfilter, eventqueue, tree, lp) );
       }
       else
          pos--;
@@ -749,8 +763,9 @@ SCIP_RETCODE SCIPnodeselCopyInclude(
    return SCIP_OKAY;
 }
 
-/** creates a node selector */
-SCIP_RETCODE SCIPnodeselCreate(
+/** internal method for creating a node selector */
+static
+SCIP_RETCODE doNodeselCreate(
    SCIP_NODESEL**        nodesel,            /**< pointer to store node selector */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
@@ -780,6 +795,8 @@ SCIP_RETCODE SCIPnodeselCreate(
    assert(nodeselcomp != NULL);
 
    SCIP_ALLOC( BMSallocMemory(nodesel) );
+   BMSclearMemory(*nodesel);
+
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*nodesel)->name, name, strlen(name)+1) );
    SCIP_ALLOC( BMSduplicateMemoryArray(&(*nodesel)->desc, desc, strlen(desc)+1) );
    (*nodesel)->stdpriority = stdpriority;
@@ -814,6 +831,40 @@ SCIP_RETCODE SCIPnodeselCreate(
    return SCIP_OKAY;
 }
 
+/** creates a node selector */
+SCIP_RETCODE SCIPnodeselCreate(
+   SCIP_NODESEL**        nodesel,            /**< pointer to store node selector */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_MESSAGEHDLR*     messagehdlr,        /**< message handler */
+   BMS_BLKMEM*           blkmem,             /**< block memory for parameter settings */
+   const char*           name,               /**< name of node selector */
+   const char*           desc,               /**< description of node selector */
+   int                   stdpriority,        /**< priority of the node selector in standard mode */
+   int                   memsavepriority,    /**< priority of the node selector in memory saving mode */
+   SCIP_DECL_NODESELCOPY ((*nodeselcopy)),   /**< copy method of node selector or NULL if you don't want to copy your plugin into sub-SCIPs */
+   SCIP_DECL_NODESELFREE ((*nodeselfree)),   /**< destructor of node selector */
+   SCIP_DECL_NODESELINIT ((*nodeselinit)),   /**< initialize node selector */
+   SCIP_DECL_NODESELEXIT ((*nodeselexit)),   /**< deinitialize node selector */
+   SCIP_DECL_NODESELINITSOL((*nodeselinitsol)),/**< solving process initialization method of node selector */
+   SCIP_DECL_NODESELEXITSOL((*nodeselexitsol)),/**< solving process deinitialization method of node selector */
+   SCIP_DECL_NODESELSELECT((*nodeselselect)),/**< node selection method */
+   SCIP_DECL_NODESELCOMP ((*nodeselcomp)),   /**< node comparison method */
+   SCIP_NODESELDATA*     nodeseldata         /**< node selector data */
+   )
+{
+   assert(nodesel != NULL);
+   assert(name != NULL);
+   assert(desc != NULL);
+   assert(nodeselselect != NULL);
+   assert(nodeselcomp != NULL);
+
+   SCIP_CALL_FINALLY( doNodeselCreate(nodesel, set, messagehdlr, blkmem, name, desc, stdpriority, memsavepriority,
+      nodeselcopy, nodeselfree, nodeselinit, nodeselexit, nodeselinitsol, nodeselexitsol, nodeselselect, nodeselcomp,
+      nodeseldata), (void) SCIPnodeselFree(nodesel, set) );
+
+   return SCIP_OKAY;
+}
+
 /** frees memory of node selector */
 SCIP_RETCODE SCIPnodeselFree(
    SCIP_NODESEL**        nodesel,            /**< pointer to node selector data structure */
@@ -821,7 +872,8 @@ SCIP_RETCODE SCIPnodeselFree(
    )
 {
    assert(nodesel != NULL);
-   assert(*nodesel != NULL);
+   if( *nodesel == NULL )
+      return SCIP_OKAY;
    assert(!(*nodesel)->initialized);
    assert(set != NULL);
 
@@ -835,8 +887,8 @@ SCIP_RETCODE SCIPnodeselFree(
    SCIPclockFree(&(*nodesel)->nodeseltime);
    SCIPclockFree(&(*nodesel)->setuptime);
 
-   BMSfreeMemoryArray(&(*nodesel)->name);
-   BMSfreeMemoryArray(&(*nodesel)->desc);
+   BMSfreeMemoryArrayNull(&(*nodesel)->name);
+   BMSfreeMemoryArrayNull(&(*nodesel)->desc);
    BMSfreeMemory(nodesel);
 
    return SCIP_OKAY;
@@ -963,7 +1015,6 @@ SCIP_RETCODE SCIPnodeselSelect(
    SCIP_NODE**           selnode             /**< pointer to store node to be processed next */
    )
 {
-
    assert(nodesel != NULL);
    assert(nodesel->nodeselselect != NULL);
    assert(set != NULL);

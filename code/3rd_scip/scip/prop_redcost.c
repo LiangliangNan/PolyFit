@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   prop_redcost.c
+ * @ingroup DEFPLUGINS_PROP
  * @brief  propagator using the LP reduced cost and the cutoff bound
  * @author Tobias Achterberg
  * @author Stefan Heinz
@@ -26,11 +36,27 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "lpi/type_lpi.h"
 #include "scip/prop_redcost.h"
-
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_prop.h"
+#include "scip/pub_tree.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_pricer.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_prop.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 /**@name Propagator properties
  *
@@ -53,7 +79,7 @@
  */
 
 #define DEFAULT_CONTINUOUS        FALSE /**< should reduced cost fixing be also applied to continuous variables? */
-#define DEFAULT_USEIMPLICS         TRUE /**< should implications be used to strength the reduced cost for binary variables? */
+#define DEFAULT_USEIMPLICS        FALSE /**< should implications be used to strength the reduced cost for binary variables? */
 #define DEFAULT_FORCE             FALSE /**< should the propagator be forced even if active pricer are present? Note that
                                          *   the reductions are always valid, but installing an upper bound on priced
                                          *   variables may lead to problems in pricing (existing variables at their upper
@@ -101,6 +127,7 @@ SCIP_RETCODE propagateRootRedcostBinvar(
    SCIP_Real rootsol;
    SCIP_Real rootlpobjval;
 
+   assert(scip != NULL);
    assert(SCIPgetDepth(scip) == 0);
 
    /* skip binary variable if it is locally fixed */
@@ -589,7 +616,7 @@ SCIP_DECL_PROPEXEC(propExecRedcost)
       return SCIP_OKAY;
 
    /* do not run if propagation w.r.t. objective is not allowed */
-   if( !SCIPallowObjProp(scip) )
+   if( !SCIPallowWeakDualReds(scip) )
       return SCIP_OKAY;
 
    /* get current cutoff bound */
@@ -690,11 +717,6 @@ SCIP_DECL_PROPEXEC(propExecRedcost)
 
 /**@} */
 
-/**@name Interface methods
- *
- * @{
- */
-
 /** creates the redcost propagator and includes it in SCIP */
 SCIP_RETCODE SCIPincludePropRedcost(
    SCIP*                 scip                /**< SCIP data structure */
@@ -733,5 +755,3 @@ SCIP_RETCODE SCIPincludePropRedcost(
 
    return SCIP_OKAY;
 }
-
-/**@} */

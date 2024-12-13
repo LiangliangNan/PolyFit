@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_LU_FACTOR_HPP
-# define CPPAD_LU_FACTOR_HPP
+# ifndef CPPAD_UTILITY_LU_FACTOR_HPP
+# define CPPAD_UTILITY_LU_FACTOR_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -212,7 +211,7 @@ of $icode x$$ is greater than or equal the
 sum of the square of the real and imaginary parts of $icode y$$.
 
 $children%
-	example/lu_factor.cpp%
+	example/utility/lu_factor.cpp%
 	omh/lu_factor_hpp.omh
 %$$
 $head Example$$
@@ -238,7 +237,7 @@ $end
 # include <complex>
 # include <vector>
 
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 # include <cppad/utility/check_simple_vector.hpp>
 # include <cppad/utility/check_numeric_type.hpp>
 
@@ -272,7 +271,7 @@ inline bool AbsGeq(
 	return xsq >= ysq;
 }
 
-// Lines that are different from code in cppad/local/lu_ratio.hpp end with //
+// Lines that are different from code in cppad/core/lu_ratio.hpp end with //
 template <class SizeVector, class FloatVector>                          //
 int LuFactor(SizeVector &ip, SizeVector &jp, FloatVector &LU)           //
 {

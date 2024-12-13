@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -17,7 +26,7 @@
  * @ingroup TASKINTERFACE
  * @brief  the interface functions for openmp
  * @author Stephen J. Maher
- * @author Robert Lion Gottwald
+ * @author Leona Gottwald
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
@@ -31,7 +40,7 @@ struct SCIP_Job
    int                   jobid;              /**< id to identify jobs from a common process */
    struct                SCIP_Job* nextjob;  /**< pointer to the next job in the queue */
    SCIP_RETCODE          (*jobfunc)(void* args);/**< pointer to the job function */
-   void*                 args;               /**< pointer to the function arguements */
+   void*                 args;               /**< pointer to the function arguments */
    SCIP_RETCODE          retcode;            /**< return code of the job */
 };
 
@@ -59,7 +68,7 @@ typedef struct SCIP_JobQueues SCIP_JOBQUEUES;
 static SCIP_JOBQUEUES* _jobqueues = NULL;
 
 
-
+/** create job queue */
 static
 SCIP_RETCODE createJobQueue(
    int                   nthreads,           /**< the number of threads */
@@ -96,7 +105,7 @@ SCIP_RETCODE createJobQueue(
 }
 
 
-
+/** free job queue */
 static
 SCIP_RETCODE freeJobQueue(
    void
@@ -114,6 +123,7 @@ SCIP_RETCODE freeJobQueue(
 }
 
 
+/** execute job */
 static
 void executeJob(
    SCIP_JOB*             job                 /**< the job to be executed in parallel */
@@ -150,21 +160,21 @@ void executeJob(
    SCIP_CALL_ABORT( SCIPtpiBroadcastCondition(&_jobqueues->jobfinished) );
 
    SCIP_CALL_ABORT( SCIPtpiReleaseLock(&_jobqueues->lock) );
-
 }
 
 
-
-
-/** this is a job that will be executed on to process the job queue */
-/* the job will only be added when the number of active jobs is equal to the number of threads.
- * As such, there will always be number of threads + 1 tasks available for the scheduler to run. */
+/** process jobs from job queue
+ *
+ * The job will only be added when the number of active jobs is equal to the number of threads.
+ * As such, there will always be number of threads + 1 tasks available for the scheduler to run.
+ */
 static
 void jobQueueProcessJob(
    void
    )
 {
    SCIP_JOB* job;
+
    SCIP_CALL_ABORT( SCIPtpiAcquireLock(&_jobqueues->lock) );
 
    while( _jobqueues->ncurrentjobs == SCIPtpiGetNumThreads() )
@@ -177,7 +187,7 @@ void jobQueueProcessJob(
       job = _jobqueues->jobqueue.firstjob;
       _jobqueues->jobqueue.firstjob = NULL;
       _jobqueues->jobqueue.lastjob = NULL;
-      --_jobqueues->jobqueue.njobs;
+      --(_jobqueues->jobqueue.njobs);
    }
    else if( _jobqueues->jobqueue.njobs > 1 )
    {
@@ -190,7 +200,7 @@ void jobQueueProcessJob(
       job = NULL;
    }
 
-   ++_jobqueues->ncurrentjobs;
+   ++(_jobqueues->ncurrentjobs);
    SCIP_CALL_ABORT( SCIPtpiReleaseLock(&_jobqueues->lock) );
 
    if( job )
@@ -200,11 +210,11 @@ void jobQueueProcessJob(
 }
 
 
-
-
-/** adding a job to the job queue.
+/** adding a job to the job queue
+ *
  * This gives some more flexibility in the handling of new jobs.
- * IMPORTANT: This function MUST be called from within a mutex. */
+ * IMPORTANT: This function MUST be called from within a mutex.
+ */
 static
 SCIP_RETCODE jobQueueAddJob(
    SCIP_JOB*             newjob
@@ -216,7 +226,7 @@ SCIP_RETCODE jobQueueAddJob(
 
    newjob->nextjob = NULL;
 
-   /* this function queries the current job list. This could change by other threads writing to the list. So a lock is
+   /* This function queries the current job list. This could change by other threads writing to the list. So a lock is
     * required to ensure that the current joblist remains static. */
    SCIP_CALL( SCIPtpiAcquireLock(&_jobqueues->lock) );
 
@@ -257,10 +267,13 @@ SCIP_RETCODE jobQueueAddJob(
 }
 
 
+/** signal a condition */
 SCIP_RETCODE SCIPtpiSignalCondition(
-   SCIP_CONDITION* condition
+   SCIP_CONDITION*       condition           /**< condition to signal */
    )
 {
+   assert( condition != NULL );
+
    SCIP_CALL( SCIPtpiAcquireLock(&condition->_lock) );
 
    if( condition->_waitnum > condition->_signals )
@@ -271,10 +284,13 @@ SCIP_RETCODE SCIPtpiSignalCondition(
    return SCIP_OKAY;
 }
 
+
+/** broadcase a condition */
 SCIP_RETCODE SCIPtpiBroadcastCondition(
-   SCIP_CONDITION* condition
+   SCIP_CONDITION*       condition           /**< broadcast a condition */
    )
 {
+   assert( condition != NULL );
 
    SCIP_CALL( SCIPtpiAcquireLock(&condition->_lock) );
    condition->_signals = condition->_waitnum;
@@ -283,9 +299,11 @@ SCIP_RETCODE SCIPtpiBroadcastCondition(
    return SCIP_OKAY;
 }
 
+
+/** wait for a condition */
 SCIP_RETCODE SCIPtpiWaitCondition(
-   SCIP_CONDITION* condition,
-   SCIP_LOCK*      lock
+   SCIP_CONDITION*       condition,          /**< condition to wait for */
+   SCIP_LOCK*            lock                /**< corresponding lock */
    )
 {
    int waitnum;
@@ -320,21 +338,21 @@ SCIP_RETCODE SCIPtpiWaitCondition(
    return SCIP_OKAY;
 }
 
-/** Returns the number of threads */
+/** returns the number of threads */
 int SCIPtpiGetNumThreads(
    )
 {
    return omp_get_num_threads();
 }
 
-/** Returns the thread number */
+/** returns the thread number */
 int SCIPtpiGetThreadNum(
    )
 {
    return omp_get_thread_num();
 }
 
-/** creates a job for parallel processing*/
+/** creates a job for parallel processing */
 SCIP_RETCODE SCIPtpiCreateJob(
    SCIP_JOB**            job,                /**< pointer to the job that will be created */
    int                   jobid,              /**< the id for the current job */
@@ -366,12 +384,10 @@ int SCIPtpiGetNewJobID(
    return jobid;
 }
 
-/** submit a job for parallel processing */
-/* the return is a globally defined status */
+/** submit a job for parallel processing; the return value is a globally defined status */
 SCIP_RETCODE SCIPtpiSumbitJob(
    SCIP_JOB*             job,                /**< pointer to the job to be submitted */
    SCIP_SUBMITSTATUS*    status              /**< pointer to store the submit status */
-
    )
 {
    assert(_jobqueues != NULL);
@@ -382,9 +398,11 @@ SCIP_RETCODE SCIPtpiSumbitJob(
    return SCIP_OKAY;
 }
 
+
+/** check whether a job is running */
 static
 SCIP_Bool isJobRunning(
-   int                   jobid
+   int                   jobid               /**< job id to check */
    )
 {
    int i;
@@ -401,12 +419,13 @@ SCIP_Bool isJobRunning(
    return FALSE;
 }
 
+
+/** check whether a job is waiting */
 static
 SCIP_Bool isJobWaiting(
-   int                   jobid
+   int                   jobid               /**< job id to check */
    )
 {
-
    if( _jobqueues->jobqueue.njobs > 0 )
    {
       SCIP_JOB* currjob;
@@ -429,10 +448,10 @@ SCIP_Bool isJobWaiting(
 }
 
 
-/** Blocks until all jobs of the given jobid have finished
- * and then returns the smallest SCIP_RETCODE of all the jobs */
+/** blocks until all jobs of the given jobid have finished
+ *  and then returns the smallest SCIP_RETCODE of all the jobs */
 SCIP_RETCODE SCIPtpiCollectJobs(
-   int                   jobid
+   int                   jobid               /**< the jobid of the jobs to wait for */
    )
 {
    SCIP_RETCODE retcode;
@@ -457,15 +476,17 @@ SCIP_RETCODE SCIPtpiCollectJobs(
          {
             SCIP_JOB* nextjob;
 
-            /** if the job has the right jobid collect its retcode,
-             *  remove it from the finished job list, and free it */
+            /* if the job has the right jobid collect its retcode, remove it from the finished job list, and free it */
             retcode = MIN(retcode, currjob->retcode);
 
             /* removing the finished job from finished jobs list */
             if( currjob == _jobqueues->finishedjobs.firstjob )
                _jobqueues->finishedjobs.firstjob = currjob->nextjob;
             else
-               prevjob->nextjob = currjob->nextjob; /*lint !e613*/
+            {
+               if( prevjob != NULL )
+                  prevjob->nextjob = currjob->nextjob; /*lint !e613*/
+            }
 
             if( currjob == _jobqueues->finishedjobs.lastjob )
                _jobqueues->finishedjobs.lastjob = prevjob;
@@ -484,7 +505,6 @@ SCIP_RETCODE SCIPtpiCollectJobs(
          }
       }
       while( prevjob != _jobqueues->finishedjobs.lastjob );
-
    }
    else
    {
@@ -500,15 +520,16 @@ SCIP_RETCODE SCIPtpiCollectJobs(
 
 /** initializes tpi */
 SCIP_RETCODE SCIPtpiInit(
-   int         nthreads,
-   int         queuesize,
-   SCIP_Bool   blockwhenfull
+   int                   nthreads,           /**< the number of threads to be used */
+   int                   queuesize,          /**< the size of the queue */
+   SCIP_Bool             blockwhenfull       /**< should the queue block when full */
    )
 {
    omp_set_num_threads(nthreads);
    assert(_jobqueues == NULL);
 
    SCIP_CALL( createJobQueue(nthreads, queuesize, blockwhenfull) );
+
    return SCIP_OKAY;
 }
 
@@ -523,5 +544,6 @@ SCIP_RETCODE SCIPtpiExit(
    assert(_jobqueues->ncurrentjobs == 0);
 
    SCIP_CALL( freeJobQueue() );
+
    return SCIP_OKAY;
 }

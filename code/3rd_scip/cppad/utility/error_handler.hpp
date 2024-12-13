@@ -1,8 +1,7 @@
-// $Id$
-# ifndef CPPAD_ERROR_HANDLER_HPP
-# define CPPAD_ERROR_HANDLER_HPP
+# ifndef CPPAD_UTILITY_ERROR_HANDLER_HPP
+# define CPPAD_UTILITY_ERROR_HANDLER_HPP
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -111,8 +110,8 @@ and is a $code '\0'$$ terminated character vector.
 It reports the meaning of the error from the C++ programmers point of view.
 
 $children%
-	example/error_handler.cpp%
-	cppad/local/cppad_assert.hpp
+	example/utility/error_handler.cpp%
+	cppad/core/cppad_assert.hpp
 %$$
 $head Example$$
 The file
@@ -142,11 +141,11 @@ public:
 
 	// construct a new handler
 	ErrorHandler(Handler handler) : previous( Current() )
-	{	if( set_get_in_parallel(0) )
+	{	if( local::set_get_in_parallel(0) )
 		{	bool known       = true;
 			int  line        = __LINE__;
 			const char* file = __FILE__;
-			const char* exp  = "! set_get_in_parallel(0)";
+			const char* exp  = "! local::set_get_in_parallel(0)";
 			const char* msg  =
 				"Using ErrorHandler constructor in parallel mode.";
 			Call(known, line, file, exp, msg);
@@ -156,11 +155,11 @@ public:
 
 	// destructor for an error handler
 	~ErrorHandler(void)
-	{	if( set_get_in_parallel(0) )
+	{	if( local::set_get_in_parallel(0) )
 		{	bool known       = true;
 			int  line        = __LINE__;
 			const char* file = __FILE__;
-			const char* exp  = "! set_get_in_parallel(0)";
+			const char* exp  = "! local::set_get_in_parallel(0)";
 			const char* msg  =
 				"Using ErrorHandler destructor in parallel mode.";
 			Call(known, line, file, exp, msg);
@@ -215,7 +214,7 @@ private:
 	{	static bool first_call = true;
 		static Handler current = Default;
 		if( first_call )
-		{	if( set_get_in_parallel(0) )
+		{	if( local::set_get_in_parallel(0) )
 			{	bool known       = false;
 				int  line        = __LINE__;
 				const char* file = __FILE__;

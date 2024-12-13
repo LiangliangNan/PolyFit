@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -27,7 +36,12 @@
 #define __SCIP_CONS_SUPERINDICATOR_H__
 
 
-#include "scip/scip.h"
+#include "scip/def.h"
+#include "scip/type_cons.h"
+#include "scip/type_dialog.h"
+#include "scip/type_retcode.h"
+#include "scip/type_scip.h"
+#include "scip/type_var.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,7 +57,7 @@ extern "C" {
  *
  * @ingroup ConshdlrIncludes
  * */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPincludeConshdlrSuperindicator(
    SCIP*                 scip                /**< SCIP data structure */
    );
@@ -68,7 +82,7 @@ SCIP_RETCODE SCIPincludeConshdlrSuperindicator(
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsSuperindicator(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -105,7 +119,7 @@ SCIP_RETCODE SCIPcreateConsSuperindicator(
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsBasicSuperindicator(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -115,13 +129,13 @@ SCIP_RETCODE SCIPcreateConsBasicSuperindicator(
    );
 
 /** gets binary variable corresponding to the superindicator constraint */
-EXTERN
+SCIP_EXPORT
 SCIP_VAR* SCIPgetBinaryVarSuperindicator(
    SCIP_CONS*            cons                /**< superindicator constraint */
    );
 
 /** gets the slack constraint corresponding to the superindicator constraint */
-EXTERN
+SCIP_EXPORT
 SCIP_CONS* SCIPgetSlackConsSuperindicator(
    SCIP_CONS*            cons                /**< superindicator constraint */
    );
@@ -135,7 +149,7 @@ SCIP_CONS* SCIPgetSlackConsSuperindicator(
 /** transforms the current problem into a MinUC problem (minimizing the number of unsatisfied constraints),
  *  a CIP generalization of the MinULR (min. unsatisfied linear relations) problem
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPtransformMinUC(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_Bool*            success             /**< pointer to store whether all constraints could be transformed */
@@ -148,12 +162,12 @@ SCIP_RETCODE SCIPtransformMinUC(
  */
 
 /** dialog execution method for the SCIPtransformMinUC() command */
-EXTERN
+SCIP_EXPORT
 SCIP_DECL_DIALOGEXEC(SCIPdialogExecChangeMinUC);
 
-/* @} */
+/** @} */
 
-/* @} */
+/** @} */
 
 #ifdef __cplusplus
 }

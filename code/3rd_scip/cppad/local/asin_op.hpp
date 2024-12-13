@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_ASIN_OP_HPP
-# define CPPAD_ASIN_OP_HPP
+# ifndef CPPAD_LOCAL_ASIN_OP_HPP
+# define CPPAD_LOCAL_ASIN_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -14,7 +13,7 @@ Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file asin_op.hpp
 Forward and reverse mode calculations for z = asin(x).
@@ -35,7 +34,7 @@ The auxillary result is
 The value of y, and its derivatives, are computed along with the value
 and derivatives of z.
 
-\copydetails forward_unary2_op
+\copydetails CppAD::local::forward_unary2_op
 */
 template <class Base>
 inline void forward_asin_op(
@@ -61,24 +60,24 @@ inline void forward_asin_op(
 	Base uj;
 	if( p == 0 )
 	{	z[0] = asin( x[0] );
-		uj   = Base(1) - x[0] * x[0];
+		uj   = Base(1.0) - x[0] * x[0];
 		b[0] = sqrt( uj );
 		p++;
 	}
 	for(size_t j = p; j <= q; j++)
-	{	uj = Base(0);
+	{	uj = Base(0.0);
 		for(k = 0; k <= j; k++)
 			uj -= x[k] * x[j-k];
-		b[j] = Base(0);
-		z[j] = Base(0);
+		b[j] = Base(0.0);
+		z[j] = Base(0.0);
 		for(k = 1; k < j; k++)
-		{	b[j] -= Base(k) * b[k] * b[j-k];
-			z[j] -= Base(k) * z[k] * b[j-k];
+		{	b[j] -= Base(double(k)) * b[k] * b[j-k];
+			z[j] -= Base(double(k)) * z[k] * b[j-k];
 		}
-		b[j] /= Base(j);
-		z[j] /= Base(j);
+		b[j] /= Base(double(j));
+		z[j] /= Base(double(j));
 		//
-		b[j] += uj / Base(2);
+		b[j] += uj / Base(2.0);
 		z[j] += x[j];
 		//
 		b[j] /= b[0];
@@ -99,7 +98,7 @@ The auxillary result is
 The value of y, and its derivatives, are computed along with the value
 and derivatives of z.
 
-\copydetails forward_unary2_op_dir
+\copydetails CppAD::local::forward_unary2_op_dir
 */
 template <class Base>
 inline void forward_asin_op_dir(
@@ -128,14 +127,14 @@ inline void forward_asin_op_dir(
 	{	Base uq = - 2.0 * x[m + ell] * x[0];
 		for(k = 1; k < q; k++)
 			uq -= x[(k-1)*r+1+ell] * x[(q-k-1)*r+1+ell];
-		b[m+ell] = Base(0);
-		z[m+ell] = Base(0);
+		b[m+ell] = Base(0.0);
+		z[m+ell] = Base(0.0);
 		for(k = 1; k < q; k++)
-		{	b[m+ell] += Base(k) * b[(k-1)*r+1+ell] * b[(q-k-1)*r+1+ell];
-			z[m+ell] += Base(k) * z[(k-1)*r+1+ell] * b[(q-k-1)*r+1+ell];
+		{	b[m+ell] += Base(double(k)) * b[(k-1)*r+1+ell] * b[(q-k-1)*r+1+ell];
+			z[m+ell] += Base(double(k)) * z[(k-1)*r+1+ell] * b[(q-k-1)*r+1+ell];
 		}
-		b[m+ell] = ( uq / Base(2) - b[m+ell] / Base(q) ) / b[0];
-		z[m+ell] = ( x[m+ell]     - z[m+ell] / Base(q) ) / b[0];
+		b[m+ell] = ( uq / Base(2.0) - b[m+ell] / Base(double(q)) ) / b[0];
+		z[m+ell] = ( x[m+ell]     - z[m+ell] / Base(double(q)) ) / b[0];
 	}
 }
 
@@ -152,7 +151,7 @@ The auxillary result is
 \endverbatim
 The value of y is computed along with the value of z.
 
-\copydetails forward_unary2_op_0
+\copydetails CppAD::local::forward_unary2_op_0
 */
 template <class Base>
 inline void forward_asin_op_0(
@@ -172,7 +171,7 @@ inline void forward_asin_op_0(
 	Base* b = z      -       cap_order; // called y in documentation
 
 	z[0] = asin( x[0] );
-	b[0] = sqrt( Base(1) - x[0] * x[0] );
+	b[0] = sqrt( Base(1.0) - x[0] * x[0] );
 }
 /*!
 Compute reverse mode partial derivatives for result of op = AsinOp.
@@ -187,7 +186,7 @@ The auxillary result is
 \endverbatim
 The value of y is computed along with the value of z.
 
-\copydetails reverse_unary2_op
+\copydetails CppAD::local::reverse_unary2_op
 */
 
 template <class Base>
@@ -218,7 +217,7 @@ inline void reverse_asin_op(
 	const Base* b  = z  - cap_order; // called y in documentation
 	Base* pb       = pz - nc_partial;
 
-	Base inv_b0 = Base(1) / b[0];
+	Base inv_b0 = Base(1.0) / b[0];
 
 	// number of indices to access
 	size_t j = d;
@@ -241,17 +240,17 @@ inline void reverse_asin_op(
 		px[j] += pz[j] - azmul(pb[j], x[0]);
 
 		// further scale partial w.r.t. z[j] by 1 / j
-		pz[j] /= Base(j);
+		pz[j] /= Base(double(j));
 
 		for(k = 1; k < j; k++)
 		{	// update partials w.r.t b^(j-k)
-			pb[j-k] -= Base(k) * azmul(pz[j], z[k]) + azmul(pb[j], b[k]);
+			pb[j-k] -= Base(double(k)) * azmul(pz[j], z[k]) + azmul(pb[j], b[k]);
 
 			// update partials w.r.t. x^k
 			px[k]   -= azmul(pb[j], x[j-k]);
 
 			// update partials w.r.t. z^k
-			pz[k]   -= Base(k) * azmul(pz[j], b[j-k]);
+			pz[k]   -= Base(double(k)) * azmul(pz[j], b[j-k]);
 		}
 		--j;
 	}
@@ -260,5 +259,5 @@ inline void reverse_asin_op(
 	px[0] += azmul(pz[0] - azmul(pb[0], x[0]), inv_b0);
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

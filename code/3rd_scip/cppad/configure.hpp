@@ -1,9 +1,8 @@
-// $Id$
 # ifndef CPPAD_CONFIGURE_HPP
 # define CPPAD_CONFIGURE_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -13,26 +12,16 @@ A copy of this license is included in the COPYING file of this distribution.
 Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
-/*
-$begin configure$$
-$spell
-	CppAD
-$$
-
-$section Configuration Preprocessor Symbols Used by CppAD$$
-
-$head Preprocessor Symbols$$
-All of the preprocessor symbols used by CppAD begin with
-$code CPPAD_$$
-(there are some deprecated symbols that begin with $code CppAD$$).
-
-$end
-*/
-
 /*!
  \file configure.hpp
 Replacement for config.h so that all preprocessor symbols begin with CPPAD_
 */
+
+/*!
+\def CPPAD_COMPILER_IS_GNUCXX
+is the compiler a variant of g++
+*/
+# define CPPAD_COMPILER_IS_GNUCXX 0
 
 /*!
 \def CPPAD_DISABLE_SOME_MICROSOFT_COMPILER_WARNINGS
@@ -58,7 +47,7 @@ compiler flags request C++11 features and the install procedure
 determined that all the necessary features are avaiable.
 */
 # if     _MSC_VER
-# if _MSC_VER > 1600
+# if _MSC_VER > 1800
 # define    CPPAD_USE_CPLUSPLUS_2011 1
 # else
 # define    CPPAD_USE_CPLUSPLUS_2011 0
@@ -75,7 +64,13 @@ determined that all the necessary features are avaiable.
 \def CPPAD_PACKAGE_STRING
 cppad-yyyymmdd as a C string where yyyy is year, mm is month, and dd is day.
 */
-# define CPPAD_PACKAGE_STRING "CppAD 20160000.1"
+# define CPPAD_PACKAGE_STRING "CppAD 20180000.0"
+
+/*!
+def CPPAD_HAS_ADOLC
+Was a adolc_prefix specified on the cmake command line.
+*/
+# define CPPAD_HAS_ADOLC 0
 
 /*!
 def CPPAD_HAS_COLPACK
@@ -84,17 +79,20 @@ Was a colpack_prefix specified on the cmake command line.
 # define CPPAD_HAS_COLPACK 0
 
 /*!
-def CPPAD_INTERNAL_SPARSE_SET
-is the internal representation used for sparse vectors of std::set<size_t>
-either sparse_set or sparse_list).
+def CPPAD_HAS_EIGEN
+Was a eigen_prefix specified on the cmake command line.
 */
-# define CPPAD_INTERNAL_SPARSE_SET sparse_list
+# define CPPAD_HAS_EIGEN 0
+
+/*!
+def CPPAD_HAS_IPOPT
+Was a ipopt_prefix specified on the cmake command line.
+*/
+# define CPPAD_HAS_IPOPT 0
 
 /*!
 \def CPPAD_DEPRECATED
-If this symbol is one, an implicit constor of AD<Base> is defined
-where the argument has any type.
-Otherwise this constructor is explicit.
+This symbol is not currently being used.
 */
 # define CPPAD_DEPRECATED 0
 
@@ -140,14 +138,11 @@ If this symbol is one, and _MSC_VER is not defined,
 this system supports the gettimeofday funcgtion.
 Otherwise, this smybol should be zero.
 */
+#ifndef _MSC_VER
 # define CPPAD_HAS_GETTIMEOFDAY 1
-
-/*!
-\def CPPAD_SIZE_T_NOT_UNSIGNED_INT
-If this symbol is zero, the type size_t is the same as the type unsigned int,
-otherwise this symbol is one.
-*/
-# define CPPAD_SIZE_T_NOT_UNSIGNED_INT 0
+#else
+# define CPPAD_HAS_GETTIMEOFDAY 0
+#endif
 
 /*!
 \def CPPAD_TAPE_ADDR_TYPE
@@ -176,7 +171,7 @@ in pod_vector.hpp.
 This type is later defined as \c tape_id_t in the CppAD namespace.
 */
 # define CPPAD_TAPE_ID_TYPE size_t
- 
+
 /*!
 \def CPPAD_MAX_NUM_THREADS
 Specifies the maximum number of threads that CppAD can support
@@ -209,7 +204,7 @@ It true, tmpnam_s works in C++ on this system.
 This preprocessor symbol is used for a null pointer.
 
 If it is not yet defined,
-it is defined when cppad/local/define.hpp is included.
+it is defined when cppad/core/define.hpp is included.
 */
 # ifndef CPPAD_NULL
 # if CPPAD_USE_CPLUSPLUS_2011

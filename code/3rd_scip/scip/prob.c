@@ -3,41 +3,56 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   prob.c
+ * @ingroup OTHER_CFILES
  * @brief  Methods and datastructures for storing and manipulating the main problem
  * @author Tobias Achterberg
  */
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
-#include "scip/def.h"
-#include "scip/set.h"
-#include "scip/stat.h"
+#include "scip/branch.h"
+#include "scip/conflictstore.h"
+#include "scip/cons.h"
 #include "scip/event.h"
 #include "scip/lp.h"
-#include "scip/var.h"
-#include "scip/prob.h"
 #include "scip/primal.h"
-#include "scip/tree.h"
-#include "scip/reopt.h"
-#include "scip/branch.h"
-#include "scip/cons.h"
-#include "scip/conflictstore.h"
+#include "scip/prob.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_lp.h"
 #include "scip/pub_message.h"
 #include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_var.h"
+#include "scip/set.h"
+#include "scip/stat.h"
+#include "scip/struct_cons.h"
+#include "scip/struct_lp.h"
+#include "scip/struct_prob.h"
+#include "scip/struct_set.h"
+#include "scip/struct_stat.h"
+#include "scip/struct_var.h"
+#include "scip/var.h"
+#include <string.h>
 
 
 #define OBJSCALE_MAXDNOM          1000000LL  /**< maximal denominator in objective integral scaling */
@@ -401,8 +416,10 @@ SCIP_RETCODE SCIPprobFree(
    SCIP_LP*              lp                  /**< current LP data (or NULL, if it's the original problem) */
    )
 {
-   SCIP_Bool warnreleasevar = TRUE;
    int v;
+#ifndef NDEBUG
+   SCIP_Bool unreleasedvar = FALSE;
+#endif
 
    assert(prob != NULL);
    assert(*prob != NULL);
@@ -454,11 +471,13 @@ SCIP_RETCODE SCIPprobFree(
    {
       assert(SCIPvarGetProbindex((*prob)->vars[v]) >= 0);
 
-      if ( warnreleasevar && SCIPvarGetNUses((*prob)->vars[v]) > 1 )
+      if( SCIPvarGetNUses((*prob)->vars[v]) > 1 )
       {
-         SCIPmessageFPrintWarning(messagehdlr, "%s variable <%s> not released when freeing SCIP. Consider releasing variable first.\n",
-            (*prob)->transformed ? "Transformed" : "Original", SCIPvarGetName((*prob)->vars[v]));
-         warnreleasevar = FALSE;
+         SCIPmessageFPrintWarning(messagehdlr, "%s variable <%s> not released when freeing SCIP problem <%s>.\n",
+            (*prob)->transformed ? "Transformed" : "Original", SCIPvarGetName((*prob)->vars[v]), SCIPprobGetName(*prob));
+#ifndef NDEBUG
+         unreleasedvar = TRUE;
+#endif
       }
 
       SCIP_CALL( SCIPvarRemove((*prob)->vars[v], blkmem, NULL, set, TRUE) );
@@ -471,16 +490,20 @@ SCIP_RETCODE SCIPprobFree(
    {
       assert(SCIPvarGetProbindex((*prob)->fixedvars[v]) == -1);
 
-      if ( warnreleasevar && SCIPvarGetNUses((*prob)->fixedvars[v]) > 1 )
+      if( SCIPvarGetNUses((*prob)->fixedvars[v]) > 1 )
       {
-         SCIPmessageFPrintWarning(messagehdlr, "%s variable <%s> not released when freeing SCIP. Consider releasing variable first.\n",
-            (*prob)->transformed ? "Transformed" : "Original", SCIPvarGetName((*prob)->fixedvars[v]));
-         warnreleasevar = FALSE;
+         SCIPmessageFPrintWarning(messagehdlr, "%s variable <%s> not released when freeing SCIP problem <%s>.\n",
+            (*prob)->transformed ? "Transformed" : "Original", SCIPvarGetName((*prob)->fixedvars[v]), SCIPprobGetName(*prob));
+#ifndef NDEBUG
+         unreleasedvar = TRUE;
+#endif
       }
 
       SCIP_CALL( SCIPvarRelease(&(*prob)->fixedvars[v], blkmem, set, eventqueue, lp) );
    }
    BMSfreeMemoryArrayNull(&(*prob)->fixedvars);
+
+   assert(! unreleasedvar);
 
    /* free deleted problem variables array */
    BMSfreeMemoryArrayNull(&(*prob)->deletedvars);
@@ -587,7 +610,7 @@ SCIP_RETCODE SCIPprobTransform(
    /* check, whether objective value is always integral by inspecting the problem, if it is the case adjust the
     * cutoff bound if primal solution is already known 
     */
-   SCIP_CALL( SCIPprobCheckObjIntegral(*target, source, blkmem, set, stat, primal, tree, reopt, lp, eventqueue) );
+   SCIP_CALL( SCIPprobCheckObjIntegral(*target, source, blkmem, set, stat, primal, tree, reopt, lp, eventfilter, eventqueue) );
 
    /* copy the nlpenabled flag */
    (*target)->nlpenabled = source->nlpenabled;
@@ -974,12 +997,6 @@ SCIP_RETCODE SCIPprobAddVar(
       /* update the number of variables with non-zero objective coefficient */
       SCIPprobUpdateNObjVars(prob, set, 0.0, SCIPvarGetObj(var));
 
-      /* set varlocks to ensure that no dual reduction can be performed */
-      if( set->reopt_enable || !set->misc_allowdualreds )
-      {
-         SCIP_CALL( SCIPvarAddLocks(var, blkmem, set, eventqueue, 1, 1) );
-      }
-
       /* SCIP assumes that the status of objisintegral does not change after transformation. Thus, the objective of all
        * new variables beyond that stage has to be compatible. */
       assert( SCIPsetGetStage(set) == SCIP_STAGE_TRANSFORMING || ! prob->objisintegral || SCIPsetIsZero(set, SCIPvarGetObj(var)) ||
@@ -1126,7 +1143,10 @@ SCIP_RETCODE SCIPprobChgVarType(
    SCIP_PROB*            prob,               /**< problem data */
    BMS_BLKMEM*           blkmem,             /**< block memory */
    SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_PRIMAL*          primal,             /**< primal data */
+   SCIP_LP*              lp,                 /**< current LP data */
    SCIP_BRANCHCAND*      branchcand,         /**< branching candidate storage */
+   SCIP_EVENTQUEUE*      eventqueue,         /**< event queue */
    SCIP_CLIQUETABLE*     cliquetable,        /**< clique table data structure */
    SCIP_VAR*             var,                /**< variable to add */
    SCIP_VARTYPE          vartype             /**< new type of variable */
@@ -1153,7 +1173,7 @@ SCIP_RETCODE SCIPprobChgVarType(
    SCIP_CALL( probRemoveVar(prob, blkmem, cliquetable, set, var) );
 
    /* change the type of the variable */
-   SCIP_CALL( SCIPvarChgType(var, vartype) );
+   SCIP_CALL( SCIPvarChgType(var, blkmem, set, primal, lp, eventqueue, vartype) );
 
    /* reinsert variable into problem */
    probInsertVar(prob, var);
@@ -1321,7 +1341,7 @@ SCIP_RETCODE SCIPprobAddCons(
       /* if constraint is a check-constraint, lock roundings of constraint's variables */
       if( SCIPconsIsChecked(cons) )
       {
-         SCIP_CALL( SCIPconsAddLocks(cons, set, +1, 0) );
+         SCIP_CALL( SCIPconsAddLocks(cons, set, SCIP_LOCKTYPE_MODEL, +1, 0) );
       }
    }
 
@@ -1355,7 +1375,7 @@ SCIP_RETCODE SCIPprobDelCons(
       /* if constraint is a check-constraint, unlock roundings of constraint's variables */
       if( SCIPconsIsChecked(cons) )
       {
-         SCIP_CALL( SCIPconsAddLocks(cons, set, -1, 0) );
+         SCIP_CALL( SCIPconsAddLocks(cons, set, SCIP_LOCKTYPE_MODEL, -1, 0) );
       }
 
       /* deactivate constraint, if it is currently active */
@@ -1474,6 +1494,7 @@ SCIP_RETCODE SCIPprobCheckObjIntegral(
    SCIP_TREE*            tree,               /**< branch and bound tree */
    SCIP_REOPT*           reopt,              /**< reoptimization data structure */
    SCIP_LP*              lp,                 /**< current LP data */
+   SCIP_EVENTFILTER*     eventfilter,        /**< event filter for global (not variable dependent) events */
    SCIP_EVENTQUEUE*      eventqueue          /**< event queue */
    )
 {
@@ -1488,7 +1509,7 @@ SCIP_RETCODE SCIPprobCheckObjIntegral(
       return SCIP_OKAY;
 
    /* if there exist unknown variables, we cannot conclude that the objective value is always integral */
-   if( set->nactivepricers != 0 )
+   if( set->nactivepricers != 0 || set->nactivebenders != 0 )
       return SCIP_OKAY;
 
    /* if the objective value offset is fractional, the value itself is possibly fractional */
@@ -1520,7 +1541,7 @@ SCIP_RETCODE SCIPprobCheckObjIntegral(
       transprob->objisintegral = TRUE;
 
       /* update upper bound and cutoff bound in primal data structure due to new internality information */
-      SCIP_CALL( SCIPprimalUpdateObjoffset(primal, blkmem, set, stat, eventqueue, transprob, origprob, tree, reopt, lp) );
+      SCIP_CALL( SCIPprimalUpdateObjoffset(primal, blkmem, set, stat, eventfilter, eventqueue, transprob, origprob, tree, reopt, lp) );
    }
 
    return SCIP_OKAY;
@@ -1591,6 +1612,7 @@ SCIP_RETCODE SCIPprobScaleObj(
    SCIP_TREE*            tree,               /**< branch and bound tree */
    SCIP_REOPT*           reopt,              /**< reoptimization data structure */
    SCIP_LP*              lp,                 /**< current LP data */
+   SCIP_EVENTFILTER*     eventfilter,        /**< event filter for global (not variable dependent) events */
    SCIP_EVENTQUEUE*      eventqueue          /**< event queue */
    )
 {
@@ -1601,7 +1623,7 @@ SCIP_RETCODE SCIPprobScaleObj(
    assert(set != NULL);
 
    /* do not change objective if there are pricers involved */
-   if( set->nactivepricers != 0 )
+   if( set->nactivepricers != 0 || set->nactivebenders != 0 || !set->misc_scaleobj )
       return SCIP_OKAY;
 
    nints = transprob->nvars - transprob->ncontvars;
@@ -1650,7 +1672,7 @@ SCIP_RETCODE SCIPprobScaleObj(
             SCIP_Longint absobj;
 
             /* if absobj exceeds maximum SCIP_Longint value, return */
-            if( REALABS(objvals[v]) * intscalar + 0.5 > SCIP_LONGINT_MAX )
+            if( REALABS(objvals[v]) * intscalar + 0.5 > (SCIP_Real)SCIP_LONGINT_MAX )
             {
                SCIPsetFreeBufferArray(set, &objvals);
                return SCIP_OKAY;
@@ -1698,7 +1720,7 @@ SCIP_RETCODE SCIPprobScaleObj(
                   SCIPsetDebugMsg(set, "integral objective scalar: objscale=%g\n", transprob->objscale);
 
                   /* update upperbound and cutoffbound in primal data structure */
-                  SCIP_CALL( SCIPprimalUpdateObjoffset(primal, blkmem, set, stat, eventqueue, transprob, origprob, tree, reopt, lp) );
+                  SCIP_CALL( SCIPprimalUpdateObjoffset(primal, blkmem, set, stat, eventfilter, eventqueue, transprob, origprob, tree, reopt, lp) );
                }
             }
          }
@@ -1836,7 +1858,7 @@ void SCIPprobUpdateBestRootSol(
    }
 }
 
-/** informs problem, that the presolving process was finished, and updates all internal data structures */
+/** informs problem, that the presolving process was finished, and updates all internal data structures */ /*lint -e715*/
 SCIP_RETCODE SCIPprobExitPresolve(
    SCIP_PROB*            prob,               /**< problem data */
    SCIP_SET*             set                 /**< global SCIP settings */
@@ -1903,8 +1925,12 @@ SCIP_RETCODE SCIPprobExitSolve(
       SCIP_CALL( prob->probexitsol(set->scip, prob->probdata, restart) );
    }
 
-   /* convert all COLUMN variables back into LOOSE variables */
-   if( prob->ncolvars > 0 )
+   /* - convert all COLUMN variables back into LOOSE variables
+    * - mark relaxation-only variables for deletion, if possible and restarting
+    *   - initPresolve will then call SCIPprobPerformVarDeletions
+    *   - if no restart, then the whole transformed problem will be deleted anyway
+    */
+   if( prob->ncolvars > 0 || restart )
    {
       for( v = 0; v < prob->nvars; ++v )
       {
@@ -1914,8 +1940,29 @@ SCIP_RETCODE SCIPprobExitSolve(
             SCIP_CALL( SCIPvarLoose(var, blkmem, set, eventqueue, prob, lp) );
          }
 
-         /* invalided root reduced cost, root reduced solution, and root LP objective value for each variable */
+         /* invalidate root reduced cost, root reduced solution, and root LP objective value for each variable */
          SCIPvarSetBestRootSol(var, 0.0, 0.0, SCIP_INVALID);
+
+         if( SCIPvarIsRelaxationOnly(var) && restart )
+         {
+            /* relaxation variables should be unlocked and only captured by prob at this moment */
+            assert(SCIPvarGetNLocksDown(var) == 0);
+            assert(SCIPvarGetNLocksUp(var) == 0);
+            assert(SCIPvarGetNUses(var) == 1);
+
+            if( SCIPvarIsDeletable(var) )
+            {
+               SCIP_Bool deleted;
+
+               SCIPsetDebugMsg(set, "queue relaxation-only variable <%s> for deletion\n", SCIPvarGetName(var));
+               SCIP_CALL( SCIPprobDelVar(prob, blkmem, set, eventqueue, var, &deleted) );
+               assert(deleted);
+            }
+            else
+            {
+               SCIPsetDebugMsg(set, "cannot queue relaxation-only variable <%s> for deletion because it is marked non-deletable\n", SCIPvarGetName(var));
+            }
+         }
       }
    }
    assert(prob->ncolvars == 0);

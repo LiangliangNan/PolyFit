@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -19,27 +28,17 @@
  * @author Thorsten Gellermann
  * @author Stefan Vigerske
  *
- *  In SCIP, the NLP is defined as follows:
- *
- *   min         const + obj * x + <x, Qx> + f(x)
- *        lhs <= const + A   * x                  <= rhs
- *        lhs <= const + A   * x + <x, Qx> + f(x) <= rhs
- *        lb  <=               x                  <= ub
- *
- *  where the linear rows and variable bounds are managed by the LP
- *  and the nonlinear rows are managed by the NLP.
- *
- *  The row activities are defined as
- *     activity = A * x + const
- *  for a linear row and as
- *     activity = f(x) + <x, Qx> + A * x + const
- *  for a nonlinear row.
- *  The activities must therefore be in the range of [lhs,rhs].
+ *  In SCIP, the NLP relaxation is defined as follows:
+ *  <pre>
+ *   min         const + obj * x
+ *        lhs <= const + A   * x + f(x) <= rhs
+ *        lb  <=               x        <= ub
+ *  </pre>
  *
  *  The main datastructures for storing an NLP are the nonlinear rows.
  *  A nonlinear row can live on its own (if it was created by a separator),
- *  or as relaxation of a constraint. Thus, it has a nuses-counter, and is
- *  deleted, if not needed any more.
+ *  or as relaxation of a constraint. Thus, it has a nuses-counter and is
+ *  deleted if not used any more.
  *  In difference to columns of an LP, nonlinear rows are defined
  *  with respect SCIP variables.
  */
@@ -52,8 +51,10 @@
 #include "scip/def.h"
 #include "scip/type_nlp.h"
 #include "scip/type_var.h"
-#include "nlpi/type_nlpi.h"
-#include "nlpi/type_expr.h"
+#include "scip/type_misc.h"
+#include "scip/type_event.h"
+#include "scip/type_nlpi.h"
+#include "scip/type_expr.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,18 +77,8 @@ struct SCIP_NlRow
    double*               lincoefs;           /**< coefficients of linear variables */
    SCIP_Bool             linvarssorted;      /**< are the linear coefficients sorted (by variable indices?) */
 
-   /* quadratic part */
-   int                   nquadvars;          /**< number of variables in quadratic terms */
-   int                   quadvarssize;       /**< size of array storing quadratic variables of row */
-   SCIP_VAR**            quadvars;           /**< variables in quadratic term */
-   SCIP_HASHMAP*         quadvarshash;       /**< hash map from variable to indices in quadvars */
-   int                   nquadelems;         /**< number of entries in quadratic matrix */
-   int                   quadelemssize;      /**< size of quadratic elements array */
-   SCIP_QUADELEM*        quadelems;          /**< entries in quadratic matrix */
-   SCIP_Bool             quadelemssorted;    /**< are the quadratic elements sorted? */
-
-   /* nonquadratic part */
-   SCIP_EXPRTREE*        exprtree;           /**< expression tree representing nonquadratic part */
+   /* nonlinear part */
+   SCIP_EXPR*            expr;               /**< expression representing nonlinear part */
 
    /* miscellaneous */
    char*                 name;               /**< name */
@@ -117,7 +108,6 @@ struct SCIP_Nlp
    int                   nunflushedvardel;   /**< number of variable deletions not flushed to NLPI problem yet */
    int                   nunflushednlrowadd; /**< number of nonlinear row additions not flushed to NLPI problem yet */
    int                   nunflushednlrowdel; /**< number of nonlinear row deletions not flushed to NLPI problem yet */
-   SCIP_Bool             isrelax;            /**< is the current NLP a relaxation of a SCIP problem? */
    SCIP_Bool             indiving;           /**< are we currently in diving mode? */
 
    /* variables in problem */
@@ -129,7 +119,7 @@ struct SCIP_Nlp
    int                   nvars_solver;       /**< number of variables in NLPI problem */
    int                   sizevars_solver;    /**< allocated space for variables in NLPI problem */
    int*                  varmap_nlp2nlpi;    /**< index of variables in NLPI problem, or -1 if variable has not been added to NLPI problem yet */
-   int*                  varmap_nlpi2nlp;    /**< index of a NLPI problem variable in NLP (varmap_nlp2nlpi[varmap_nlpi2nlp[i]] == i for i = 0..nvarssolver-1), or -1 if variable has been deleted from NLP */
+   int*                  varmap_nlpi2nlp;    /**< index of a NLPI problem variable in NLP (`varmap_nlp2nlpi[varmap_nlpi2nlp[i]] == i` for `i = 0..nvars_solver-1`), or -1 if variable has been deleted from NLP */
 
    /* nonlinear rows in problem */
    int                   nnlrows;            /**< number of nonlinear rows */
@@ -138,7 +128,7 @@ struct SCIP_Nlp
    /* nonlinear rows in NLPI problem */
    int                   nnlrows_solver;     /**< number of nonlinear rows in solver */
    int                   sizenlrows_solver;  /**< allocated space for nonlinear rows in solver */
-   int*                  nlrowmap_nlpi2nlp;  /**< index of a NLPI row in NLP (nlrows[nlrowmap_nlpi2nlp[i]]->nlpiidx == i for i = 0..nnlrows_solver-1), or -1 if row has been deleted from NLP */
+   int*                  nlrowmap_nlpi2nlp;  /**< index of a NLPI row in NLP (`nlrows[nlrowmap_nlpi2nlp[i]]->nlpiidx == i` for `i = 0..nnlrows_solver-1`), or -1 if row has been deleted from NLP */
 
    /* objective function */
    SCIP_Bool             objflushed;         /**< is the objective in the NLPI up to date? */
@@ -165,7 +155,7 @@ struct SCIP_Nlp
    SCIP_Real*            fracvarsfrac;       /**< fractionality of the fractional variables  */
    int                   nfracvars;          /**< number of fractional variables */
    int                   npriofracvars;      /**< number of fractional variables with highest branching priority */
-   int                   fracvarssize;       /**< size of fracvars* arrays */
+   int                   fracvarssize;       /**< size of fracvars arrays */
    SCIP_Longint          validfracvars;      /**< the NLP solve for which the fractional variables are valid, or -1 if never setup */
 
    /* miscellaneous */

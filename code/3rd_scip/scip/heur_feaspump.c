@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_feaspump.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  Objective Feasibility Pump 2.0
  * @author Timo Berthold
  * @author Domenico Salvagnin
@@ -21,17 +31,39 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
-#include "scip/heur_feaspump.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_linear.h"
+#include "scip/heur_feaspump.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_message.h"
 #include "scip/pub_misc.h"
-#include "scip/scipdefplugins.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_nodesel.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_pricer.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_randnumgen.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define HEUR_NAME             "feaspump"
 #define HEUR_DESC             "objective feasibility pump 2.0"
-#define HEUR_DISPCHAR         'F'
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_OBJDIVING
 #define HEUR_PRIORITY         -1000000
 #define HEUR_FREQ             20
 #define HEUR_FREQOFS          0
@@ -123,7 +155,8 @@ SCIP_RETCODE setupProbingSCIP(
    *success = FALSE;
 
    /* copy SCIP instance */
-   SCIP_CALL( SCIPcopyConsCompression(scip, *probingscip, *varmapfw, NULL, "feaspump", NULL, NULL, 0, FALSE, FALSE, TRUE, success) );
+   SCIP_CALL( SCIPcopyConsCompression(scip, *probingscip, *varmapfw, NULL, "feaspump", NULL, NULL, 0, FALSE, FALSE,
+         FALSE, TRUE, success) );
 
    if( copycuts )
    {
@@ -449,6 +482,7 @@ SCIP_RETCODE addLocalBranchingConstraint(
    SCIP_VAR** vars;
 
    int nbinvars;
+   int nconsvars;
    int i;
    SCIP_Real lhs;
    SCIP_Real rhs;
@@ -462,6 +496,7 @@ SCIP_RETCODE addLocalBranchingConstraint(
    /* memory allocation */
    SCIP_CALL( SCIPallocBufferArray(scip, &consvars, nbinvars) );
    SCIP_CALL( SCIPallocBufferArray(scip, &consvals, nbinvars) );
+   nconsvars = 0;
 
    /* set initial left and right hand sides of local branching constraint */
    lhs = 0.0;
@@ -473,24 +508,27 @@ SCIP_RETCODE addLocalBranchingConstraint(
       SCIP_Real solval;
 
       solval = SCIPgetSolVal(scip, bestsol, vars[i]);
-      assert( SCIPisFeasIntegral(scip,solval) );
+      assert( SCIPisFeasIntegral(scip, solval) );
 
       /* is variable i part of the binary support of closest sol? */
       if( SCIPisFeasEQ(scip,solval,1.0) )
       {
-         consvals[i] = -1.0;
+         consvals[nconsvars] = -1.0;
          rhs -= 1.0;
          lhs -= 1.0;
       }
       else
-         consvals[i] = 1.0;
-      consvars[i] = (SCIP_VAR*) SCIPhashmapGetImage(varmapfw, vars[i]);
-      SCIP_CALL( SCIPchgVarObj(probingscip, consvars[i], consvals[i]) );
-      assert( SCIPvarGetType(consvars[i]) == SCIP_VARTYPE_BINARY );
+         consvals[nconsvars] = 1.0;
+      consvars[nconsvars] = (SCIP_VAR*) SCIPhashmapGetImage(varmapfw, vars[i]);
+      if( consvars[nconsvars] == NULL )
+         continue;
+      SCIP_CALL( SCIPchgVarObj(probingscip, consvars[nconsvars], consvals[nconsvars]) );
+      assert( SCIPvarGetType(consvars[nconsvars]) == SCIP_VARTYPE_BINARY );
+      ++nconsvars;
    }
 
    /* creates localbranching constraint and adds it to subscip */
-   SCIP_CALL( SCIPcreateConsLinear(probingscip, &cons, consname, nbinvars, consvars, consvals,
+   SCIP_CALL( SCIPcreateConsLinear(probingscip, &cons, consname, nconsvars, consvars, consvals,
          lhs, rhs, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE) );
    SCIP_CALL( SCIPaddCons(probingscip, cons) );
    SCIP_CALL( SCIPreleaseCons(probingscip, &cons) );
@@ -514,11 +552,7 @@ SCIP_RETCODE createNewSols(
 {
    SCIP_VAR** vars;                          /* the original problem's variables                */
    int        nvars;
-   SCIP_SOL** subsols;
-   int nsubsols;
    SCIP_VAR** subvars;
-   SCIP_Real* subsolvals;                    /* solution values of the subproblem               */
-   SCIP_SOL*  newsol;                        /* solution to be created for the original problem */
    int i;
 
    assert(scip != NULL);
@@ -527,37 +561,14 @@ SCIP_RETCODE createNewSols(
    /* get variables' data */
    SCIP_CALL( SCIPgetVarsData(scip, &vars, &nvars, NULL, NULL, NULL, NULL) );
 
-   /* sub-SCIP may have more variables than the number of active (transformed) variables in the main SCIP
-    * since constraint copying may have required the copy of variables that are fixed in the main SCIP
-    */
-   assert(nvars <= SCIPgetNOrigVars(subscip));
-
    /* for copying a solution we need an explicit mapping */
    SCIP_CALL( SCIPallocBufferArray(scip, &subvars, nvars) );
    for( i = 0; i < nvars; i++ )
       subvars[i] = (SCIP_VAR*) SCIPhashmapGetImage(varmapfw, vars[i]);
 
-   SCIP_CALL( SCIPallocBufferArray(scip, &subsolvals, nvars) );
-
-   nsubsols = SCIPgetNSols(subscip);
-   subsols = SCIPgetSols(subscip);
-   *success = FALSE;
-
-   for( i = 0; i < nsubsols && !(*success); ++i )
-   {
-      /* copy the solution */
-      SCIP_CALL( SCIPgetSolVals(subscip, subsols[i], nvars, subvars, subsolvals) );
-
-      /* create new solution for the original problem */
-      SCIP_CALL( SCIPcreateSol(scip, &newsol, heur) );
-      SCIP_CALL( SCIPsetSolVals(scip, newsol, nvars, vars, subsolvals) );
-
-      /* try to add new solution to scip and free it immediately */
-      SCIP_CALL( SCIPtrySolFree(scip, &newsol, FALSE, FALSE, TRUE, TRUE, TRUE, success) );
-   }
+   SCIP_CALL( SCIPtranslateSubSols(scip, subscip, heur, subvars, success, NULL) );
 
    SCIPfreeBufferArray(scip, &subvars);
-   SCIPfreeBufferArray(scip, &subsolvals);
 
    return SCIP_OKAY;
 }
@@ -619,7 +630,7 @@ SCIP_DECL_HEURINIT(heurInitFeaspump)
 
    /* create random number generator */
    SCIP_CALL( SCIPcreateRandom(scip, &heurdata->randnumgen,
-         DEFAULT_RANDSEED) );
+         DEFAULT_RANDSEED, TRUE) );
 
    return SCIP_OKAY;
 }
@@ -706,7 +717,6 @@ SCIP_DECL_HEUREXEC(heurExecFeaspump)
 
    SCIP* probingscip;         /* copied SCIP structure, used for round-and-propagate loop of feasibility pump 2.0 */
    SCIP_HASHMAP* varmapfw;    /* mapping of SCIP variables to sub-SCIP variables */
-
 
    SCIP_VAR** vars;
    SCIP_VAR** pseudocands;
@@ -845,6 +855,7 @@ SCIP_DECL_HEUREXEC(heurExecFeaspump)
    {
       SCIP_Bool valid;
 
+      /* ignore value of valid */
       SCIP_CALL( setupProbingSCIP(scip, &probingscip, &varmapfw, heurdata->copycuts, &valid) );
 
       if( probingscip != NULL )
@@ -904,7 +915,7 @@ SCIP_DECL_HEUREXEC(heurExecFeaspump)
          SCIPdebugMsg(scip, "SCIP reached the depth limit -> skip heuristic\n");
          return SCIP_OKAY;
       }
-   }
+   } /*lint !e438*/
 
    /* memory allocation */
    SCIP_CALL( SCIPallocBufferArray(scip, &mostfracvars, maxflips) );
@@ -1029,31 +1040,35 @@ SCIP_DECL_HEUREXEC(heurExecFeaspump)
             SCIP_Real ubprobing;
 
             probingvar = (SCIP_VAR*) SCIPhashmapGetImage(varmapfw, var);
-            lbprobing = SCIPvarGetLbLocal(probingvar);
-            ubprobing = SCIPvarGetUbLocal(probingvar);
-
-            solval = MAX(solval, lbprobing);
-            solval = MIN(solval, ubprobing);
-
-            /* fix the variable and propagate the domain change */
-            if( !SCIPisFeasEQ(probingscip, lbprobing, ubprobing) && SCIPvarIsActive(SCIPvarGetTransVar(probingvar)) )
+            /* skip if variable does not exist in probingscip */
+            if( probingvar != NULL )
             {
-               assert(SCIPisFeasLE(probingscip, lbprobing, ubprobing));
-               SCIPdebugMsg(scip, "try to fix variable <%s> (domain [%f,%f] to %f\n", SCIPvarGetName(probingvar), lbprobing, ubprobing,
-                  solval);
-               SCIP_CALL( SCIPfixVarProbing(probingscip, probingvar, solval) );
-               SCIP_CALL( SCIPpropagateProbing(probingscip, -1, &infeasible, &ndomreds) );
-               SCIPdebugMsg(scip, "  -> reduced %" SCIP_LONGINT_FORMAT " domains\n", ndomreds);
+               lbprobing = SCIPvarGetLbLocal(probingvar);
+               ubprobing = SCIPvarGetUbLocal(probingvar);
 
-               if( infeasible )
+               solval = MAX(solval, lbprobing);
+               solval = MIN(solval, ubprobing);
+
+               /* fix the variable and propagate the domain change */
+               if( !SCIPisFeasEQ(probingscip, lbprobing, ubprobing) && SCIPvarIsActive(SCIPvarGetTransVar(probingvar)) )
                {
-                  SCIPdebugMsg(scip, "  -> infeasible!\n");
-                  SCIP_CALL( SCIPbacktrackProbing(probingscip, 0) );
+                  assert(SCIPisFeasLE(probingscip, lbprobing, ubprobing));
+                  SCIPdebugMsg(scip, "try to fix variable <%s> (domain [%f,%f] to %f\n", SCIPvarGetName(probingvar), lbprobing, ubprobing,
+                     solval);
+                  SCIP_CALL( SCIPfixVarProbing(probingscip, probingvar, solval) );
+                  SCIP_CALL( SCIPpropagateProbing(probingscip, -1, &infeasible, &ndomreds) );
+                  SCIPdebugMsg(scip, "  -> reduced %" SCIP_LONGINT_FORMAT " domains\n", ndomreds);
+
+                  if( infeasible )
+                  {
+                     SCIPdebugMsg(scip, "  -> infeasible!\n");
+                     SCIP_CALL( SCIPbacktrackProbing(probingscip, 0) );
+                  }
                }
-            }
-            else
-            {
-               SCIPdebugMsg(scip, "variable <%s> is already fixed to %f\n", SCIPvarGetName(probingvar), solval);
+               else
+               {
+                  SCIPdebugMsg(scip, "variable <%s> is already fixed to %f\n", SCIPvarGetName(probingvar), solval);
+               }
             }
          }
 
@@ -1062,7 +1077,6 @@ SCIP_DECL_HEUREXEC(heurExecFeaspump)
          /* check whether the variable is one of the most fractionals and label if so */
          if( SCIPisFeasPositive(scip, frac) )
             insertFlipCand(mostfracvars, mostfracvals, &nflipcands, maxnflipcands, var, frac);
-
       }
 
       if( heurdata->usefp20 )

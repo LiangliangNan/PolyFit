@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -27,7 +36,13 @@
 #define __SCIP_CONS_SOS1_H__
 
 
-#include "scip/scip.h"
+#include "scip/def.h"
+#include "scip/type_cons.h"
+#include "scip/type_misc.h"
+#include "scip/type_retcode.h"
+#include "scip/type_scip.h"
+#include "scip/type_sol.h"
+#include "scip/type_var.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,7 +52,7 @@ extern "C" {
  *
  * @ingroup ConshdlrIncludes
  * */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPincludeConshdlrSOS1(
    SCIP*                 scip                /**< SCIP data structure */
    );
@@ -64,7 +79,7 @@ SCIP_RETCODE SCIPincludeConshdlrSOS1(
  *
  *  @note The constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons().
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsSOS1(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -105,7 +120,7 @@ SCIP_RETCODE SCIPcreateConsSOS1(
  *
  *  @note the constraint gets captured, hence at one point you have to release it using the method SCIPreleaseCons()
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPcreateConsBasicSOS1(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS**           cons,               /**< pointer to hold the created constraint */
@@ -116,7 +131,7 @@ SCIP_RETCODE SCIPcreateConsBasicSOS1(
    );
 
 /** adds variable to SOS1 constraint, the position is determined by the given weight */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPaddVarSOS1(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons,               /**< constraint */
@@ -125,7 +140,7 @@ SCIP_RETCODE SCIPaddVarSOS1(
    );
 
 /** appends variable to SOS1 constraint */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPappendVarSOS1(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons,               /**< constraint */
@@ -133,21 +148,21 @@ SCIP_RETCODE SCIPappendVarSOS1(
    );
 
 /** gets number of variables in SOS1 constraint */
-EXTERN
+SCIP_EXPORT
 int SCIPgetNVarsSOS1(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint */
    );
 
 /** gets array of variables in SOS1 constraint */
-EXTERN
+SCIP_EXPORT
 SCIP_VAR** SCIPgetVarsSOS1(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
    );
 
 /** gets array of weights in SOS1 constraint (or NULL if not existent) */
-EXTERN
+SCIP_EXPORT
 SCIP_Real* SCIPgetWeightsSOS1(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_CONS*            cons                /**< constraint data */
@@ -157,40 +172,40 @@ SCIP_Real* SCIPgetWeightsSOS1(
  *
  *  @note The conflict graph is globally valid; local changes are not taken into account.
  */
-EXTERN
+SCIP_EXPORT
 SCIP_DIGRAPH* SCIPgetConflictgraphSOS1(
    SCIP_CONSHDLR*        conshdlr            /**< SOS1 constraint handler */
    );
 
 /** gets number of problem variables that are part of the SOS1 conflict graph */
-EXTERN
+SCIP_EXPORT
 int SCIPgetNSOS1Vars(
    SCIP_CONSHDLR*        conshdlr            /**< SOS1 constraint handler */
    );
 
 /** returns whether variable is part of the SOS1 conflict graph */
-EXTERN
+SCIP_EXPORT
 SCIP_Bool SCIPvarIsSOS1(
    SCIP_CONSHDLR*        conshdlr,           /**< SOS1 constraint handler */
    SCIP_VAR*             var                 /**< variable */
    );
 
 /** returns node of variable in the conflict graph or -1 if variable is not part of the SOS1 conflict graph */
-EXTERN
+SCIP_EXPORT
 int SCIPvarGetNodeSOS1(
    SCIP_CONSHDLR*        conshdlr,           /**< SOS1 constraint handler */
    SCIP_VAR*             var                 /**< variable */
    );
 
 /** returns variable that belongs to a given node from the conflict graph */
-EXTERN
+SCIP_EXPORT
 SCIP_VAR* SCIPnodeGetVarSOS1(
    SCIP_DIGRAPH*         conflictgraph,      /**< conflict graph */
    int                   node                /**< node from the conflict graph */
    );
 
 /** based on solution values of the variables, fixes variables to zero to turn all SOS1 constraints feasible  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPmakeSOS1sFeasible(
    SCIP*                 scip,               /**< SCIP pointer */
    SCIP_CONSHDLR*        conshdlr,           /**< SOS1 constraint handler */
@@ -200,9 +215,9 @@ SCIP_RETCODE SCIPmakeSOS1sFeasible(
                                               *   solution was good enough */
    );
 
-/* @} */
+/** @} */
 
-/* @} */
+/** @} */
 
 #ifdef __cplusplus
 }

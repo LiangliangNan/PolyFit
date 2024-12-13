@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_VECTOR_HPP
-# define CPPAD_VECTOR_HPP
+# ifndef CPPAD_UTILITY_VECTOR_HPP
+# define CPPAD_UTILITY_VECTOR_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -36,7 +35,7 @@ $section The CppAD::vector Template Class$$
 $mindex vector CppAD [] push thread_alloc$$
 
 $head Syntax$$
-$code%# include <cppad/utility/vector.hpp>$$
+$codei%# include <cppad/utility/vector.hpp>%$$
 
 $head Description$$
 The include file $code cppad/vector.hpp$$ defines the
@@ -101,7 +100,7 @@ but rather pointers are transferred.
 
 $head Element Access$$
 If $icode x$$ is a $codei%CppAD::vector<%Scalar%>%$$ object
-and $code i$$ has type $code size_t$$,
+and $icode i$$ has type $code size_t$$,
 $codei%
 	%x%[%i%]
 %$$
@@ -179,7 +178,7 @@ new memory is allocated and the data in $icode x$$ is lost
 $head clear$$
 All memory allocated for the vector is freed
 and both its size and capacity are set to zero.
-The can be useful when using very large vectors
+This can be useful when using very large vectors
 and when checking for memory leaks (and there are global vectors)
 see the $cref/memory/CppAD_vector/Memory and Parallel Mode/$$ discussion.
 
@@ -291,8 +290,8 @@ $lend
 
 $head Example$$
 $children%
-	example/cppad_vector.cpp%
-	example/vector_bool.cpp
+	example/utility/cppad_vector.cpp%
+	example/utility/vector_bool.cpp
 %$$
 The files
 $cref cppad_vector.cpp$$ and
@@ -321,7 +320,7 @@ $end
 # include <cstddef>
 # include <iostream>
 # include <limits>
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 # include <cppad/utility/check_simple_vector.hpp>
 # include <cppad/utility/thread_alloc.hpp>
 
@@ -403,16 +402,16 @@ public:
 	)
 	{	length_ = n;
 
-		// check if we can use current memory
-		if( capacity_ >= length_ )
-			return;
+		// check if we must allocate new memory
+		if( capacity_ < length_ )
+		{
+			// check if there is old memory to be freed
+			if( capacity_ > 0 )
+				delete_data(data_);
 
-		// check if there is old memory to be freed
-		if( capacity_ > 0 )
-			delete_data(data_);
-
-		// get new memory and set capacity
-		data_ = thread_alloc::create_array<Type>(length_, capacity_);
+			// get new memory and set capacity
+			data_ = thread_alloc::create_array<Type>(length_, capacity_);
+		}
 	}
 
 	/// free memory and set number of elements to zero
@@ -430,7 +429,7 @@ public:
 		const vector& x
 	)
 	{	size_t i;
-		// If original lenght is zero, then resize it.
+		// If original length is zero, then resize it.
 		// Otherwise a length mismatch is an error.
 		if( length_ == 0 )
 			resize( x.length_ );
@@ -527,7 +526,7 @@ public:
 	}
 
 	/*! add vector to the back of this vector
-	(we could not use push_back becasue MS V++ 7.1 did not resolve
+	(we could not use push_back because MS V++ 7.1 did not resolve
 	to non-template member function when scalar is used.)
 	*/
 	template <class Vector>
@@ -750,7 +749,7 @@ public:
 		const vectorBool& v
 	)
 	{	size_t i;
-		// If original lenght is zero, then resize it.
+		// If original length is zero, then resize it.
 		// Otherwise a length mismatch is an error.
 		if( length_ == 0 )
 			resize( v.length_ );

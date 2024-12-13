@@ -1,9 +1,9 @@
-// $Id$
-# ifndef CPPAD_TIME_TEST_HPP
-# define CPPAD_TIME_TEST_HPP
+// $Id: time_test.hpp 3855 2016-12-19 00:30:54Z bradbell $
+# ifndef CPPAD_UTILITY_TIME_TEST_HPP
+# define CPPAD_UTILITY_TIME_TEST_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-16 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -38,7 +38,8 @@ $mindex time_test speed$$
 $head Syntax$$
 $codei%# include <cppad/utility/time_test.hpp>
 %$$
-$icode%time% = time_test(%test%, %time_min%)%$$
+$icode%time% = time_test(%test%, %time_min%)
+%$$
 $icode%time% = time_test(%test%, %time_min%, %test_size%)%$$
 
 $head Purpose$$
@@ -141,7 +142,7 @@ $end
 # include <cstddef>
 # include <cmath>
 # include <cppad/utility/elapsed_seconds.hpp>
-# include <cppad/local/define.hpp>
+# include <cppad/core/define.hpp>
 
 # define CPPAD_EXTRA_RUN_BEFORE_TIMING 0
 

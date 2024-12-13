@@ -1,0 +1,31 @@
+#ifndef __CONFIG_H__
+#define __CONFIG_H__
+
+#cmakedefine CMAKE_BUILD_TYPE "@CMAKE_BUILD_TYPE@"
+#define SCIP_VERSION_MAJOR @SCIP_VERSION_MAJOR@
+#define SCIP_VERSION_MINOR @SCIP_VERSION_MINOR@
+#define SCIP_VERSION_PATCH @SCIP_VERSION_PATCH@
+#define SCIP_VERSION_SUB @SCIP_VERSION_SUB@
+#define SCIP_VERSION_API @SCIP_VERSION_API@
+#cmakedefine BMS_NOBLOCKMEM
+#cmakedefine SCIP_NOBUFFERMEM
+#cmakedefine WITH_DEBUG_SOLUTION
+#cmakedefine SCIP_NO_SIGACTION
+#cmakedefine SCIP_NO_STRTOK_R
+#cmakedefine TPI_NONE
+#cmakedefine TPI_TNYC
+#cmakedefine TPI_OMP
+#cmakedefine SCIP_THREADSAFE
+#cmakedefine WITH_SCIPDEF
+#cmakedefine SCIP_WITH_PAPILO
+#cmakedefine SCIP_WITH_ZLIB
+#cmakedefine SCIP_WITH_READLINE
+#cmakedefine SCIP_WITH_GMP
+#cmakedefine SCIP_WITH_LPSCHECK
+#cmakedefine SCIP_WITH_ZIMPL
+#cmakedefine SCIP_WITH_AMPL
+#cmakedefine SCIP_ROUNDING_FE
+#cmakedefine SCIP_ROUNDING_FP
+#cmakedefine SCIP_ROUNDING_MS
+
+#endif

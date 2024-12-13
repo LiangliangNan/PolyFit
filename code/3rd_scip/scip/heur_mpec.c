@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   heur_mpec.c
+ * @ingroup DEFPLUGINS_HEUR
  * @brief  mpec primal heuristic
  * @author Felipe Serrano
  * @author Benjamin Mueller
@@ -21,17 +31,38 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
+#include "scip/pub_expr.h"
+#include "scip/expr_var.h"
+#include "scip/expr_sum.h"
+#include "scip/expr_pow.h"
 #include "scip/heur_mpec.h"
 #include "scip/heur_subnlp.h"
-#include "nlpi/nlpi.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_nlp.h"
+#include "scip/pub_var.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_nlp.h"
+#include "scip/scip_nlpi.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include <string.h>
 
 
 #define HEUR_NAME             "mpec"
 #define HEUR_DESC             "regularization heuristic for convex and nonconvex MINLPs"
-#define HEUR_DISPCHAR         'W'
+#define HEUR_DISPCHAR         SCIP_HEURDISPCHAR_DIVING
 #define HEUR_PRIORITY         -2050000
 #define HEUR_FREQ             50
 #define HEUR_FREQOFS          0
@@ -120,10 +151,9 @@ SCIP_RETCODE createNLP(
          SCIPgetUpperbound(scip));
    }
 
-   SCIP_CALL( SCIPnlpiCreateProblem(heurdata->nlpi, &heurdata->nlpiprob, "MPEC-nlp") );
    SCIP_CALL( SCIPhashmapCreate(&heurdata->var2idx, SCIPblkmem(scip), SCIPgetNVars(scip)) );
-   SCIP_CALL( SCIPcreateNlpiProb(scip, heurdata->nlpi, SCIPgetNLPNlRows(scip), SCIPgetNNLPNlRows(scip),
-         heurdata->nlpiprob, heurdata->var2idx, NULL, cutoff, TRUE, FALSE) );
+   SCIP_CALL( SCIPcreateNlpiProblemFromNlRows(scip, heurdata->nlpi, &heurdata->nlpiprob, "MPEC-nlp", SCIPgetNLPNlRows(scip), SCIPgetNNLPNlRows(scip),
+         heurdata->var2idx, NULL, NULL, cutoff, TRUE, FALSE) );
 
    return SCIP_OKAY;
 }
@@ -145,12 +175,12 @@ SCIP_RETCODE freeNLP(
    assert(heurdata->var2idx != NULL);
 
    SCIPhashmapFree(&heurdata->var2idx);
-   SCIP_CALL( SCIPnlpiFreeProblem(heurdata->nlpi, &heurdata->nlpiprob) );
+   SCIP_CALL( SCIPfreeNlpiProblem(scip, heurdata->nlpi, &heurdata->nlpiprob) );
 
    return SCIP_OKAY;
 }
 
-/** add or updates the regularization constraints to the NLP; for a given parameter theta we add for each non-fixed
+/** adds or updates the regularization constraints to the NLP; for a given parameter theta we add for each non-fixed
  *  binary variable z the constraint z*(1-z) <= theta; if these constraint are already present we update the theta on
  *  the right-hand side
  */
@@ -172,41 +202,42 @@ SCIP_RETCODE addRegularScholtes(
    /* add or update regularization for each non-fixed binary variables */
    if( !update )
    {
-      SCIP_QUADELEM* quadelems;
-      SCIP_Real* linvals;
-      int* lininds;
+      SCIP_NLROW** nlrows;
 
-      SCIP_CALL( SCIPallocBufferArray(scip, &quadelems, 1) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &lininds, 1) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &linvals, 1) );
+      SCIP_CALL( SCIPallocBufferArray(scip, &nlrows, nbinvars) );
 
       for( i = 0; i < nbinvars; ++i )
       {
-         SCIP_VAR* var = binvars[i];
-         SCIP_Real lhs = -SCIPinfinity(scip);
-         SCIP_Real rhs = theta;
-         int nlininds = 1;
-         int nquadelems = 1;
-         int idx;
+         SCIP_Real one = 1.0;
+         SCIP_Real minusone = -1.0;
+         SCIP_EXPR* varexpr;
+         SCIP_EXPR* powexpr;
+         SCIP_EXPR* sumexpr;
+         char name[SCIP_MAXSTRLEN];
 
-         assert(var != NULL);
-         assert(heurdata->var2idx != NULL);
-         assert(SCIPhashmapExists(heurdata->var2idx, (void*)var));
-         idx = (int)(size_t)SCIPhashmapGetImage(heurdata->var2idx, (void*)var);
+         (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "%s_reg", SCIPvarGetName(binvars[i]));
 
-         lininds[0] = idx;
-         linvals[0] = 1.0;
-         quadelems->idx1 = lininds[0];
-         quadelems->idx2 = lininds[0];
-         quadelems->coef = -1.0;
+         /* -binvars[i]^2 */
+         SCIP_CALL( SCIPcreateExprVar(scip, &varexpr, binvars[i], NULL, NULL) );
+         SCIP_CALL( SCIPcreateExprPow(scip, &powexpr, varexpr, 2.0, NULL, NULL) );
+         SCIP_CALL( SCIPcreateExprSum(scip, &sumexpr, 1, &powexpr, &minusone, 0.0, NULL, NULL) );
 
-         SCIP_CALL( SCIPnlpiAddConstraints(heurdata->nlpi, heurdata->nlpiprob, 1, &lhs, &rhs, &nlininds,
-               &lininds, &linvals, &nquadelems, &quadelems, NULL, NULL, NULL) );
+         /* binvars[i] - binvars[i]^2 <= theta */
+         SCIP_CALL( SCIPcreateNlRow(scip, &nlrows[i], name, 0.0, 1, &binvars[i], &one, sumexpr, -SCIPinfinity(scip), theta, SCIP_EXPRCURV_CONCAVE) );
+
+         SCIP_CALL( SCIPreleaseExpr(scip, &sumexpr) );
+         SCIP_CALL( SCIPreleaseExpr(scip, &powexpr) );
+         SCIP_CALL( SCIPreleaseExpr(scip, &varexpr) );
       }
 
-      SCIPfreeBufferArray(scip, &linvals);
-      SCIPfreeBufferArray(scip, &lininds);
-      SCIPfreeBufferArray(scip, &quadelems);
+      SCIP_CALL( SCIPaddNlpiProblemNlRows(scip, heurdata->nlpi, heurdata->nlpiprob, heurdata->var2idx, nlrows, nbinvars) );
+
+      for( i = nbinvars-1; i >= 0; --i )
+      {
+         SCIP_CALL( SCIPreleaseNlRow(scip, &nlrows[i]) );
+      }
+
+      SCIPfreeBufferArray(scip, &nlrows);
    }
    else
    {
@@ -226,7 +257,7 @@ SCIP_RETCODE addRegularScholtes(
          indices[i] = startidx + i;
       }
 
-      SCIP_CALL( SCIPnlpiChgConsSides(heurdata->nlpi, heurdata->nlpiprob, nbinvars, indices, lhss, rhss) );
+      SCIP_CALL( SCIPchgNlpiConsSides(scip, heurdata->nlpi, heurdata->nlpiprob, nbinvars, indices, lhss, rhss) );
 
       SCIPfreeBufferArray(scip, &indices);
       SCIPfreeBufferArray(scip, &rhss);
@@ -236,7 +267,7 @@ SCIP_RETCODE addRegularScholtes(
    return SCIP_OKAY;
 }
 
-/** recursive helper function to count the number of nodes in a sub-tree */
+/** recursive helper function to count the number of nodes in a sub-expr */
 static
 int getExprSize(
    SCIP_EXPR*            expr                /**< expression */
@@ -256,38 +287,6 @@ int getExprSize(
    return 1 + sum;
 }
 
-/** returns the number of nodes in an expression tree */
-static
-int getExprtreeSize(
-   SCIP_EXPRTREE*        tree                /**< expression tree */
-   )
-{
-   if( tree == NULL )
-      return 0;
-   return getExprSize(SCIPexprtreeGetRoot(tree));
-}
-
-/** returns the available time limit that is left */
-static
-SCIP_RETCODE getTimeLeft(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_Real*            timeleft            /**< pointer to store the remaining time limit */
-   )
-{
-   SCIP_Real timelim;
-
-   assert(timeleft != NULL);
-
-   SCIP_CALL( SCIPgetRealParam(scip, "limits/time", &timelim) );
-
-   if( SCIPisInfinity(scip, timelim) )
-      *timeleft = timelim - SCIPgetSolvingTime(scip);
-   else
-      *timeleft = SCIPinfinity(scip);
-
-   return SCIP_OKAY;
-}
-
 /** main execution function of the MPEC heuristic */
 static
 SCIP_RETCODE heurExec(
@@ -297,7 +296,8 @@ SCIP_RETCODE heurExec(
    SCIP_RESULT*          result              /**< pointer to store the result */
    )
 {
-   SCIP_NLPSTATISTICS* nlpstatistics = NULL;
+   SCIP_NLPSTATISTICS nlpstatistics;
+   SCIP_NLPPARAM nlpparam = SCIP_NLPPARAM_DEFAULT(scip);  /*lint !e446*/
    SCIP_VAR** binvars = NULL;
    SCIP_Real* initguess = NULL;
    SCIP_Real* ubs = NULL;
@@ -318,7 +318,6 @@ SCIP_RETCODE heurExec(
    assert(result != NULL);
 
    SCIP_CALL( SCIPallocBufferArray(scip, &binvars, SCIPgetNBinVars(scip)) );
-   SCIP_CALL( SCIPnlpStatisticsCreate(SCIPblkmem(scip), &nlpstatistics) );
 
    /* collect all non-fixed binary variables */
    for( i = 0; i < SCIPgetNBinVars(scip); ++i )
@@ -346,9 +345,10 @@ SCIP_RETCODE heurExec(
       SCIP_NLROW* nlrow = SCIPgetNLPNlRows(scip)[i];
       assert(nlrow != NULL);
 
-      nlpcostperiter += 1.0 * SCIPnlrowGetNLinearVars(nlrow)
-               + 2.0 * SCIPnlrowGetNQuadElems(nlrow)
-               + 3.0 * getExprtreeSize(SCIPnlrowGetExprtree(nlrow));
+      nlpcostperiter += 1.0 * SCIPnlrowGetNLinearVars(nlrow);
+
+      if( SCIPnlrowGetExpr(nlrow) != NULL )
+         nlpcostperiter += 3.0 * getExprSize(SCIPnlrowGetExpr(nlrow));
    }
 
    /* set initial guess */
@@ -358,20 +358,17 @@ SCIP_RETCODE heurExec(
       initguess[i] = SCIPgetSolVal(scip, NULL, var);
       /* SCIPdebugMsg(scip, "set initial value for %s to %g\n", SCIPvarGetName(var), initguess[i]); */
    }
-   SCIP_CALL( SCIPnlpiSetInitialGuess(heurdata->nlpi, heurdata->nlpiprob, initguess, NULL, NULL, NULL) );
+   SCIP_CALL( SCIPsetNlpiInitialGuess(scip, heurdata->nlpi, heurdata->nlpiprob, initguess, NULL, NULL, NULL) );
 
    /* set parameters of NLP solver */
-   SCIP_CALL( SCIPnlpiSetRealPar(heurdata->nlpi, heurdata->nlpiprob, SCIP_NLPPAR_FEASTOL,
-         SCIPfeastol(scip) / 10.0) );
-   SCIP_CALL( SCIPnlpiSetRealPar(heurdata->nlpi, heurdata->nlpiprob, SCIP_NLPPAR_RELOBJTOL,
-         SCIPdualfeastol(scip) / 10.0) );
-   SCIP_CALL( SCIPnlpiSetIntPar(heurdata->nlpi, heurdata->nlpiprob, SCIP_NLPPAR_VERBLEVEL, 0) );
+   nlpparam.feastol /= 10.0;
+   nlpparam.opttol /= 10.0;
+   nlpparam.iterlimit = heurdata->maxnlpiter;
 
    /* main loop */
    for( i = 0; i < heurdata->maxiter && *result != SCIP_FOUNDSOL && nlpcostleft > 0.0 && !SCIPisStopped(scip); ++i )
    {
       SCIP_Real* primal = NULL;
-      SCIP_Real timeleft = SCIPinfinity(scip);
       SCIP_Bool binaryfeasible;
       SCIP_Bool regularfeasible;
       SCIP_NLPSOLSTAT solstat;
@@ -382,20 +379,9 @@ SCIP_RETCODE heurExec(
       /* add or update regularization */
       SCIP_CALL( addRegularScholtes(scip, heurdata, binvars, nbinvars, theta, i > 0) );
 
-      /* set working limits */
-      SCIP_CALL( getTimeLeft(scip, &timeleft) );
-      if( timeleft <= 0.0 )
-      {
-         SCIPdebugMsg(scip, "skip NLP solve; no time left\n");
-         break;
-      }
-
-      SCIP_CALL( SCIPnlpiSetRealPar(heurdata->nlpi, heurdata->nlpiprob, SCIP_NLPPAR_TILIM, timeleft) );
-      SCIP_CALL( SCIPnlpiSetIntPar(heurdata->nlpi, heurdata->nlpiprob, SCIP_NLPPAR_ITLIM, heurdata->maxnlpiter) );
-
       /* solve NLP */
-      SCIP_CALL( SCIPnlpiSolve(heurdata->nlpi, heurdata->nlpiprob) );
-      solstat = SCIPnlpiGetSolstat(heurdata->nlpi, heurdata->nlpiprob);
+      SCIP_CALL( SCIPsolveNlpiParam(scip, heurdata->nlpi, heurdata->nlpiprob, nlpparam) );
+      solstat = SCIPgetNlpiSolstat(scip, heurdata->nlpi, heurdata->nlpiprob);
 
       /* give up if an error occurred or no primal values are accessible */
       if( solstat > SCIP_NLPSOLSTAT_LOCINFEASIBLE )
@@ -405,11 +391,11 @@ SCIP_RETCODE heurExec(
       }
 
       /* update nlpcostleft */
-      SCIP_CALL( SCIPnlpiGetStatistics(heurdata->nlpi, heurdata->nlpiprob, nlpstatistics) );
-      nlpcostleft -= SCIPnlpStatisticsGetNIterations(nlpstatistics) * nlpcostperiter * nbinvars;
+      SCIP_CALL( SCIPgetNlpiStatistics(scip, heurdata->nlpi, heurdata->nlpiprob, &nlpstatistics) );
+      nlpcostleft -= nlpstatistics.niterations * nlpcostperiter * nbinvars;
       SCIPdebugMsg(scip, "nlpcostleft = %e\n", nlpcostleft);
 
-      SCIP_CALL( SCIPnlpiGetSolution(heurdata->nlpi, heurdata->nlpiprob, &primal, NULL, NULL, NULL, NULL) );
+      SCIP_CALL( SCIPgetNlpiSolution(scip, heurdata->nlpi, heurdata->nlpiprob, &primal, NULL, NULL, NULL, NULL) );
       assert(primal != NULL);
 
       /* check for binary feasibility */
@@ -417,7 +403,7 @@ SCIP_RETCODE heurExec(
       regularfeasible = TRUE;
       for( j = 0; j < nbinvars; ++j )
       {
-         int idx = (int)(size_t)SCIPhashmapGetImage(heurdata->var2idx, (void*)binvars[j]);
+         int idx = SCIPhashmapGetImageInt(heurdata->var2idx, (void*)binvars[j]);
          binaryfeasible = binaryfeasible && SCIPisFeasIntegral(scip, primal[idx]);
          regularfeasible = regularfeasible && SCIPisLE(scip, primal[idx] - SQR(primal[idx]), theta);
 
@@ -446,10 +432,7 @@ SCIP_RETCODE heurExec(
             SCIP_CALL( SCIPsetSolVal(scip, refpoint, var, val) );
          }
 
-         SCIP_CALL( getTimeLeft(scip, &timeleft) );
-         SCIP_CALL( SCIPapplyHeurSubNlp(scip, heurdata->subnlp, &subnlpresult, refpoint, -1LL, timeleft,
-               heurdata->minimprove, NULL,
-               NULL) );
+         SCIP_CALL( SCIPapplyHeurSubNlp(scip, heurdata->subnlp, &subnlpresult, refpoint, NULL) );
          SCIP_CALL( SCIPfreeSol(scip, &refpoint) );
          SCIPdebugMsg(scip, "result of sub-NLP call: %d\n", subnlpresult);
 
@@ -474,7 +457,7 @@ SCIP_RETCODE heurExec(
          for( j = 0; j < SCIPgetNVars(scip); ++j )
          {
             SCIP_VAR* var = SCIPgetVars(scip)[j];
-            assert(j == (int)(size_t)SCIPhashmapGetImage(heurdata->var2idx, (void*)var));
+            assert(j == SCIPhashmapGetImageInt(heurdata->var2idx, (void*)var));
             SCIP_CALL( SCIPsetSolVal(scip, sol, var, primal[j]) );
          }
 
@@ -494,7 +477,7 @@ SCIP_RETCODE heurExec(
       else if( solstat <= SCIP_NLPSOLSTAT_FEASIBLE && !binaryfeasible )
       {
          BMScopyMemoryArray(initguess, primal, SCIPgetNVars(scip));
-         SCIP_CALL( SCIPnlpiSetInitialGuess(heurdata->nlpi, heurdata->nlpiprob, primal, NULL, NULL, NULL) );
+         SCIP_CALL( SCIPsetNlpiInitialGuess(scip, heurdata->nlpi, heurdata->nlpiprob, primal, NULL, NULL, NULL) );
          SCIPdebugMsg(scip, "update theta from %g -> %g\n", theta, theta*heurdata->sigma);
 
          if( !reinit )
@@ -513,9 +496,9 @@ SCIP_RETCODE heurExec(
             {
                lbs[j] = 0.0;
                ubs[j] = 1.0;
-               indices[j] = (int)(size_t)SCIPhashmapGetImage(heurdata->var2idx, (void*)binvars[j]);
+               indices[j] = SCIPhashmapGetImageInt(heurdata->var2idx, (void*)binvars[j]);
             }
-            SCIP_CALL( SCIPnlpiChgVarBounds(heurdata->nlpi, heurdata->nlpiprob, nbinvars, indices, lbs, ubs) );
+            SCIP_CALL( SCIPchgNlpiVarBounds(scip, heurdata->nlpi, heurdata->nlpiprob, nbinvars, indices, lbs, ubs) );
             fixed = FALSE;
          }
       }
@@ -549,7 +532,7 @@ SCIP_RETCODE heurExec(
             /* fix binary variables */
             for( j = 0; j < nbinvars; ++j )
             {
-               int idx = (int)(size_t)SCIPhashmapGetImage(heurdata->var2idx, (void*)binvars[j]);
+               int idx = SCIPhashmapGetImageInt(heurdata->var2idx, (void*)binvars[j]);
                indices[j] = idx;
 
                if( SCIPisFeasLE(scip, primal[idx] - SQR(primal[idx]), theta) )
@@ -566,7 +549,7 @@ SCIP_RETCODE heurExec(
                }
             }
             SCIPdebugMsg(scip, "fixed %d binary variables\n", nfixedvars);
-            SCIP_CALL( SCIPnlpiChgVarBounds(heurdata->nlpi, heurdata->nlpiprob, nbinvars, indices, lbs, ubs) );
+            SCIP_CALL( SCIPchgNlpiVarBounds(scip, heurdata->nlpi, heurdata->nlpiprob, nbinvars, indices, lbs, ubs) );
             fixed = TRUE;
          }
          else
@@ -576,11 +559,11 @@ SCIP_RETCODE heurExec(
             /* set initial point */
             for( j = 0; j < nbinvars; ++j )
             {
-               int idx = (int)(size_t)SCIPhashmapGetImage(heurdata->var2idx, (void*)binvars[j]);
+               int idx = SCIPhashmapGetImageInt(heurdata->var2idx, (void*)binvars[j]);
                initguess[idx] = primal[idx] >= 0.5 ? 0.0 : 1.0;
                /* SCIPdebugMsg(scip, "update init guess for %s to %g\n", SCIPvarGetName(binvars[j]), initguess[idx]); */
             }
-            SCIP_CALL( SCIPnlpiSetInitialGuess(heurdata->nlpi, heurdata->nlpiprob, initguess, NULL, NULL, NULL) );
+            SCIP_CALL( SCIPsetNlpiInitialGuess(scip, heurdata->nlpi, heurdata->nlpiprob, initguess, NULL, NULL, NULL) );
             reinit = FALSE;
          }
       }
@@ -591,7 +574,6 @@ TERMINATE:
    SCIPfreeBufferArrayNull(scip, &ubs);
    SCIPfreeBufferArrayNull(scip, &lbs);
    SCIPfreeBufferArrayNull(scip, &initguess);
-   SCIPnlpStatisticsFree(SCIPblkmem(scip), &nlpstatistics);
    SCIPfreeBufferArray(scip, &binvars);
 
    return SCIP_OKAY;
@@ -663,7 +645,6 @@ static
 SCIP_DECL_HEUREXEC(heurExecMpec)
 {  /*lint --e{715}*/
    SCIP_HEURDATA* heurdata = SCIPheurGetData(heur);
-   SCIP_CONSHDLR* andhdlr = SCIPfindConshdlr(scip, "and");
    SCIP_CONSHDLR* sosonehdlr = SCIPfindConshdlr(scip, "SOS1");
    SCIP_CONSHDLR* sostwohdlr = SCIPfindConshdlr(scip, "SOS2");
 
@@ -678,8 +659,7 @@ SCIP_DECL_HEUREXEC(heurExecMpec)
       return SCIP_OKAY;
 
    /* skip heuristic if constraints without a nonlinear representation are present */
-   if( (andhdlr != NULL && SCIPconshdlrGetNConss(andhdlr) > 0) ||
-      (sosonehdlr != NULL && SCIPconshdlrGetNConss(sosonehdlr) > 0) ||
+   if( (sosonehdlr != NULL && SCIPconshdlrGetNConss(sosonehdlr) > 0) ||
       (sostwohdlr != NULL && SCIPconshdlrGetNConss(sostwohdlr) > 0) )
    {
       return SCIP_OKAY;

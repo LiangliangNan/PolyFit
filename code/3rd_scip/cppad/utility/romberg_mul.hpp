@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_ROMBERG_MUL_HPP
-# define CPPAD_ROMBERG_MUL_HPP
+# ifndef CPPAD_UTILITY_ROMBERG_MUL_HPP
+# define CPPAD_UTILITY_ROMBERG_MUL_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -148,11 +147,11 @@ if this is not the case.
 
 
 $children%
-	example/romberg_mul.cpp
+	example/utility/romberg_mul.cpp
 %$$
 $head Example$$
 $comment%
-	example/romberg_mul.cpp
+	example/utility/romberg_mul.cpp
 %$$
 The file
 $cref Rombergmul.cpp$$
@@ -278,7 +277,7 @@ public:
 		}
 		assert( Fm1.GetEcount() == (pow2+1) );
 
-		e = e + Fm1.GetEsum() * prod / Fm1.GetEcount();
+		e = e + Fm1.GetEsum() * prod / Float( double(Fm1.GetEcount()) );
 
 		return r;
 	}

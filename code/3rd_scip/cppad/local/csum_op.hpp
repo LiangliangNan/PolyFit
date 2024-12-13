@@ -1,9 +1,9 @@
-// $Id$
-# ifndef CPPAD_CSUM_OP_HPP
-# define CPPAD_CSUM_OP_HPP
+// $Id: csum_op.hpp 3845 2016-11-19 01:50:47Z bradbell $
+# ifndef CPPAD_LOCAL_CSUM_OP_HPP
+# define CPPAD_LOCAL_CSUM_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-16 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -13,7 +13,7 @@ A copy of this license is included in the COPYING file of this distribution.
 Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file csum_op.hpp
 Forward, reverse and sparsity calculations for cummulative summation.
@@ -375,7 +375,7 @@ This operation is
 
 \tparam Vector_set
 is the type used for vectors of sets. It can be either
-\c sparse_pack, \c sparse_set, or \c sparse_list.
+sparse_pack or sparse_list.
 
 \param i_z
 variable index corresponding to the result for this operation;
@@ -453,7 +453,7 @@ This operation is
 
 \tparam Vector_set
 is the type used for vectors of sets. It can be either
-\c sparse_pack, \c sparse_set, or \c sparse_list.
+sparse_pack or sparse_list.
 
 \param i_z
 variable index corresponding to the result for this operation;
@@ -529,7 +529,7 @@ This operation is
 
 \tparam Vector_set
 is the type used for vectors of sets. It can be either
-\c sparse_pack, \c sparse_set, or \c sparse_list.
+sparse_pack or sparse_list.
 
 \param i_z
 variable index corresponding to the result for this operation;
@@ -619,5 +619,5 @@ inline void reverse_sparse_hessian_csum_op(
 	}
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

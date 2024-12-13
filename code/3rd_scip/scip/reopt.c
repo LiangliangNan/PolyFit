@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   reopt.c
+ * @ingroup OTHER_CFILES
  * @brief  data structures and methods for collecting reoptimization information
  * @author Jakob Witzig
  */
@@ -44,7 +54,6 @@
 #include "scip/cons_setppc.h"
 #include "scip/cons_linear.h"
 #include "scip/clock.h"
-#include "scip/heur_reoptsols.h"
 #include "scip/history.h"
 #include "blockmemshell/memory.h"
 
@@ -82,9 +91,11 @@ SCIP_DECL_EVENTEXEC(eventExecReopt)
    oldbound = SCIPeventGetOldbound(event);
    newbound = SCIPeventGetNewbound(event);
 
-   assert( eventnode != NULL );
+   /* if we are called from the last node in the tree that is cut off, eventnode will be NULL and we do not have to store the bound changes */
+   if( eventnode == NULL )
+      return SCIP_OKAY;
 
-   /* skip if the node is not the focus nodes */
+   /* skip if the node is not the focus node */
    if( SCIPnodeGetType(eventnode) != SCIP_NODETYPE_FOCUSNODE || SCIPnodeGetDepth(eventnode) != SCIPgetEffectiveRootDepth(scip) )
       return SCIP_OKAY;
 
@@ -155,6 +166,27 @@ SCIP_DECL_EVENTEXITSOL(eventExitsolReopt)
 /*
  * memory growing methods for dynamically allocated arrays
  */
+
+/** ensures size for activeconss */
+static
+SCIP_RETCODE ensureActiveconssSize(
+   SCIP_REOPT*           reopt,              /**< reoptimization data structure */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   BMS_BLKMEM*           blkmem,             /**< block memory */
+   int                   num                 /**< minimum number of entries to store */
+   )
+{
+   if( reopt->nmaxactiveconss < num )
+   {
+      int newsize = SCIPsetCalcMemGrowSize(set, num + 1);
+
+      SCIP_ALLOC( BMSreallocBlockMemoryArray(blkmem, &reopt->activeconss, reopt->nmaxactiveconss, newsize) );
+      reopt->nmaxactiveconss = newsize;
+   }
+   assert(num <= reopt->nmaxactiveconss);
+
+   return SCIP_OKAY;
+}
 
 /** ensures, that sols[pos] array can store at least num entries */
 static
@@ -243,7 +275,7 @@ SCIP_RETCODE reopttreeCheckMemory(
 
       for( id = reopttree->reoptnodessize; id < (unsigned int)newsize; id++ )
       {
-         SCIP_CALL( SCIPqueueInsert(reopttree->openids, (void*) (size_t) id) ); /*lint !e571*/
+         SCIP_CALL( SCIPqueueInsertUInt(reopttree->openids, id) );
          reopttree->reoptnodes[id] = NULL;
       }
 
@@ -1172,7 +1204,7 @@ SCIP_RETCODE createReopttree(
    for( id = 1; id < reopttree->reoptnodessize; id++ )
    {
       reopttree->reoptnodes[id] = NULL;
-      SCIP_CALL( SCIPqueueInsert(reopttree->openids, (void*) (size_t) id) ); /*lint !e571*/
+      SCIP_CALL( SCIPqueueInsertUInt(reopttree->openids, id) );
    }
    assert(SCIPqueueNElems(reopttree->openids) == (int)(reopttree->reoptnodessize)-1);
 
@@ -1221,7 +1253,7 @@ SCIP_RETCODE clearReoptnodes(
 
       if( id > 0 )
       {
-         SCIP_CALL( SCIPqueueInsert(reopttree->openids, (void* ) (size_t ) id) ); /*lint !e571*/
+         SCIP_CALL( SCIPqueueInsertUInt(reopttree->openids, id) );
       }
    }
    assert(SCIPqueueNElems(reopttree->openids) == (int)(reopttree->reoptnodessize)-1);
@@ -1304,7 +1336,7 @@ SCIP_RETCODE checkMemGlbCons(
    assert(blkmem != NULL);
    assert(mem > 0);
 
-   if( mem > 0 )
+   if( mem > 0 ) /*lint !e774*/
    {
       if( reopt->glbconss == NULL )
       {
@@ -1314,7 +1346,6 @@ SCIP_RETCODE checkMemGlbCons(
 
          for( c = 0; c < reopt->allocmemglbconss; c++ )
             reopt->glbconss[c] = NULL;
-
       }
       else if( reopt->allocmemglbconss < mem )
       {
@@ -1336,31 +1367,34 @@ SCIP_RETCODE checkMemGlbCons(
 static
 SCIP_RETCODE cleanActiveConss(
    SCIP_REOPT*           reopt,              /**< reoptimization data structure */
-   SCIP_SET*             set                 /**< global SCIP settings */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   BMS_BLKMEM*           blkmem              /**< block memory */
    )
 {
-   int nentries;
    int i;
 
    assert(reopt != NULL);
+
+   /* exit if there are no active constraints */
+   if( reopt->nactiveconss == 0 )
+      return SCIP_OKAY;
+
+   SCIPsetDebugMsg(set, "Cleaning %d active conss.\n", reopt->nactiveconss);
    assert(reopt->activeconss != NULL);
+   assert(reopt->activeconssset != NULL);
+   assert(reopt->nactiveconss <= reopt->nmaxactiveconss);
 
-   nentries = SCIPhashmapGetNEntries(reopt->activeconss);
-
-   /* loop over all entries of the hashmap and reactivate deactivated constraints */
-   for( i = 0; i < nentries; i++ )
+   /* loop over all stored constraints and reactivate deactivated constraints */
+   for( i = 0; i < reopt->nactiveconss; i++ )
    {
-      SCIP_CONS* cons;
-      SCIP_HASHMAPENTRY* entry = SCIPhashmapGetEntry(reopt->activeconss, i);
-
-      if( entry == NULL )
-         continue;
-
-      cons = (SCIP_CONS*)SCIPhashmapEntryGetImage(entry);
-      assert(cons != NULL);
-
-      SCIP_CALL( SCIPreleaseCons(set->scip, &cons) );
+      assert(reopt->activeconss[i] != NULL);
+      assert(SCIPhashsetExists(reopt->activeconssset, reopt->activeconss[i]));
+      SCIP_CALL( SCIPconsRelease(&reopt->activeconss[i], blkmem, set) );
    }
+
+   /* also clean up hashset */
+   SCIPhashsetRemoveAll(reopt->activeconssset);
+   reopt->nactiveconss = 0;
 
    return SCIP_OKAY;
 }
@@ -1543,6 +1577,7 @@ SCIP_RETCODE storeCuts(
          SCIP_Real rhs;
          int ncutvars;
          int c;
+         SCIP_Bool storecut;
 
          ncutvars = SCIProwGetNLPNonz(lprows[r]);
          lhs = SCIProwGetLhs(lprows[r]);
@@ -1556,6 +1591,7 @@ SCIP_RETCODE storeCuts(
 
          cutvals = SCIProwGetVals(lprows[r]);
          cols = SCIProwGetCols(lprows[r]);
+         storecut = TRUE;
 
          SCIP_CALL( SCIPsetAllocBufferArray(set, &cutvars, ncutvars) );
 
@@ -1571,6 +1607,14 @@ SCIP_RETCODE storeCuts(
             scalar = 1.0;
 
             SCIP_CALL( SCIPvarGetOrigvarSum(&cutvars[c], &scalar, &constant) );
+
+            /* the cut contains an artificial variable that might not be present after modifying the problem */
+            if( cutvars[c] != NULL )
+            {
+               storecut = FALSE;
+               break;
+            }
+
             assert(cutvars[c] != NULL);
             assert(!SCIPsetIsZero(set, scalar));
 
@@ -1583,9 +1627,12 @@ SCIP_RETCODE storeCuts(
             cutvals[c] = cutvals[c]/scalar;
          }
 
-         /* add cut as a linear constraint */
-         SCIP_CALL( SCIPreoptnodeAddCons(reopt->reopttree->reoptnodes[id], set, blkmem, cutvars, cutvals, NULL,
-               lhs, rhs, ncutvars, REOPT_CONSTYPE_CUT, TRUE) );
+         if( storecut )
+         {
+            /* add cut as a linear constraint */
+            SCIP_CALL( SCIPreoptnodeAddCons(reopt->reopttree->reoptnodes[id], set, blkmem, cutvars, cutvals, NULL,
+                  lhs, rhs, ncutvars, REOPT_CONSTYPE_CUT, TRUE) );
+         }
 
          SCIPsetFreeBufferArray(set, &cutvars);
       }
@@ -1834,7 +1881,7 @@ SCIP_RETCODE deleteChildrenBelow(
    if( delnodeitself )
    {
       SCIP_CALL( reopttreeDeleteNode(reopttree, set, blkmem, id, exitsolve) );
-      SCIP_CALL( SCIPqueueInsert(reopttree->openids, (void*) (size_t) id) );
+      SCIP_CALL( SCIPqueueInsertUInt(reopttree->openids, id) );
    }
 
    return SCIP_OKAY;
@@ -1906,7 +1953,7 @@ SCIP_RETCODE shrinkNode(
          --reoptnodes[parentid]->nchilds;
 
          SCIP_CALL( reopttreeDeleteNode(reopt->reopttree, set, blkmem, id, TRUE) );
-         SCIP_CALL( SCIPqueueInsert(reopt->reopttree->openids, (void*) (size_t) id) );
+         SCIP_CALL( SCIPqueueInsertUInt(reopt->reopttree->openids, id) );
 
          *shrank = TRUE;
 
@@ -2154,6 +2201,7 @@ SCIP_RETCODE saveAncestorBranchings(
    return SCIP_OKAY;
 }
 
+
 /** transform a constraint with linear representation into reoptimization constraint data */
 static
 SCIP_RETCODE saveConsLinear(
@@ -2196,14 +2244,14 @@ SCIP_RETCODE saveConsLinear(
    /* get all variables, values, and sides */
    if( strcmp(SCIPconshdlrGetName(conshdlr), "linear") == 0 )
    {
-      vars = SCIPgetVarsLinear(NULL, cons);
-      vals = SCIPgetValsLinear(NULL, cons);
-      reoptconsdata->lhs = SCIPgetLhsLinear(NULL, cons);
-      reoptconsdata->rhs = SCIPgetRhsLinear(NULL, cons);
+      vars = SCIPgetVarsLinear(set->scip, cons);
+      vals = SCIPgetValsLinear(set->scip, cons);
+      reoptconsdata->lhs = SCIPgetLhsLinear(set->scip, cons);
+      reoptconsdata->rhs = SCIPgetRhsLinear(set->scip, cons);
    }
    else if( strcmp(SCIPconshdlrGetName(conshdlr), "logicor") == 0 )
    {
-      vars = SCIPgetVarsLogicor(NULL, cons);
+      vars = SCIPgetVarsLogicor(set->scip, cons);
 
       /* initialize values to 1.0 */
       SCIP_CALL( SCIPsetAllocBufferArray(set, &vals, reoptconsdata->nvars) );
@@ -2217,7 +2265,7 @@ SCIP_RETCODE saveConsLinear(
    }
    else if( strcmp(SCIPconshdlrGetName(conshdlr), "setppc") == 0 )
    {
-      vars = SCIPgetVarsSetppc(NULL, cons);
+      vars = SCIPgetVarsSetppc(set->scip, cons);
 
       /* initialize values to 1.0 */
       SCIP_CALL( SCIPsetAllocBufferArray(set, &vals, reoptconsdata->nvars) );
@@ -2226,7 +2274,7 @@ SCIP_RETCODE saveConsLinear(
       for( v = 0; v < reoptconsdata->nvars; v++ )
          vals[v] = 1.0;
 
-      switch( SCIPgetTypeSetppc(NULL, cons) ) {
+      switch( SCIPgetTypeSetppc(set->scip, cons) ) {
       case SCIP_SETPPCTYPE_PARTITIONING:
          reoptconsdata->lhs = 1.0;
          reoptconsdata->rhs = 1.0;
@@ -2706,7 +2754,7 @@ SCIP_RETCODE addNode(
       /* update the lowerbound if the new lower bound is finite */
       if( !SCIPsetIsInfinity(set, REALABS(lowerbound)) )
          reopt->reopttree->reoptnodes[id]->lowerbound = lowerbound;
-      SCIPsetDebugMsg(set, " -> reopttype: %u, lowerbound: %g\n", reopttype, reopt->reopttree->reoptnodes[id]->lowerbound);
+      SCIPsetDebugMsg(set, " -> reopttype: %d, lowerbound: %g\n", reopttype, reopt->reopttree->reoptnodes[id]->lowerbound);
 
 #ifdef SCIP_MORE_DEBUG
       {
@@ -2860,7 +2908,7 @@ SCIP_RETCODE addNode(
             reopt->reopttree->reoptnodes[id]->lowerbound = lowerbound;
 
          SCIPsetDebugMsg(set, "update node %d at ID %d:\n", 1, 0);
-         SCIPsetDebugMsg(set, " -> nvars: 0, ncons: 0, parentID: -, reopttype: %u, lowerbound: %g\n", reopttype,
+         SCIPsetDebugMsg(set, " -> nvars: 0, ncons: 0, parentID: -, reopttype: %d, lowerbound: %g\n", reopttype,
                reopt->reopttree->reoptnodes[id]->lowerbound);
 
          goto PSEUDO;
@@ -2893,7 +2941,7 @@ SCIP_RETCODE addNode(
             reopt->reopttree->reoptnodes[id]->lowerbound = lowerbound;
 
          SCIPsetDebugMsg(set, "update node %d at ID %d:\n", 1, 0);
-         SCIPsetDebugMsg(set, " -> nvars: 0, ncons: 0, parentID: -, reopttype: %u, lowerbound: %g\n", reopttype,
+         SCIPsetDebugMsg(set, " -> nvars: 0, ncons: 0, parentID: -, reopttype: %d, lowerbound: %g\n", reopttype,
                reopt->reopttree->reoptnodes[id]->lowerbound);
 
          break;
@@ -2926,7 +2974,7 @@ SCIP_RETCODE addNode(
             reopt->reopttree->reoptnodes[id]->lowerbound = lowerbound;
 
          SCIPsetDebugMsg(set, "update node %d at ID %d:\n", 1, 0);
-         SCIPsetDebugMsg(set, " -> nvars: 0, ncons: 0, parentID: -, reopttype: %u, lowerbound:%g \n", reopttype,
+         SCIPsetDebugMsg(set, " -> nvars: 0, ncons: 0, parentID: -, reopttype: %d, lowerbound:%g \n", reopttype,
                reopt->reopttree->reoptnodes[id]->lowerbound);
 
          break;
@@ -2956,7 +3004,7 @@ SCIP_RETCODE addNode(
       SCIP_Bool transintoorig;
 
       SCIPsetDebugMsg(set, "try to add node #%lld to the reopttree\n", SCIPnodeGetNumber(node));
-      SCIPsetDebugMsg(set, " -> reopttype = %u\n", reopttype);
+      SCIPsetDebugMsg(set, " -> reopttype = %d\n", reopttype);
 
       /* check if we really want to save this node:
        *   1. save the node if reopttype is at least SCIP_REOPTTYPE_INFSUBTREE
@@ -2981,7 +3029,7 @@ SCIP_RETCODE addNode(
       /* check if there are free slots to store the node */
       SCIP_CALL( reopttreeCheckMemory(reopt->reopttree, set, blkmem) );
 
-      id = (unsigned int) (size_t) SCIPqueueRemove(reopt->reopttree->openids);
+      id = SCIPqueueRemoveUInt(reopt->reopttree->openids);
 
       SCIPsetDebugMsg(set, " -> save at ID %u\n", id);
 
@@ -3080,7 +3128,7 @@ SCIP_RETCODE addNode(
          }
       }
 #endif
-   }
+   } /*lint !e438*/
 
    switch( reopttype )
    {
@@ -3552,9 +3600,8 @@ SCIP_RETCODE changeAncestorBranchings(
    BMS_BLKMEM*           blkmem,             /**< block memory */
    SCIP_NODE*            node,               /**< node of the branch and bound tree */
    unsigned int          id,                 /**< id of stored node */
-   SCIP_Bool             afterdualintobranching /**< convert all bound changes made directly after the first bound
-                                                 *   changes based on dual information into normal branchings
-                                                 */
+   SCIP_Bool             afterdualbranching  /**< convert all bound changes made directly after the first bound
+                                              *   changes based on dual information into normal branchings */
    )
 {
    SCIP_REOPTTREE* reopttree;
@@ -3628,7 +3675,7 @@ SCIP_RETCODE changeAncestorBranchings(
 #endif
    }
 
-   if( afterdualintobranching && reoptnode->nafterdualvars > 0 )
+   if( afterdualbranching && reoptnode->nafterdualvars > 0 )
    {
       /* check the memory to convert this bound changes into 'normal' */
       SCIP_CALL( reoptnodeCheckMemory(reopttree->reoptnodes[id], set, blkmem,
@@ -3710,6 +3757,7 @@ SCIP_RETCODE changeAncestorBranchings(
 
    return SCIP_OKAY;
 }
+
 
 /** add a constraint to ensure that at least one variable bound gets different */
 static
@@ -3793,11 +3841,17 @@ SCIP_RETCODE addSplitcons(
       if( boundtype == SCIP_BOUNDTYPE_LOWER )
       {
          newbound = reoptconsdata->vals[0] - 1.0;
+         /* if newbound > local upper bound, the variable cannot take the old value and we exit */
+         if( SCIPisGT(scip, newbound, oldub) )
+            return SCIP_OKAY;
          assert(SCIPisLE(scip, newbound, oldub));
       }
       else
       {
          newbound = reoptconsdata->vals[0] + 1.0;
+         /* if newbound < local lower bound, the variable cannot take the old value and we exit */
+         if( SCIPisLT(scip, newbound, oldlb) )
+            return SCIP_OKAY;
          assert(SCIPisGE(scip, newbound, oldlb));
       }
       boundtype = (SCIP_BOUNDTYPE) (1 - (int)boundtype);
@@ -3841,7 +3895,8 @@ SCIP_RETCODE addSplitcons(
       /* count number of binary, integer, and continuous variables */
       for( v = 0; v < reoptconsdata->nvars; v++ )
       {
-         switch ( SCIPvarGetType(reoptconsdata->vars[v]) ) {
+         switch ( SCIPvarGetType(reoptconsdata->vars[v]) )
+         {
          case SCIP_VARTYPE_BINARY:
             ++nbinvars;
             break;
@@ -3871,7 +3926,7 @@ SCIP_RETCODE addSplitcons(
          (void)SCIPsnprintf(name, SCIP_MAXSTRLEN, "reopt_dual");
       }
 
-      /* case 1: all variables are binary. we use a logic-or constraint. */
+      /* case 1: all variables are binary, we use a logic-or constraint. */
       if( reoptconsdata->nvars == nbinvars )
       {
          for( v = 0; v < reoptconsdata->nvars; v++ )
@@ -3907,7 +3962,7 @@ SCIP_RETCODE addSplitcons(
          SCIP_CALL( SCIPallocBufferArray(scip, &consvals, reoptconsdata->nvars) );
          SCIP_CALL( SCIPallocBufferArray(scip, &consboundtypes, reoptconsdata->nvars) );
 
-         /* iterate over all variable and transform them */
+         /* iterate over all variables and transform them */
          for( v = 0; v < reoptconsdata->nvars; v++ )
          {
             consvars[v] = reoptconsdata->vars[v];
@@ -3945,7 +4000,7 @@ SCIP_RETCODE addSplitcons(
          }
 
          /* create the constraints and add them to the corresponding nodes */
-         SCIP_CALL( SCIPcreateConsBounddisjunction(scip, &cons, name, reoptconsdata->nvars, consvars, consboundtypes,
+         SCIP_CALL( SCIPcreateConsBounddisjunctionRedundant(scip, &cons, name, reoptconsdata->nvars, consvars, consboundtypes,
                consvals, FALSE, FALSE, TRUE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE, TRUE) );
 
          /* free buffer memory */
@@ -4260,7 +4315,7 @@ SCIP_RETCODE addLocalConss(
       else
       {
          assert(reoptconsdata->boundtypes != NULL);
-         SCIP_CALL( SCIPcreateConsBounddisjunction(scip, &cons, name, reoptconsdata->nvars, reoptconsdata->vars, reoptconsdata->boundtypes,
+         SCIP_CALL( SCIPcreateConsBounddisjunctionRedundant(scip, &cons, name, reoptconsdata->nvars, reoptconsdata->vars, reoptconsdata->boundtypes,
             reoptconsdata->vals, FALSE, FALSE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, TRUE) );
       }
 #ifdef SCIP_DEBUG_CONSS
@@ -4288,6 +4343,9 @@ void resetStats(
    reopt->reopttree->ninfnodes = 0;
    reopt->reopttree->nprunednodes = 0;
    reopt->reopttree->ncutoffreoptnodes = 0;
+
+   if( reopt->dualreds != NULL )
+      reopt->dualreds->nvars = 0;
 }
 
 /** check the stored bound changes of all child nodes for redundancy and infeasibility
@@ -4495,7 +4553,7 @@ SCIP_RETCODE dryBranch(
 
          /* delete the redundant node */
          SCIP_CALL( reopttreeDeleteNode(reopt->reopttree, set, blkmem, redchilds[nredchilds-1], TRUE) );
-         SCIP_CALL( SCIPqueueInsert(reopt->reopttree->openids, (void*) (size_t) redchilds[nredchilds-1]) );
+         SCIP_CALL( SCIPqueueInsertUInt(reopt->reopttree->openids, redchilds[nredchilds-1]) );
 
          /* decrease the number of redundant nodes */
          --nredchilds;
@@ -5069,7 +5127,10 @@ SCIP_RETCODE SCIPreoptCreate(
    (*reopt)->addedconsssize = 0;
    (*reopt)->glblb = NULL;
    (*reopt)->glbub = NULL;
+   (*reopt)->nactiveconss = 0;
+   (*reopt)->nmaxactiveconss = 0;
    (*reopt)->activeconss = NULL;
+   (*reopt)->activeconssset = NULL;
 
    SCIP_ALLOC( BMSallocBlockMemoryArray(blkmem, &(*reopt)->varhistory, (*reopt)->runsize) );
    SCIP_ALLOC( BMSallocBlockMemoryArray(blkmem, &(*reopt)->prevbestsols, (*reopt)->runsize) );
@@ -5100,8 +5161,8 @@ SCIP_RETCODE SCIPreoptCreate(
    eventhdlr = NULL;
 
    /* include event handler into SCIP */
-   SCIP_CALL( SCIPeventhdlrCreate(&eventhdlr, EVENTHDLR_NAME, EVENTHDLR_DESC, NULL, NULL, NULL, NULL, eventInitsolReopt,
-         eventExitsolReopt, NULL, eventExecReopt, NULL) );
+   SCIP_CALL( SCIPeventhdlrCreate(&eventhdlr, set, EVENTHDLR_NAME, EVENTHDLR_DESC, NULL, NULL, NULL, NULL,
+      eventInitsolReopt, eventExitsolReopt, NULL, eventExecReopt, NULL) );
    SCIP_CALL( SCIPsetIncludeEventhdlr(set, eventhdlr) );
    assert(eventhdlr != NULL);
 
@@ -5127,9 +5188,11 @@ SCIP_RETCODE SCIPreoptReleaseData(
       }
 
       BMSfreeBlockMemoryArray(blkmem, &reopt->addedconss, reopt->addedconsssize);
+      reopt->naddedconss = 0;
+      reopt->addedconsssize = 0;
    }
 
-   SCIP_CALL( cleanActiveConss(reopt, set) );
+   SCIP_CALL( cleanActiveConss(reopt, set, blkmem) );
 
    return SCIP_OKAY;
 }
@@ -5217,7 +5280,6 @@ SCIP_RETCODE SCIPreoptFree(
             BMSfreeBlockMemory(blkmem, &(*reopt)->glbconss[c]); /*lint !e866*/
             --(*reopt)->nglbconss;
          }
-
       }
       assert((*reopt)->nglbconss == 0);
 
@@ -5228,8 +5290,12 @@ SCIP_RETCODE SCIPreoptFree(
    /* clocks */
    SCIPclockFree(&(*reopt)->savingtime);
 
-   SCIPhashmapFree(&(*reopt)->activeconss);
-   (*reopt)->activeconss = NULL;
+   /* the hashmap need not to be exist, e.g., if the problem was solved during presolving */
+   if( (*reopt)->activeconssset != NULL )
+   {
+      SCIPhashsetFree(&(*reopt)->activeconssset, blkmem);
+   }
+   BMSfreeBlockMemoryArrayNull(blkmem, &(*reopt)->activeconss, (*reopt)->nmaxactiveconss);
 
    if( (*reopt)->glblb != NULL )
    {
@@ -5722,6 +5788,10 @@ SCIP_RETCODE SCIPreoptReset(
       cons = reopt->addedconss[c];
       assert(cons != NULL);
 
+#ifdef SCIP_MORE_DEBUG
+      SCIPsetDebugMsg(set, "release cons <%s> from reoptimization data\n", SCIPconsGetName(cons));
+#endif
+
       SCIP_CALL( SCIPconsRelease(&cons, blkmem, set) );
       reopt->addedconss[c] = NULL;
    }
@@ -6117,7 +6187,7 @@ SCIP_RETCODE SCIPreoptCheckCutoff(
             }
             else
             {
-               assert(SCIP_LPSOLSTAT_OBJLIMIT || SCIP_LPSOLSTAT_OPTIMAL || SCIP_LPSOLSTAT_NOTSOLVED);
+               assert( lpsolstat == SCIP_LPSOLSTAT_OBJLIMIT || lpsolstat == SCIP_LPSOLSTAT_OPTIMAL || lpsolstat == SCIP_LPSOLSTAT_NOTSOLVED);
 
                /* delete strong branching information if some exists */
                deleteLastDualBndchgs(reopt);
@@ -6160,7 +6230,6 @@ SCIP_RETCODE SCIPreoptCheckCutoff(
 
          /* if the node was created by branch_nodereopt, nothing happens */
          SCIP_CALL( addNode(reopt, set, lp, blkmem, node, SCIP_REOPTTYPE_PRUNED, FALSE, isrootnode, lowerbound) );
-
       }
       break;
 
@@ -6702,7 +6771,7 @@ SCIP_RETCODE SCIPreoptApplyCompression(
    for( r = 0; r < nrepresentatives; r++ )
    {
       /* get an empty slot*/
-      id = (unsigned int) (size_t) SCIPqueueRemove(reopttree->openids);
+      id = SCIPqueueRemoveUInt(reopttree->openids);
       assert(1 <= id && id < reopttree->reoptnodessize);
       assert(reopttree->reoptnodes[id] == NULL);
 
@@ -6775,8 +6844,7 @@ SCIP_RETCODE transformDualredsToLinear(
    SCIP_SET*             set,                /**< global SCIP settings */
    BMS_BLKMEM*           blkmem,             /**< block memory */
    SCIP_REOPTCONSDATA*   consdata,           /**< reoptimization constraint data that should represent to set of solutions
-                                               *  pruned by the dual reductions
-                                               */
+                                              *  pruned by the dual reductions */
    SCIP_REOPTCONSDATA*   dualreds            /**< set of dual reductions */
    )
 {
@@ -6838,8 +6906,7 @@ SCIP_RETCODE transformDualredsToBounddisjunction(
    SCIP_SET*             set,                /**< global SCIP settings */
    BMS_BLKMEM*           blkmem,             /**< block memory */
    SCIP_REOPTCONSDATA*   consdata,           /**< reoptimization constraint data that should represent to set of solutions
-                                               *  pruned by the dual reductions
-                                               */
+                                              *  pruned by the dual reductions */
    SCIP_REOPTCONSDATA*   dualreds            /**< set of dual reductions */
    )
 {
@@ -6942,7 +7009,7 @@ SCIP_RETCODE SCIPreoptSplitRoot(
 
    /* ensure that two free slots are available  */
    SCIP_CALL( reopttreeCheckMemory(reopttree, set, blkmem) );
-   id = (unsigned int) (size_t) SCIPqueueRemove(reopttree->openids);
+   id = SCIPqueueRemoveUInt(reopttree->openids);
 
    assert(0 < id && id < reopt->reopttree->reoptnodessize);
    assert(reoptnodes[id] == NULL || reoptnodes[id]->nvars == 0);
@@ -7004,7 +7071,7 @@ SCIP_RETCODE SCIPreoptSplitRoot(
 
       /* ensure that there is a free slots */
       SCIP_CALL( reopttreeCheckMemory(reopttree, set, blkmem) );
-      id = (unsigned int) (size_t) SCIPqueueRemove(reopttree->openids);
+      id = SCIPqueueRemoveUInt(reopttree->openids);
       assert(0 < id && id < reopt->reopttree->reoptnodessize);
 
       /* 1. create the node
@@ -7101,7 +7168,7 @@ SCIP_RETCODE SCIPreoptSplitRoot(
       {
          /* ensure that two free slots are available  */
          SCIP_CALL( reopttreeCheckMemory(reopttree, set, blkmem) );
-         id = (unsigned int) (size_t) SCIPqueueRemove(reopttree->openids);
+         id = SCIPqueueRemoveUInt(reopttree->openids);
 
          assert(0 < id && id < reopt->reopttree->reoptnodessize);
          assert(reoptnodes[id] == NULL || reoptnodes[id]->nvars == 0);
@@ -7285,7 +7352,7 @@ SCIP_RETCODE SCIPreoptDeleteNode(
    assert(blkmem != NULL);
 
    SCIP_CALL( reopttreeDeleteNode(reopt->reopttree, set, blkmem, id, TRUE) );
-   SCIP_CALL( SCIPqueueInsert(reopt->reopttree->openids, (void*) (size_t) id) );
+   SCIP_CALL( SCIPqueueInsertUInt(reopt->reopttree->openids, id) );
 
    return SCIP_OKAY;
 }
@@ -7708,8 +7775,11 @@ SCIP_RETCODE SCIPreoptApplyGlbConss(
       SCIP_CALL( SCIPaddCons(scip, cons) );
 
       /* remember the constraint for re-activation */
-      assert(!SCIPhashmapExists(reopt->activeconss, (void*)cons));
-      SCIP_CALL( SCIPhashmapInsert(reopt->activeconss, (void*)cons, (void*)cons) );
+      assert(!SCIPhashsetExists(reopt->activeconssset, (void*)cons));
+      SCIP_CALL( SCIPhashsetInsert(reopt->activeconssset, blkmem, (void*)cons) );
+      SCIP_CALL( ensureActiveconssSize(reopt, set, blkmem, reopt->nactiveconss + 1) );
+      assert(reopt->nactiveconss < reopt->nmaxactiveconss);
+      reopt->activeconss[reopt->nactiveconss++] = cons;
 
       /* don't release the constraint because we would need to capture the constraint anyway */
 
@@ -7810,7 +7880,7 @@ SCIP_RETCODE SCIPreoptApplyCuts(
 
          if( id == 0 )
          {
-            SCIP_CALL( SCIProwCreate(&cut, blkmem, set, stat, lp, cutname, ncols, cols, vals, cons->lhs, cons->rhs,
+            SCIP_CALL( SCIProwCreate(&cut, blkmem, set, stat, cutname, ncols, cols, vals, cons->lhs, cons->rhs,
                   SCIP_ROWORIGINTYPE_REOPT, NULL, FALSE, FALSE, TRUE) );
             SCIP_CALL( SCIPcutpoolAddRow(cutpool, blkmem, set, stat, lp, cut) );
 
@@ -7819,7 +7889,7 @@ SCIP_RETCODE SCIPreoptApplyCuts(
          }
          else
          {
-            SCIP_CALL( SCIProwCreate(&cut, blkmem, set, stat, lp, cutname, ncols, cols, vals, cons->lhs, cons->rhs,
+            SCIP_CALL( SCIProwCreate(&cut, blkmem, set, stat, cutname, ncols, cols, vals, cons->lhs, cons->rhs,
                   SCIP_ROWORIGINTYPE_REOPT, NULL, TRUE, TRUE, TRUE) );
             SCIP_CALL( SCIPsepastoreAddCut(sepastore, blkmem, set, stat, eventqueue, eventfilter, lp, cut, FALSE, root,
                   &infeasible) );
@@ -7831,7 +7901,7 @@ SCIP_RETCODE SCIPreoptApplyCuts(
          SCIP_CALL( SCIProwRelease(&cut, blkmem, set, lp) );
 
          if( infeasible )
-            SCIPsetDebugMsg(set, "cut %d stored at node %llu (id: %u) is infeasible.\n", c, SCIPnodeGetNumber(node), id);
+            SCIPsetDebugMsg(set, "cut %d stored at node %" SCIP_LONGINT_FORMAT " (id: %u) is infeasible.\n", c, SCIPnodeGetNumber(node), id);
          else
             ++ncuts;
 
@@ -8019,12 +8089,12 @@ SCIP_RETCODE SCIPreoptnodeAddCons(
    assert(set != NULL);
    assert(vars != NULL);
    assert(bounds != NULL);
-   assert(REOPT_CONSTYPE_CUT || boundtypes != NULL);
+   assert(constype == REOPT_CONSTYPE_CUT || boundtypes != NULL);
    assert(nvars > 0);
    assert(blkmem != NULL);
 
    /* the constraint can be interpreted as a normal bound change */
-   if( nvars == 1 )
+   if( nvars == 1 && constype != REOPT_CONSTYPE_CUT )
    {
       assert(constype == REOPT_CONSTYPE_DUALREDS || constype == REOPT_CONSTYPE_INFSUBTREE);
 
@@ -8041,6 +8111,7 @@ SCIP_RETCODE SCIPreoptnodeAddCons(
          SCIP_BOUNDTYPE newboundtype;
 
          assert(SCIPvarGetType(vars[0]) == SCIP_VARTYPE_INTEGER);
+         assert(boundtypes != NULL);
 
          if( boundtypes[0] == SCIP_BOUNDTYPE_UPPER )
          {
@@ -8101,6 +8172,10 @@ SCIP_RETCODE SCIPreoptAddCons(
    assert(set != NULL);
    assert(blkmem != NULL);
    assert(cons != NULL);
+
+#ifdef SCIP_MORE_DEBUG
+   SCIPsetDebugMsg(set, "add cons <%s> to reoptimization data\n", SCIPconsGetName(cons));
+#endif
 
    /* check memory */
    if( reopt->addedconsssize == 0 )
@@ -8177,6 +8252,7 @@ SCIP_RETCODE SCIPreoptSaveGlobalBounds(
  */
 SCIP_RETCODE SCIPreoptSaveActiveConss(
    SCIP_REOPT*           reopt,              /**< reoptimization data structure */
+   SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_PROB*            transprob,          /**< transformed problem data */
    BMS_BLKMEM*           blkmem              /**< block memory */
    )
@@ -8188,20 +8264,27 @@ SCIP_RETCODE SCIPreoptSaveActiveConss(
    assert(reopt != NULL);
    assert(transprob != NULL);
    assert(reopt->activeconss == NULL);
+   assert(reopt->activeconssset == NULL);
+   assert(reopt->nactiveconss == 0);
+   assert(reopt->nmaxactiveconss == 0);
 
    conss = transprob->conss;
    nconss = transprob->nconss;
 
-   /* create hashmap */
-   SCIP_CALL( SCIPhashmapCreate(&reopt->activeconss, blkmem, nconss) );
+   SCIPsetDebugMsg(set, "save %d active conss\n", nconss);
+
+   /* create hashset and array */
+   SCIP_CALL( SCIPhashsetCreate(&reopt->activeconssset, blkmem, nconss) );
+   SCIP_CALL( ensureActiveconssSize(reopt, set, blkmem, nconss) );
 
    for( i = 0; i < nconss; i++ )
    {
       assert(SCIPconsIsActive(conss[i]));
-      assert(!SCIPhashmapExists(reopt->activeconss, (void*)conss[i]));
+      assert(!SCIPhashsetExists(reopt->activeconssset, (void*)conss[i]));
 
       SCIPconsCapture(conss[i]);
-      SCIP_CALL( SCIPhashmapInsert(reopt->activeconss, (void*)conss[i], (void*)conss[i]) );
+      SCIP_CALL( SCIPhashsetInsert(reopt->activeconssset, blkmem, (void*)conss[i]) );
+      reopt->activeconss[reopt->nactiveconss++] = conss[i];
    }
 
    return SCIP_OKAY;
@@ -8264,25 +8347,24 @@ SCIP_RETCODE SCIPreoptResetActiveConss(
    SCIP_STAT*            stat                /**< dynamic SCIP statistics */
    )
 {
-   int nentries;
    int i;
 
    assert(reopt != NULL);
-   assert(reopt->activeconss != NULL);
+   assert(reopt->activeconss != NULL || reopt->nmaxactiveconss == 0);
+   assert(reopt->activeconssset != NULL || reopt->nmaxactiveconss == 0);
+   assert(reopt->nmaxactiveconss >= 0);
 
-   nentries = SCIPhashmapGetNEntries(reopt->activeconss);
+   SCIPsetDebugMsg(set, "Reset %d active conss.\n", reopt->nactiveconss);
 
-   /* loop over all entries of the hashmap and reactivate deactivated constraints */
-   for( i = 0; i < nentries; i++ )
+   /* loop over all storeed active constraints and reactivate deactivated constraints */
+   for( i = 0; i < reopt->nactiveconss; i++ )
    {
       SCIP_CONS* cons;
-      SCIP_HASHMAPENTRY* entry = SCIPhashmapGetEntry(reopt->activeconss, i);
 
-      if( entry == NULL )
-         continue;
-
-      cons = (SCIP_CONS*)SCIPhashmapEntryGetImage(entry);
+      assert(reopt->activeconss != NULL);
+      cons = reopt->activeconss[i];
       assert(cons != NULL);
+      assert(SCIPhashsetExists(reopt->activeconssset, cons));
 
       /* it can happen that the constraint got globally deleted */
       if( SCIPconsIsDeleted(cons) )
@@ -8310,9 +8392,9 @@ SCIP_Bool SCIPreoptConsCanBeDeleted(
    assert(reopt != NULL);
    assert(cons != NULL);
 
-   /* the hashmap is not initialized, we can delete all constraints */
+   /* the hashset is not initialized, we can delete all constraints */
    if( reopt->activeconss == NULL )
       return TRUE;
 
-   return !SCIPhashmapExists(reopt->activeconss, (void*)cons);
+   return !SCIPhashsetExists(reopt->activeconssset, (void*)cons);
 }

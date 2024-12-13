@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   sepa_closecuts.c
+ * @ingroup DEFPLUGINS_SEPA
  * @brief  closecuts meta separator
  * @author Marc Pfetsch
  *
@@ -49,10 +59,27 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
+#include "scip/pub_message.h"
+#include "scip/pub_sepa.h"
+#include "scip/pub_tree.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cut.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sepa.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
+#include "scip/scip_tree.h"
+#include "scip/sepa_closecuts.h"
 #include <string.h>
 
-#include "scip/sepa_closecuts.h"
 
 
 #define SEPA_NAME              "closecuts"
@@ -214,6 +241,8 @@ SCIP_DECL_SEPAEXITSOL(sepaExitsolClosecuts)
       SCIP_CALL( SCIPfreeSol(scip, &sepadata->sepasol) );
       sepadata->triedRelint = FALSE;
    }
+   sepadata->discardnode = -1;
+   sepadata->nunsuccessful = 0;
 
    return SCIP_OKAY;
 }
@@ -298,7 +327,11 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpClosecuts)
          else
          {
             /* determine iteration limit; the number of iterations in the root is only set after its solution, but the
-             * total number of LP iterations is always updated. */
+             * total number of LP iterations is always updated.
+             * here we use SCIPgetDepth instead of the depth argument passed to the callback because if we are not in
+             * the root node but depth is 0 (i.e. if we want us to behave as if we are in the root node regarding
+             * limits) then using the total number of iterations so far is a gross overestimation
+             */
             if ( SCIPgetDepth(scip) == 0 )
                nlpiters = SCIPgetNLPIterations(scip);
             else
@@ -336,7 +369,7 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpClosecuts)
          SCIP_Bool cutoff;
 
          noldcuts = SCIPgetNCuts(scip);
-         isroot = (SCIP_Bool) (SCIPgetDepth(scip) == 0);
+         isroot = (SCIP_Bool) (depth == 0);
 
          /* separate solution via other separators */
          SCIP_CALL( SCIPseparateSol(scip, point, isroot, TRUE, FALSE, &delayed, &cutoff) );

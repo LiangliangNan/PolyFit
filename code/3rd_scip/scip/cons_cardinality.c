@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   cons_cardinality.c
+ * @ingroup DEFPLUGINS_CONS
  * @brief  constraint handler for cardinality constraints
  * @author Tobias Fischer
  *
@@ -33,13 +43,36 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/cons_cardinality.h"
-#include "scip/cons_linear.h"
 #include "scip/cons_knapsack.h"
-#include <string.h>
+#include "scip/cons_linear.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_event.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_cut.h"
+#include "scip/scip_event.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include "scip/scip_var.h"
 #include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* constraint handler properties */
 #define CONSHDLR_NAME          "cardinality"
@@ -69,6 +102,8 @@
 /* event handler properties */
 #define EVENTHDLR_NAME         "cardinality"
 #define EVENTHDLR_DESC         "bound change event handler for cardinality constraints"
+
+#define EVENTHDLR_EVENT_TYPE   (SCIP_EVENTTYPE_BOUNDCHANGED | SCIP_EVENTTYPE_GBDCHANGED)
 
 
 /** constraint data for cardinality constraints */
@@ -143,7 +178,7 @@ SCIP_RETCODE catchVarEventCardinality(
    (*eventdata)->pos = (unsigned int)pos;
 
    /* catch bound change events of each variable */
-   SCIP_CALL( SCIPcatchVarEvent(scip, var, SCIP_EVENTTYPE_BOUNDCHANGED, eventhdlr, *eventdata, NULL) );
+   SCIP_CALL( SCIPcatchVarEvent(scip, var, EVENTHDLR_EVENT_TYPE, eventhdlr, *eventdata, NULL) );
    SCIP_CALL( SCIPcatchVarEvent(scip, indvar, SCIP_EVENTTYPE_BOUNDCHANGED, eventhdlr, *eventdata, NULL) );
 
    return SCIP_OKAY;
@@ -167,7 +202,7 @@ SCIP_RETCODE dropVarEventCardinality(
    assert(eventdata != NULL);
 
    /* drop bound change events of each variable */
-   SCIP_CALL( SCIPdropVarEvent(scip, var, SCIP_EVENTTYPE_BOUNDCHANGED, eventhdlr, *eventdata, -1) );
+   SCIP_CALL( SCIPdropVarEvent(scip, var, EVENTHDLR_EVENT_TYPE, eventhdlr, *eventdata, -1) );
    SCIP_CALL( SCIPdropVarEvent(scip, indvar, SCIP_EVENTTYPE_BOUNDCHANGED, eventhdlr, *eventdata, -1) );
 
    /* free event data of indicator variable */
@@ -322,8 +357,8 @@ SCIP_RETCODE lockVariableCardinality(
    assert(var != NULL);
 
    /* rounding down == bad if lb < 0, rounding up == bad if ub > 0 */
-   SCIP_CALL( SCIPlockVarCons(scip, var, cons, SCIPisFeasNegative(scip, SCIPvarGetLbLocal(var)),
-         SCIPisFeasPositive(scip, SCIPvarGetUbLocal(var))) );
+   SCIP_CALL( SCIPlockVarCons(scip, var, cons, SCIPisFeasNegative(scip, SCIPvarGetLbGlobal(var)),
+         SCIPisFeasPositive(scip, SCIPvarGetUbGlobal(var))) );
    SCIP_CALL( SCIPlockVarCons(scip, indvar, cons, TRUE, TRUE) );
 
    return SCIP_OKAY;
@@ -343,8 +378,8 @@ SCIP_RETCODE unlockVariableCardinality(
    assert(var != NULL);
 
    /* rounding down == bad if lb < 0, rounding up == bad if ub > 0 */
-   SCIP_CALL( SCIPunlockVarCons(scip, var, cons, SCIPisFeasNegative(scip, SCIPvarGetLbLocal(var)),
-         SCIPisFeasPositive(scip, SCIPvarGetUbLocal(var))) );
+   SCIP_CALL( SCIPunlockVarCons(scip, var, cons, SCIPisFeasNegative(scip, SCIPvarGetLbGlobal(var)),
+         SCIPisFeasPositive(scip, SCIPvarGetUbGlobal(var))) );
    SCIP_CALL( SCIPunlockVarCons(scip, indvar, cons, TRUE, TRUE) );
 
    return SCIP_OKAY;
@@ -545,6 +580,7 @@ SCIP_RETCODE addVarCardinality(
    /* move other variables, if necessary */
    for( pos = consdata->nvars; pos >= 1; --pos )
    {
+      /* coverity[var_deref_model] */
       if( consdata->weights[pos-1] > weight )
       {
          consdata->vars[pos] = consdata->vars[pos-1];
@@ -767,7 +803,7 @@ SCIP_RETCODE polishPrimalSolution(
 
 /** unmark variables that are marked for propagation */
 static
-SCIP_RETCODE consdataUnmarkEventdataVars(
+void consdataUnmarkEventdataVars(
    SCIP_CONSDATA*        consdata            /**< constraint data */
    )
 {
@@ -787,8 +823,6 @@ SCIP_RETCODE consdataUnmarkEventdataVars(
       eventdata->varmarked = FALSE;
       eventdata->indvarmarked = FALSE;
    }
-
-   return SCIP_OKAY;
 }
 
 /** perform one presolving round
@@ -841,7 +875,7 @@ SCIP_RETCODE presolRoundCardinality(
    /* reset number of events stored for propagation, since presolving already performs a
     * complete propagation of all variables */
    consdata->neventdatascurrent = 0;
-   SCIP_CALL( consdataUnmarkEventdataVars(consdata) );
+   consdataUnmarkEventdataVars(consdata);
 
    j = 0;
    allvarsbinary = TRUE;
@@ -1350,7 +1384,7 @@ SCIP_RETCODE branchUnbalancedCardinality(
 
       /* calculate node selection and objective estimate for node 2 */
       nodeselest = 0.0;
-      objest = 0.0;
+      objest = SCIPgetLocalTransEstimate(scip);
       cnt = 0;
       for( j = 0; j < nvars; ++j )
       {
@@ -1359,16 +1393,14 @@ SCIP_RETCODE branchUnbalancedCardinality(
             && !SCIPisFeasNegative(scip, SCIPvarGetUbLocal(vars[j]))
             )
          {
+            objest += SCIPcalcChildEstimateIncrease(scip, vars[j], SCIPgetSolVal(scip, sol, vars[j]), 0.0);
             nodeselest += SCIPcalcNodeselPriority(scip, vars[j], SCIP_BRANCHDIR_DOWNWARDS, 0.0);
-            objest += SCIPcalcChildEstimate(scip, vars[j], 0.0);
             ++cnt;
          }
       }
+      assert(objest >= SCIPgetLocalTransEstimate(scip));
       assert(cnt == nvars - (1 + branchnnonzero));
       assert(cnt > 0);
-
-      /* take the average of the individual estimates */
-      objest = objest / (SCIP_Real) cnt;
 
       /* create node 2 */
       SCIP_CALL( SCIPcreateChild(scip, &node2, nodeselest, objest) );
@@ -1569,17 +1601,15 @@ SCIP_RETCODE branchBalancedCardinality(
          SCIP_Real objest;
 
          nodeselest = 0.0;
-         objest = 0.0;
+         objest = SCIPgetLocalTransEstimate(scip);
 
          /* calculate node selection and objective estimate for node */
          for( j = 0; j <= ind; ++j )
          {
+            objest += SCIPcalcChildEstimateIncrease(scip, branchvars[j], SCIPgetSolVal(scip, sol, branchvars[j]), 0.0);
             nodeselest += SCIPcalcNodeselPriority(scip, branchvars[j], SCIP_BRANCHDIR_DOWNWARDS, 0.0);
-            objest += SCIPcalcChildEstimate(scip, branchvars[j], 0.0);
          }
-
-         /* take the average of the individual estimates */
-         objest = objest/(SCIP_Real)(ind + 1.0);
+         assert( objest >= SCIPgetLocalTransEstimate(scip) );
 
          /* create node 1 */
          SCIP_CALL( SCIPcreateChild(scip, &node1, nodeselest, objest) );
@@ -1596,7 +1626,7 @@ SCIP_RETCODE branchBalancedCardinality(
          SCIP_CALL( SCIPcreateChild(scip, &node1, 0.0, SCIPgetLocalTransEstimate(scip)) );
 
          /* create branching constraint for node 1 */
-         (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "brleft_#%d", SCIPgetNNodes(scip));
+         (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "brleft_#%" SCIP_LONGINT_FORMAT, SCIPgetNNodes(scip));
          SCIP_CALL( SCIPcreateConsCardinality(scip, &cons1, name, ind+1, branchvars, (int)splitval1, branchindvars, NULL,
                FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, FALSE, FALSE, TRUE) );
 
@@ -1614,18 +1644,16 @@ SCIP_RETCODE branchBalancedCardinality(
          SCIP_Real objest;
 
          nodeselest = 0.0;
-         objest = 0.0;
+         objest = SCIPgetLocalTransEstimate(scip);
 
          /* calculate node selection and objective estimate for node */
          for( j = ind+1; j < nbranchvars; ++j )
          {
+            objest += SCIPcalcChildEstimateIncrease(scip, branchvars[j], SCIPgetSolVal(scip, sol, branchvars[j]), 0.0);
             nodeselest += SCIPcalcNodeselPriority(scip, branchvars[j], SCIP_BRANCHDIR_DOWNWARDS, 0.0);
-            objest += SCIPcalcChildEstimate(scip, branchvars[j], 0.0);
          }
          assert(nbranchvars - (ind + 1) > 0);
-
-         /* take the average of the individual estimates */
-         objest = objest/((SCIP_Real)(nbranchvars - (ind + 1)));/*lint !e414*/
+         assert(objest >= SCIPgetLocalTransEstimate(scip));
 
          /* create node 1 */
          SCIP_CALL( SCIPcreateChild(scip, &node2, nodeselest, objest) );
@@ -1651,7 +1679,7 @@ SCIP_RETCODE branchBalancedCardinality(
          assert(cnt == nbranchvars - (ind + 1));
 
          /* create branching constraint for node 2 */
-         (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "brright_#%d", SCIPgetNNodes(scip));
+         (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "brright_#% " SCIP_LONGINT_FORMAT , SCIPgetNNodes(scip));
          SCIP_CALL( SCIPcreateConsCardinality(scip, &cons2, name, cnt, branchvars, (int)splitval2, branchindvars, NULL,
                FALSE, TRUE, TRUE, FALSE, TRUE, TRUE, FALSE, FALSE, TRUE) );
 
@@ -2030,7 +2058,7 @@ SCIP_RETCODE generateRowCardinality(
       {
          /* create upper bound inequality if at least two of the bounds are finite and nonzero */
          (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "cardub#%s", SCIPconsGetName(cons));
-         SCIP_CALL( SCIPcreateEmptyRowCons(scip, rowub, conshdlr, name, -SCIPinfinity(scip), (SCIP_Real)cardval,
+         SCIP_CALL( SCIPcreateEmptyRowCons(scip, rowub, cons, name, -SCIPinfinity(scip), (SCIP_Real)cardval,
               local, TRUE, FALSE) );
          SCIP_CALL( SCIPaddVarsToRow(scip, *rowub, cnt, vars, vals) );
          SCIPdebug( SCIP_CALL( SCIPprintRow(scip, *rowub, NULL) ) );
@@ -2068,11 +2096,12 @@ SCIP_RETCODE generateRowCardinality(
       assert(cardval >= 0);
 
       /* if cut is meaningful */
+      /* coverity[copy_paste_error] */
       if( cnt > cardval )
       {
          /* create lower bound inequality if at least two of the bounds are finite and nonzero */
          (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "cardlb#%s", SCIPconsGetName(cons));
-         SCIP_CALL( SCIPcreateEmptyRowCons(scip, rowlb, conshdlr, name, -SCIPinfinity(scip), (SCIP_Real)cardval,
+         SCIP_CALL( SCIPcreateEmptyRowCons(scip, rowlb, cons, name, -SCIPinfinity(scip), (SCIP_Real)cardval,
               local, TRUE, FALSE) );
          SCIP_CALL( SCIPaddVarsToRow(scip, *rowlb, nvars, vars, vals) );
          SCIPdebug( SCIP_CALL( SCIPprintRow(scip, *rowlb, NULL) ) );
@@ -2494,12 +2523,9 @@ SCIP_DECL_CONSTRANS(consTransCardinality)
 static
 SCIP_DECL_CONSPRESOL(consPresolCardinality)
 {  /*lint --e{715}*/
-   /* cppcheck-suppress unassignedVariable */
-   int oldnfixedvars;
-   /* cppcheck-suppress unassignedVariable */
-   int oldndelconss;
-   /* cppcheck-suppress unassignedVariable */
-   int oldnupgdconss;
+   SCIPdebug( int oldnfixedvars; )
+   SCIPdebug( int oldndelconss; )
+   SCIPdebug( int oldnupgdconss; )
    int nremovedvars;
    SCIP_EVENTHDLR* eventhdlr;
    int c;
@@ -2562,9 +2588,9 @@ SCIP_DECL_CONSPRESOL(consPresolCardinality)
    }
    (*nchgcoefs) += nremovedvars;
 
-   SCIPdebugMsg(scip, "presolving fixed %d variables, removed %d variables, deleted %d constraints, \
+   SCIPdebug( SCIPdebugMsg(scip, "presolving fixed %d variables, removed %d variables, deleted %d constraints, \
         and upgraded %d constraints.\n", *nfixedvars - oldnfixedvars, nremovedvars, *ndelconss - oldndelconss,
-        *nupgdconss - oldnupgdconss);
+        *nupgdconss - oldnupgdconss); )
 
    return SCIP_OKAY;
 }
@@ -2802,6 +2828,8 @@ SCIP_DECL_CONSLOCK(consLockCardinality)
    assert(conshdlr != NULL);
    assert(cons != NULL);
    assert(strcmp(SCIPconshdlrGetName(conshdlr), CONSHDLR_NAME) == 0);
+   assert(locktype == SCIP_LOCKTYPE_MODEL);
+
    consdata = SCIPconsGetData(cons);
    assert(consdata != NULL);
 
@@ -2820,19 +2848,19 @@ SCIP_DECL_CONSLOCK(consLockCardinality)
       indvar = indvars[j];
 
       /* if lower bound is negative, rounding down may violate constraint */
-      if( SCIPisFeasNegative(scip, SCIPvarGetLbLocal(var)) )
+      if( SCIPisFeasNegative(scip, SCIPvarGetLbGlobal(var)) )
       {
-         SCIP_CALL( SCIPaddVarLocks(scip, var, nlockspos, nlocksneg) );
+         SCIP_CALL( SCIPaddVarLocksType(scip, var, locktype, nlockspos, nlocksneg) );
       }
 
       /* additionally: if upper bound is positive, rounding up may violate constraint */
-      if( SCIPisFeasPositive(scip, SCIPvarGetUbLocal(var)) )
+      if( SCIPisFeasPositive(scip, SCIPvarGetUbGlobal(var)) )
       {
-         SCIP_CALL( SCIPaddVarLocks(scip, var, nlocksneg, nlockspos) );
+         SCIP_CALL( SCIPaddVarLocksType(scip, var, locktype, nlocksneg, nlockspos) );
       }
 
       /* add lock on indicator variable; @todo write constraint handler to handle down locks */
-      SCIP_CALL( SCIPaddVarLocks(scip, indvar, nlockspos, nlockspos) );
+      SCIP_CALL( SCIPaddVarLocksType(scip, indvar, locktype, nlockspos, nlockspos) );
    }
 
    return SCIP_OKAY;
@@ -2979,7 +3007,7 @@ SCIP_DECL_CONSPARSE(consParseCardinality)
       /* skip until beginning of weight */
       while ( *s != '\0' && *s != '(' )
          ++s;
- 
+
       if ( *s == '\0' )
       {
          SCIPverbMessage(scip, SCIP_VERBLEVEL_MINIMAL, NULL, "Syntax error: expected weight at input: %s\n", s);
@@ -3023,12 +3051,12 @@ SCIP_DECL_CONSPARSE(consParseCardinality)
             return SCIP_OKAY;
          }
          s = t;
-              
+
          SCIP_CALL( SCIPchgCardvalCardinality(scip, *cons, cardval));
       }
    }
    while ( *s != '\0' );
-  
+
    return SCIP_OKAY;
 }
 
@@ -3118,21 +3146,42 @@ SCIP_DECL_EVENTEXEC(eventExecCardinality)
    }
 #endif
 
+   if( eventtype & SCIP_EVENTTYPE_GBDCHANGED )
+   {
+      if( eventtype == SCIP_EVENTTYPE_GLBCHANGED )
+      {
+         /* global lower bound is not negative anymore -> remove down lock */
+         if ( SCIPisFeasNegative(scip, oldbound) && ! SCIPisFeasNegative(scip, newbound) )
+            SCIP_CALL( SCIPunlockVarCons(scip, var, consdata->cons, TRUE, FALSE) );
+         /* global lower bound turned negative -> add down lock */
+         else if ( ! SCIPisFeasNegative(scip, oldbound) && SCIPisFeasNegative(scip, newbound) )
+            SCIP_CALL( SCIPlockVarCons(scip, var, consdata->cons, TRUE, FALSE) );
+
+         return SCIP_OKAY;
+      }
+      if( eventtype == SCIP_EVENTTYPE_GUBCHANGED )
+      {
+         /* global upper bound is not positive anymore -> remove up lock */
+         if ( SCIPisFeasPositive(scip, oldbound) && ! SCIPisFeasPositive(scip, newbound) )
+            SCIP_CALL( SCIPunlockVarCons(scip, var, consdata->cons, FALSE, TRUE) );
+         /* global upper bound turned positive -> add up lock */
+         else if ( ! SCIPisFeasPositive(scip, oldbound) && SCIPisFeasPositive(scip, newbound) )
+            SCIP_CALL( SCIPlockVarCons(scip, var, consdata->cons, FALSE, TRUE) );
+
+         return SCIP_OKAY;
+      }
+   }
+
    /* if variable is an indicator variable */
    if( var == eventdata->indvar )
    {
       assert(SCIPvarIsBinary(var));
       assert(consdata->cons != NULL);
 
-      if( eventtype == SCIP_EVENTTYPE_LBTIGHTENED || eventtype == SCIP_EVENTTYPE_LBRELAXED )
-      {
-         if( eventtype == SCIP_EVENTTYPE_LBTIGHTENED )
-            ++(consdata->ntreatnonzeros);
-         else if( eventtype == SCIP_EVENTTYPE_LBRELAXED )
-            --(consdata->ntreatnonzeros);
-
-         assert(0 <= consdata->ntreatnonzeros && consdata->ntreatnonzeros <= consdata->nvars);
-      }
+      if( eventtype == SCIP_EVENTTYPE_LBTIGHTENED )
+         ++(consdata->ntreatnonzeros);
+      else if( eventtype == SCIP_EVENTTYPE_LBRELAXED )
+         --(consdata->ntreatnonzeros);
       else if( eventtype == SCIP_EVENTTYPE_UBTIGHTENED && ! eventdata->indvarmarked )
       {
          assert(oldbound == 1.0 && newbound == 0.0 );
@@ -3145,6 +3194,7 @@ SCIP_DECL_EVENTEXEC(eventExecCardinality)
          assert(consdata->neventdatascurrent <= 4 * consdata->maxvars);
          assert(var == eventdata->indvar );
       }
+      assert(0 <= consdata->ntreatnonzeros && consdata->ntreatnonzeros <= consdata->nvars);
    }
 
    /* if variable is an implied variable,
@@ -3248,8 +3298,8 @@ SCIP_RETCODE SCIPincludeConshdlrCardinality(
          &conshdlrdata->balanceddepth, TRUE, DEFAULT_BALANCEDDEPTH, -1, INT_MAX, NULL, NULL) );
 
    SCIP_CALL( SCIPaddRealParam(scip, "constraints/" CONSHDLR_NAME "/balancedcutoff",
-         "determines that balanced branching is only used if the branching cut off value \
-         w.r.t. the current LP solution is greater than a given value",
+         "determines that balanced branching is only used if the branching cut off value "
+         "w.r.t. the current LP solution is greater than a given value",
          &conshdlrdata->balancedcutoff, TRUE, DEFAULT_BALANCEDCUTOFF, 0.01, SCIP_REAL_MAX, NULL, NULL) );
 
    return SCIP_OKAY;
@@ -3274,7 +3324,7 @@ SCIP_RETCODE SCIPcreateConsCardinality(
                                               *   in cardinality constraint, or NULL if new indicator variables should be
                                               *   introduced automatically */
    SCIP_Real*            weights,            /**< weights determining the variable order, or NULL if variables should be
-                                                  ordered in the same way they were added to the constraint */
+                                              *   ordered in the same way they were added to the constraint */
    SCIP_Bool             initial,            /**< should the LP relaxation of constraint be in the initial LP?
                                               *   Usually set to TRUE. Set to FALSE for 'lazy constraints'. */
    SCIP_Bool             separate,           /**< should the constraint be separated during LP processing?

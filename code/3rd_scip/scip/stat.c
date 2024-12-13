@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   stat.c
+ * @ingroup OTHER_CFILES
  * @brief  methods for problem statistics
  * @author Tobias Achterberg
  * @author Stefan Heinz
@@ -25,19 +35,19 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-
-#include "scip/def.h"
-#include "blockmemshell/memory.h"
-#include "scip/set.h"
-#include "scip/prob.h"
-#include "scip/stat.h"
 #include "scip/clock.h"
-#include "scip/visual.h"
-#include "scip/mem.h"
-#include "scip/var.h"
 #include "scip/history.h"
-#include "scip/concsolver.h"
+#include "scip/mem.h"
+#include "scip/prob.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_var.h"
+#include "scip/set.h"
+#include "scip/stat.h"
+#include "scip/struct_set.h"
+#include "scip/struct_stat.h"
+#include "scip/var.h"
+#include "scip/visual.h"
 
 
 
@@ -64,6 +74,7 @@ SCIP_RETCODE SCIPstatCreate(
    SCIP_CALL( SCIPclockCreate(&(*stat)->duallptime, SCIP_CLOCKTYPE_DEFAULT) );
    SCIP_CALL( SCIPclockCreate(&(*stat)->lexduallptime, SCIP_CLOCKTYPE_DEFAULT) );
    SCIP_CALL( SCIPclockCreate(&(*stat)->barrierlptime, SCIP_CLOCKTYPE_DEFAULT) );
+   SCIP_CALL( SCIPclockCreate(&(*stat)->resolveinstablelptime, SCIP_CLOCKTYPE_DEFAULT) );
    SCIP_CALL( SCIPclockCreate(&(*stat)->divinglptime, SCIP_CLOCKTYPE_DEFAULT) );
    SCIP_CALL( SCIPclockCreate(&(*stat)->strongbranchtime, SCIP_CLOCKTYPE_DEFAULT) );
    SCIP_CALL( SCIPclockCreate(&(*stat)->conflictlptime, SCIP_CLOCKTYPE_DEFAULT) );
@@ -90,13 +101,6 @@ SCIP_RETCODE SCIPstatCreate(
    (*stat)->marked_nvaridx = 0;
    (*stat)->marked_ncolidx = 0;
    (*stat)->marked_nrowidx = 0;
-   (*stat)->userinterrupt = FALSE;
-   (*stat)->userrestart = FALSE;
-   (*stat)->inrestart = FALSE;
-   (*stat)->collectvarhistory = TRUE;
-   (*stat)->performpresol = FALSE;
-   (*stat)->branchedunbdvar = FALSE;
-   (*stat)->disableenforelaxmsg = FALSE;
    (*stat)->subscipdepth = 0;
    (*stat)->detertimecnt = 0.0;
    (*stat)->nreoptruns = 0;
@@ -123,6 +127,7 @@ SCIP_RETCODE SCIPstatFree(
    SCIPclockFree(&(*stat)->duallptime);
    SCIPclockFree(&(*stat)->lexduallptime);
    SCIPclockFree(&(*stat)->barrierlptime);
+   SCIPclockFree(&(*stat)->resolveinstablelptime);
    SCIPclockFree(&(*stat)->divinglptime);
    SCIPclockFree(&(*stat)->strongbranchtime);
    SCIPclockFree(&(*stat)->conflictlptime);
@@ -198,6 +203,7 @@ void SCIPstatReset(
    SCIPclockReset(stat->duallptime);
    SCIPclockReset(stat->lexduallptime);
    SCIPclockReset(stat->barrierlptime);
+   SCIPclockReset(stat->resolveinstablelptime);
    SCIPclockReset(stat->divinglptime);
    SCIPclockReset(stat->strongbranchtime);
    SCIPclockReset(stat->conflictlptime);
@@ -233,6 +239,8 @@ void SCIPstatReset(
    stat->nsbtimesiterlimhit = 0L;
    stat->nrootsblpiterations = 0;
    stat->nconflictlpiterations = 0;
+   stat->nresolveinstablelps = 0;
+   stat->nresolveinstablelpiters = 0;
    stat->ntotalnodes = 0;
    stat->ntotalinternalnodes = 0;
    stat->ntotalnodesmerged = 0;
@@ -278,6 +286,7 @@ void SCIPstatReset(
    stat->ndualresolvelps = 0;
    stat->nlexdualresolvelps = 0;
    stat->nnodelps = 0;
+   stat->nnodezeroitlps = 0;
    stat->nisstoppedcalls = 0;
    stat->ninitlps = 0;
    stat->ndivinglps = 0;
@@ -296,7 +305,9 @@ void SCIPstatReset(
    stat->ninitconssadded = 0;
    stat->nactiveconssadded = 0;
    stat->externmemestim = 0;
-   stat->nincseparounds = 0;
+   stat->exprlastvisitedtag = 0;
+   stat->exprlastsoltag = 0;
+   stat->exprlastdifftag = 0;
    stat->nrunsbeforefirst = -1;
    stat->firstprimalheur = NULL;
    stat->firstprimaltime = SCIP_DEFAULT_INFINITY;
@@ -312,6 +323,7 @@ void SCIPstatReset(
    stat->firstlpdualbound = SCIP_UNKNOWN;
    stat->ncopies = 0;
    stat->nclockskipsleft = 0;
+   stat->nactiveexpriter = 0;
    stat->marked_nvaridx = -1;
    stat->marked_ncolidx = -1;
    stat->marked_nrowidx = -1;
@@ -325,9 +337,16 @@ void SCIPstatReset(
    stat->ndivesetlps = 0;
    stat->totaldivesetdepth = 0;
 
+   stat->userinterrupt = FALSE;
+   stat->userrestart = FALSE;
+   stat->inrestart = FALSE;
+   stat->collectvarhistory = TRUE;
+   stat->performpresol = FALSE;
+   stat->disableenforelaxmsg = FALSE;
+
    SCIPstatResetImplications(stat);
    SCIPstatResetPresolving(stat, set, transprob, origprob);
-   SCIPstatResetPrimalDualIntegral(stat, set, FALSE);
+   SCIPstatResetPrimalDualIntegrals(stat, set, FALSE);
 }
 
 /** reset implication counter */
@@ -368,8 +387,8 @@ void SCIPstatResetPresolving(
    SCIPstatResetCurrentRun(stat, set, transprob, origprob, FALSE);
 }
 
-/** reset primal-dual integral */
-void SCIPstatResetPrimalDualIntegral(
+/** reset primal-dual, primal-reference, and reference-dual integral */
+void SCIPstatResetPrimalDualIntegrals(
    SCIP_STAT*            stat,               /**< problem statistics data */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_Bool             partialreset        /**< should time and integral value be kept? (in combination with no statistical
@@ -379,6 +398,8 @@ void SCIPstatResetPrimalDualIntegral(
    assert(stat != NULL);
 
    stat->previousgap = 100.0;
+   stat->previousdualrefgap = 100.0;
+   stat->previousprimalrefgap = 100.0;
    stat->lastprimalbound = SCIP_UNKNOWN;
    stat->lastdualbound = SCIP_UNKNOWN;
    stat->lastlowerbound = -SCIPsetInfinity(set);
@@ -388,14 +409,54 @@ void SCIPstatResetPrimalDualIntegral(
    if( !partialreset )
    {
       stat->previntegralevaltime = 0.0;
+      stat->dualrefintegral = 0.0;
+      stat->primalrefintegral = 0.0;
       stat->primaldualintegral = 0.0;
    }
 }
 
-/** update the primal-dual integral statistic. method accepts + and - SCIPsetInfinity() as values for
- *  upper and lower bound, respectively
+/** returns the gap bounded by 100 */
+static
+SCIP_Real getGap(
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_Real             primalbound,        /**< current primal bound */
+   SCIP_Real             dualbound,          /**< current dual bound */
+   SCIP_Real             upperbound,         /**< current upper bound in transformed problem, or infinity */
+   SCIP_Real             lowerbound          /**< current lower bound in transformed space, or -infinity */
+   )
+{
+   SCIP_Real gap;
+
+   /* computation of the gap, special cases are handled first */
+   if( primalbound >= SCIP_UNKNOWN || dualbound >= SCIP_UNKNOWN ) /*lint !e777*/
+      gap = 100.0;
+   /* the gap is 0.0 if bounds coincide */
+   else if( SCIPsetIsGE(set, lowerbound, upperbound) || SCIPsetIsEQ(set, primalbound, dualbound) )
+      gap = 0.0;
+   /* the gap is 100.0 if bounds have different signs */
+   else if( primalbound * dualbound <= 0.0 ) /*lint !e777*/
+      gap = 100.0;
+   else if( !SCIPsetIsInfinity(set, REALABS(primalbound)) && !SCIPsetIsInfinity(set, REALABS(dualbound)) )
+   {
+      SCIP_Real absprim = REALABS(primalbound);
+      SCIP_Real absdual = REALABS(dualbound);
+
+      /* The gap in the definition of the primal-dual integral differs from the default SCIP gap function.
+       * Here, the MAX(primalbound, dualbound) is taken for gap quotient in order to ensure a gap <= 100.
+       */
+      gap = 100.0 * REALABS(primalbound - dualbound) / MAX(absprim, absdual);
+      assert(SCIPsetIsLE(set, gap, 100.0));
+   }
+   else
+      gap = 100.0;
+
+   return gap;
+}
+
+/** update the primal-dual, primal-reference, and reference-dual integral statistics.
+ *  method accepts + and - SCIPsetInfinity() as values for upper and lower bound, respectively
  */
-void SCIPstatUpdatePrimalDualIntegral(
+void SCIPstatUpdatePrimalDualIntegrals(
    SCIP_STAT*            stat,               /**< problem statistics data */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_PROB*            transprob,          /**< transformed problem */
@@ -405,9 +466,12 @@ void SCIPstatUpdatePrimalDualIntegral(
    )
 {
    SCIP_Real currentgap;
+   SCIP_Real currentdualrefgap;
+   SCIP_Real currentprimalrefgap;
    SCIP_Real solvingtime;
    SCIP_Real primalbound;
    SCIP_Real dualbound;
+   SCIP_Real deltatime;
 
    assert(stat != NULL);
    assert(set != NULL);
@@ -447,37 +511,36 @@ void SCIPstatUpdatePrimalDualIntegral(
       assert(SCIPsetIsZero(set, dualbound) == (dualbound == 0.0)); /*lint !e777*/
    }
 
-   /* computation of the gap, special cases are handled first */
-   if( primalbound == SCIP_UNKNOWN || dualbound == SCIP_UNKNOWN ) /*lint !e777*/
-      currentgap = 100.0;
-   /* the gap is 0.0 if bounds coincide */
-   else if( SCIPsetIsGE(set, lowerbound, upperbound) || SCIPsetIsEQ(set, primalbound, dualbound) )
-      currentgap = 0.0;
-   /* the gap is 100.0 if bounds have different signs */
-   else if( primalbound * dualbound <= 0.0 ) /*lint !e777*/
-      currentgap = 100.0;
-   else if( !SCIPsetIsInfinity(set, REALABS(primalbound)) && !SCIPsetIsInfinity(set, REALABS(dualbound)) )
-   {
-      SCIP_Real absprim = REALABS(primalbound);
-      SCIP_Real absdual = REALABS(dualbound);
-
-      /* The gap in the definition of the primal-dual integral differs from the default SCIP gap function.
-       * Here, the MAX(primalbound, dualbound) is taken for gap quotient in order to ensure a gap <= 100.
-       */
-      currentgap = 100.0 * REALABS(primalbound - dualbound) / MAX(absprim, absdual);
-      assert(SCIPsetIsLE(set, currentgap, 100.0));
-   }
-   else
-      currentgap = 100.0;
+   /* calculate primal-dual and dual reference gap */
+   currentgap = getGap(set, primalbound, dualbound, upperbound, lowerbound);
 
    /* if primal and dual bound have opposite signs, the gap always evaluates to 100.0% */
    assert(currentgap == 0.0 || currentgap == 100.0 || SCIPsetIsGE(set, primalbound * dualbound, 0.0));
 
    /* update the integral based on previous information */
-   stat->primaldualintegral += (solvingtime - stat->previntegralevaltime) * stat->previousgap;
+   deltatime = solvingtime - stat->previntegralevaltime;
+   stat->primaldualintegral += deltatime * stat->previousgap;
+   stat->dualrefintegral += deltatime * stat->previousdualrefgap;
+   stat->primalrefintegral += deltatime * stat->previousprimalrefgap;
+
+   if( !SCIPsetIsInfinity(set, REALABS(set->misc_referencevalue)) )
+   {
+      currentdualrefgap = getGap(set, set->misc_referencevalue, dualbound, upperbound, lowerbound);
+      assert(currentdualrefgap == 0.0 || currentdualrefgap == 100.0 || SCIPsetIsGE(set, set->misc_referencevalue * dualbound, 0.0));
+
+      currentprimalrefgap = getGap(set, primalbound, set->misc_referencevalue, upperbound, lowerbound);
+      assert(currentprimalrefgap == 0.0 || currentprimalrefgap == 100.0 || SCIPsetIsGE(set, primalbound * set->misc_referencevalue, 0.0));
+   }
+   else
+   {
+      currentdualrefgap = 100.0;
+      currentprimalrefgap = 100.0;
+   }
 
    /* update all relevant information for next evaluation */
    stat->previousgap = currentgap;
+   stat->previousdualrefgap = currentdualrefgap;
+   stat->previousprimalrefgap = currentprimalrefgap;
    stat->previntegralevaltime = solvingtime;
    stat->lastprimalbound = primalbound;
    stat->lastdualbound = dualbound;
@@ -485,12 +548,13 @@ void SCIPstatUpdatePrimalDualIntegral(
    stat->lastupperbound = upperbound;
 }
 
-/** update and return the primal-dual integral statistic */
-SCIP_Real SCIPstatGetPrimalDualIntegral(
+/** optionally update and return the reference-dual integral statistic */
+SCIP_Real SCIPstatGetDualReferenceIntegral(
    SCIP_STAT*            stat,               /**< problem statistics data */
    SCIP_SET*             set,                /**< global SCIP settings */
    SCIP_PROB*            transprob,          /**< transformed problem */
-   SCIP_PROB*            origprob            /**< original problem */
+   SCIP_PROB*            origprob,           /**< original problem */
+   SCIP_Bool             update              /**< should the value be updated first? */
    )
 {
    assert(stat != NULL);
@@ -498,8 +562,51 @@ SCIP_Real SCIPstatGetPrimalDualIntegral(
    assert(transprob != NULL);
    assert(origprob != NULL);
 
-   /* update the primal dual integral first */
-   SCIPstatUpdatePrimalDualIntegral(stat, set, transprob, origprob, SCIPsetInfinity(set), -SCIPsetInfinity(set));
+   /* update the reference-dual integral first */
+   if( update )
+      SCIPstatUpdatePrimalDualIntegrals(stat, set, transprob, origprob, SCIPsetInfinity(set), -SCIPsetInfinity(set));
+
+   return stat->dualrefintegral;
+}
+
+/** optionally update and return the primal-reference integral statistic */
+SCIP_Real SCIPstatGetPrimalReferenceIntegral(
+   SCIP_STAT*            stat,               /**< problem statistics data */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_PROB*            transprob,          /**< transformed problem */
+   SCIP_PROB*            origprob,           /**< original problem */
+   SCIP_Bool             update              /**< should the value be updated first? */
+   )
+{
+   assert(stat != NULL);
+   assert(set != NULL);
+   assert(transprob != NULL);
+   assert(origprob != NULL);
+
+   /* update the primal-reference integral first */
+   if( update )
+      SCIPstatUpdatePrimalDualIntegrals(stat, set, transprob, origprob, SCIPsetInfinity(set), -SCIPsetInfinity(set));
+
+   return stat->primalrefintegral;
+}
+
+/** optionally update and return the primal-dual integral statistic */
+SCIP_Real SCIPstatGetPrimalDualIntegral(
+   SCIP_STAT*            stat,               /**< problem statistics data */
+   SCIP_SET*             set,                /**< global SCIP settings */
+   SCIP_PROB*            transprob,          /**< transformed problem */
+   SCIP_PROB*            origprob,           /**< original problem */
+   SCIP_Bool             update              /**< should the value be updated first? */
+   )
+{
+   assert(stat != NULL);
+   assert(set != NULL);
+   assert(transprob != NULL);
+   assert(origprob != NULL);
+
+   /* update the primal dual reference integral first */
+   if( update )
+      SCIPstatUpdatePrimalDualIntegrals(stat, set, transprob, origprob, SCIPsetInfinity(set), -SCIPsetInfinity(set));
 
    return stat->primaldualintegral;
 }
@@ -555,7 +662,6 @@ void SCIPstatResetCurrentRun(
    else
       stat->referencebound = SCIPsetInfinity(set);
 
-
    if( !solved )
       stat->status = SCIP_STATUS_UNKNOWN;
 
@@ -602,7 +708,7 @@ void SCIPstatUpdateMemsaveMode(
    {
       SCIP_Longint memused;
 
-      memused = SCIPmemGetUsed(mem);
+      memused = SCIPmemGetTotal(mem);
       if( !stat->memsavemode && memused >= set->mem_savefac * set->limit_memory * 1024.0 * 1024.0 )
       {
          /* switch to memory saving mode */
@@ -652,6 +758,7 @@ void SCIPstatEnableOrDisableStatClocks(
    SCIPclockEnableOrDisable(stat->duallptime, enable);
    SCIPclockEnableOrDisable(stat->lexduallptime, enable);
    SCIPclockEnableOrDisable(stat->barrierlptime, enable);
+   SCIPclockEnableOrDisable(stat->resolveinstablelptime, enable);
    SCIPclockEnableOrDisable(stat->divinglptime, enable);
    SCIPclockEnableOrDisable(stat->strongbranchtime, enable);
    SCIPclockEnableOrDisable(stat->conflictlptime, enable);
@@ -740,15 +847,27 @@ void SCIPstatPrintDebugMessage(
    ...                                       /**< format arguments line in printf() function */
    )
 {
+   const char* filename;
    va_list ap;
 
    assert( sourcefile != NULL );
    assert( stat != NULL );
 
-   if ( stat->subscipdepth > 0 )
-      printf("%d: [%s:%d] debug: ", stat->subscipdepth, sourcefile, sourceline);
+   /* strip directory from filename */
+#if defined(_WIN32) || defined(_WIN64)
+   filename = strrchr(sourcefile, '\\');
+#else
+   filename = strrchr(sourcefile, '/');
+#endif
+   if ( filename == NULL )
+      filename = sourcefile;
    else
-      printf("[%s:%d] debug: ", sourcefile, sourceline);
+      ++filename;
+
+   if ( stat->subscipdepth > 0 )
+      printf("%d: [%s:%d] debug: ", stat->subscipdepth, filename, sourceline);
+   else
+      printf("[%s:%d] debug: ", filename, sourceline);
 
    va_start(ap, formatstr); /*lint !e838*/
    printf(formatstr, ap);
@@ -756,7 +875,6 @@ void SCIPstatPrintDebugMessage(
 }
 
 /** prints a debug message without precode */
-EXTERN
 void SCIPstatDebugMessagePrint(
    SCIP_STAT*            stat,               /**< SCIP statistics */
    const char*           formatstr,          /**< format string like in printf() function */
@@ -764,6 +882,8 @@ void SCIPstatDebugMessagePrint(
    )
 {  /*lint --e{715}*/
    va_list ap;
+
+   assert(stat != NULL);
 
    va_start(ap, formatstr); /*lint !e838*/
    printf(formatstr, ap);

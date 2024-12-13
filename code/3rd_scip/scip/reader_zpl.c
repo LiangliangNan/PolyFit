@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   reader_zpl.c
+ * @ingroup DEFPLUGINS_READER
  * @brief  ZIMPL model file reader
  * @author Tobias Achterberg
  * @author Timo Berthold
@@ -23,20 +33,41 @@
 
 #include "scip/reader_zpl.h"
 
-#ifdef WITH_ZIMPL
+#ifdef SCIP_WITH_ZIMPL
 
-#include <assert.h>
 #include <unistd.h>
-#include <string.h>
 #include <stdbool.h>
+#include <string.h>
 
+#include "scip/cons_indicator.h"
 #include "scip/cons_linear.h"
 #include "scip/cons_sos1.h"
 #include "scip/cons_sos2.h"
-#include "scip/cons_indicator.h"
-#include "scip/cons_quadratic.h"
-#include "scip/cons_nonlinear.h"
 #include "scip/pub_misc.h"
+#include "scip/pub_nlp.h"
+#include "scip/pub_reader.h"
+#include "scip/pub_var.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_reader.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_var.h"
+#include "scip/cons_nonlinear.h"
+#include "scip/struct_misc.h"
+#include "scip/expr_pow.h"
+#include "scip/expr_log.h"
+#include "scip/expr_exp.h"
+#include "scip/expr_abs.h"
+#include "scip/expr_sum.h"
+#include "scip/expr_trig.h"
+#include "scip/expr_product.h"
+#include "scip/pub_expr.h"
+#include "scip/type_reader.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,8 +75,9 @@ extern "C" {
 
 /* @Note: Due to dependencies we need the following order. */
 /* include the ZIMPL headers necessary to define the LP and MINLP construction interface */
-#include "zimpl/bool.h"
+#include "zimpl/attribute.h"
 #include "zimpl/ratlptypes.h"
+#include "zimpl/lint.h"
 #include "zimpl/mme.h"
 
 #include "zimpl/numb.h"
@@ -68,8 +100,8 @@ extern "C" {
  * LP construction interface of ZIMPL
  */
 
-/* we only support ZIMPL with a version higher than 3.2.0 */
-#if (ZIMPL_VERSION >= 320)
+/* we only support ZIMPL with a version higher than 3.4.1 */
+#if (ZIMPL_VERSION >= 341)
 
 /* ZIMPL does not support user data in callbacks - we have to use static variables */
 struct
@@ -148,7 +180,7 @@ void xlp_free(
    /* nothing to be done here */
 }
 
-/** does there already exists a constraint with the given name? */ 
+/** does there already exists a constraint with the given name? */
 bool xlp_conname_exists(
    const Lps*            data,               /**< pointer to reader data */
    const char*           name                /**< constraint name to check */
@@ -163,6 +195,262 @@ bool xlp_conname_exists(
    return (SCIPfindCons(readerdata->scip, name) != NULL);
 }
 
+/** create a SCIP expression from a ZIMPL term
+ *
+ * Returns *expr == NULL if could not create expression due to unsupported ZIMPL functions.
+ */
+static
+SCIP_RETCODE createExpr(
+   SCIP*                 scip,               /**< SCIP data structure */
+   SCIP_READERDATA*      readerdata,         /**< reader data */
+   SCIP_EXPR**           expr,               /**< buffer to store expression */
+   const Term*           term                /**< term to convert to expression */
+)
+{
+   assert(scip != NULL);
+   assert(readerdata != NULL);
+   assert(expr != NULL);
+   assert(term != NULL);
+
+   *expr = NULL;
+
+   if( term_get_degree(term) == 2 )
+   {
+      int        nlinvars;
+      int        nquadterms;
+      SCIP_VAR** linvars;
+      SCIP_VAR** quadvar1;
+      SCIP_VAR** quadvar2;
+      SCIP_Real* lincoefs;
+      SCIP_Real* quadcoefs;
+      Mono*      monom;
+      int i;
+
+      nlinvars   = 0;
+      nquadterms = 0;
+
+      SCIP_CALL( SCIPallocBufferArray(scip, &linvars,   term_get_elements(term)) );
+      SCIP_CALL( SCIPallocBufferArray(scip, &quadvar1,  term_get_elements(term)) );
+      SCIP_CALL( SCIPallocBufferArray(scip, &quadvar2,  term_get_elements(term)) );
+      SCIP_CALL( SCIPallocBufferArray(scip, &lincoefs,  term_get_elements(term)) );
+      SCIP_CALL( SCIPallocBufferArray(scip, &quadcoefs, term_get_elements(term)) );
+
+      for( i = 0; i < term_get_elements(term); ++i )
+      {
+         monom = term_get_element(term, i);
+         assert(!numb_equal(mono_get_coeff(monom), numb_zero()));
+         assert(mono_get_degree(monom) <= 2);
+         assert(mono_get_degree(monom) > 0);
+         if (mono_get_degree(monom) == 1)
+         {
+            linvars [nlinvars] = (SCIP_VAR*)mono_get_var(monom, 0);
+            lincoefs[nlinvars] = numb_todbl(mono_get_coeff(monom));
+            ++nlinvars;
+         }
+         else
+         {
+            assert(mono_get_degree(monom) == 2);
+            quadvar1 [nquadterms] = (SCIP_VAR*)mono_get_var(monom, 0);
+            quadvar2 [nquadterms] = (SCIP_VAR*)mono_get_var(monom, 1);
+            quadcoefs[nquadterms] = numb_todbl(mono_get_coeff(monom));
+            ++nquadterms;
+         }
+      }
+
+      SCIP_CALL( SCIPcreateExprQuadratic(scip, expr, nlinvars, linvars, lincoefs, nquadterms, quadvar1, quadvar2, quadcoefs, NULL, NULL) );
+
+      SCIPfreeBufferArray(scip, &linvars);
+      SCIPfreeBufferArray(scip, &quadvar1);
+      SCIPfreeBufferArray(scip, &quadvar2);
+      SCIPfreeBufferArray(scip, &lincoefs);
+      SCIPfreeBufferArray(scip, &quadcoefs);
+   }
+   else
+   {
+      SCIP_VAR** polyvars;
+      SCIP_Real* polyexps;
+      SCIP_HASHMAP* varexpmap;
+      SCIP_EXPR** monomials;
+      int        nmonomials;
+      int        monomialssize;
+      SCIP_Real* coefs;
+      Mono*      monomial;
+      SCIP_EXPR* monomialexpr;
+      SCIP_Bool created;
+      int varpos;
+      int i;
+      int j;
+
+      polyvars = NULL;
+      polyexps = NULL;
+
+      monomials = NULL;
+      nmonomials = 0;
+      monomialssize = 0;
+      coefs = NULL;
+      created = TRUE;
+
+      SCIP_CALL( SCIPhashmapCreate(&varexpmap, SCIPblkmem(scip), SCIPcalcMemGrowSize(scip, 10)) );
+
+      for( i = 0; i < term_get_elements(term); ++i )
+      {
+         monomial = term_get_element(term, i);
+         assert(monomial != NULL);
+         assert(!numb_equal(mono_get_coeff(monomial), numb_zero()));
+         assert(mono_get_degree(monomial) > 0);
+
+         /* allocate space in the monomials array */
+         if( monomialssize == 0 )
+         {
+            monomialssize = SCIPcalcMemGrowSize(scip, 1);
+            SCIP_CALL( SCIPallocBufferArray(scip, &monomials, monomialssize) );
+            SCIP_CALL( SCIPallocBufferArray(scip, &coefs, monomialssize) );
+         }
+         else if( monomialssize < nmonomials + 1 )
+         {
+            monomialssize = SCIPcalcMemGrowSize(scip, nmonomials+1);
+            SCIP_CALL( SCIPreallocBufferArray(scip, &monomials, monomialssize) );
+            SCIP_CALL( SCIPreallocBufferArray(scip, &coefs, monomialssize) );
+         }
+         assert(monomials != NULL);
+         assert(coefs != NULL);
+
+         /* create SCIP monomial expression */
+         for( j = 0; j < mono_get_degree(monomial); ++j )
+         {
+            SCIP_Real exponent;
+
+            exponent = SCIPhashmapGetImageReal(varexpmap, (void*)mono_get_var(monomial, j));
+            exponent = exponent == SCIP_INVALID ? 1.0 : exponent + 1.0;
+
+            SCIP_CALL( SCIPhashmapSetImageReal(varexpmap, (void*)mono_get_var(monomial, j), exponent) );
+         }
+
+         SCIP_CALL( SCIPallocBufferArray(scip, &polyvars, SCIPhashmapGetNElements(varexpmap)) );
+         SCIP_CALL( SCIPallocBufferArray(scip, &polyexps, SCIPhashmapGetNElements(varexpmap)) );
+
+         varpos = 0;
+
+         for( j = 0; j < SCIPhashmapGetNEntries(varexpmap); ++j )
+         {
+            SCIP_HASHMAPENTRY* entry;
+
+            entry = SCIPhashmapGetEntry(varexpmap, j);
+            if( entry == NULL )
+               continue;
+
+            polyvars[varpos] = (SCIP_VAR*) SCIPhashmapEntryGetOrigin(entry);
+            polyexps[varpos] = SCIPhashmapEntryGetImageReal(entry);
+            ++varpos;
+         }
+         assert(varpos == SCIPhashmapGetNElements(varexpmap));
+         SCIPhashmapRemoveAll(varexpmap);
+
+         SCIP_CALL( SCIPcreateExprMonomial(scip, &monomialexpr, varpos, polyvars, polyexps, NULL, NULL) );
+
+         SCIPfreeBufferArrayNull(scip, &polyexps);
+         SCIPfreeBufferArrayNull(scip, &polyvars);
+
+         /* add monomial to array, possibly with an extra function around it */
+         if( mono_get_function(monomial) == MFUN_NONE )
+         {
+            monomials[nmonomials] = monomialexpr;
+            coefs[nmonomials] = numb_todbl(mono_get_coeff(monomial));
+         }
+         else
+         {
+            SCIP_EXPR* cosexpr;
+            SCIP_EXPR* prodchildren[2];
+
+            coefs[nmonomials] = 1.0;
+
+            /* nonlinear monomial with an extra function around it */
+            switch( mono_get_function(monomial) )
+            {
+            case MFUN_SQRT:
+               SCIP_CALL( SCIPcreateExprPow(scip, &monomials[nmonomials], monomialexpr, 0.5, NULL, NULL) );
+               break;
+            case MFUN_LOG:
+               /* log10(x) = ln(x) / ln(10.0) */
+               coefs[nmonomials] = 1.0 / log(10.0);
+               SCIP_CALL( SCIPcreateExprLog(scip, &monomials[nmonomials], monomialexpr, NULL, NULL) );
+               break;
+            case MFUN_EXP:
+               SCIP_CALL( SCIPcreateExprExp(scip, &monomials[nmonomials], monomialexpr, NULL, NULL) );
+               break;
+            case MFUN_LN:
+               SCIP_CALL( SCIPcreateExprLog(scip, &monomials[nmonomials], monomialexpr, NULL, NULL) );
+               break;
+            case MFUN_SIN:
+               SCIP_CALL( SCIPcreateExprSin(scip, &monomials[nmonomials], monomialexpr, NULL, NULL) );
+               break;
+            case MFUN_COS:
+               SCIP_CALL( SCIPcreateExprCos(scip, &monomials[nmonomials], monomialexpr, NULL, NULL) );
+               break;
+            case MFUN_TAN:
+               SCIP_CALL( SCIPcreateExprSin(scip, &prodchildren[0], monomialexpr, NULL, NULL) );
+               SCIP_CALL( SCIPcreateExprCos(scip, &cosexpr, monomialexpr, NULL, NULL) );
+               SCIP_CALL( SCIPcreateExprPow(scip, &prodchildren[1], cosexpr, -1.0, NULL, NULL) );
+               SCIP_CALL( SCIPcreateExprProduct(scip, &monomials[nmonomials], 2, prodchildren, 1.0, NULL, NULL) );
+
+               SCIP_CALL( SCIPreleaseExpr(scip, &prodchildren[1]) );
+               SCIP_CALL( SCIPreleaseExpr(scip, &cosexpr) );
+               SCIP_CALL( SCIPreleaseExpr(scip, &prodchildren[0]) );
+
+               break;
+            case MFUN_ABS:
+               SCIP_CALL( SCIPcreateExprAbs(scip, &monomials[nmonomials], monomialexpr, NULL, NULL) );
+               break;
+            case MFUN_POW:
+               SCIP_CALL( SCIPcreateExprPow(scip, &monomials[nmonomials], monomialexpr,
+                     numb_todbl(mono_get_coeff(monomial)), NULL, NULL) );
+               break;
+            case MFUN_SGNPOW:
+               SCIP_CALL( SCIPcreateExprSignpower(scip, &monomials[nmonomials], monomialexpr,
+                     numb_todbl(mono_get_coeff(monomial)), NULL, NULL) );
+               break;
+            case MFUN_NONE:
+            case MFUN_TRUE:
+            case MFUN_FALSE:
+               SCIPerrorMessage("ZIMPL function %d invalid here.\n", mono_get_function(monomial));
+               created = FALSE;
+               break;
+            default:
+               SCIPerrorMessage("ZIMPL function %d not supported\n", mono_get_function(monomial));
+               created = FALSE;
+               break;
+            }  /*lint !e788*/
+
+            SCIP_CALL( SCIPreleaseExpr(scip, &monomialexpr) );
+         }
+
+         ++nmonomials;
+
+         if( !created )
+            break;
+      }
+
+      if( created )
+      {
+         SCIP_CALL( SCIPcreateExprSum(scip, expr, nmonomials, monomials, coefs, 0.0, NULL, NULL) );
+      }
+
+      /* free memory */
+      for( j = nmonomials - 1; j >= 0; --j )
+      {
+         if( monomials[j] != NULL )
+         {
+            SCIP_CALL( SCIPreleaseExpr(scip, &monomials[j]) );
+         }
+      }
+
+      SCIPfreeBufferArrayNull(scip, &coefs);
+      SCIPfreeBufferArrayNull(scip, &monomials);
+      SCIPhashmapFree(&varexpmap);
+   }
+
+   return SCIP_OKAY;
+}
 
 /** method creates a constraint and is called directly from ZIMPL
  *
@@ -385,416 +673,102 @@ SCIP_RETCODE addConsTerm(
          (*created) = TRUE;
       }
    }
-   else if( term_get_degree(term) == 2 )
-   {
-      int        nlinvars;
-      int        nquadterms;
-      SCIP_VAR** linvars;
-      SCIP_VAR** quadvar1;
-      SCIP_VAR** quadvar2;
-      SCIP_Real* lincoefs;
-      SCIP_Real* quadcoefs;
-      Mono*      monom;
-
-      nlinvars   = 0;
-      nquadterms = 0;
-
-      SCIP_CALL( SCIPallocBufferArray(scip, &linvars,   term_get_elements(term)) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &quadvar1,  term_get_elements(term)) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &quadvar2,  term_get_elements(term)) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &lincoefs,  term_get_elements(term)) );
-      SCIP_CALL( SCIPallocBufferArray(scip, &quadcoefs, term_get_elements(term)) );
-
-      for( i = 0; i < term_get_elements(term); ++i )
-      {
-         monom = term_get_element(term, i);
-         assert(!numb_equal(mono_get_coeff(monom), numb_zero()));
-         assert(mono_get_degree(monom) <= 2);
-         assert(mono_get_degree(monom) > 0);
-         if (mono_get_degree(monom) == 1)
-         {
-            linvars [nlinvars] = (SCIP_VAR*)mono_get_var(monom, 0);
-            lincoefs[nlinvars] = numb_todbl(mono_get_coeff(monom));
-            ++nlinvars;
-         }
-         else
-         {
-            assert(mono_get_degree(monom) == 2);
-            quadvar1 [nquadterms] = (SCIP_VAR*)mono_get_var(monom, 0);
-            quadvar2 [nquadterms] = (SCIP_VAR*)mono_get_var(monom, 1);
-            quadcoefs[nquadterms] = numb_todbl(mono_get_coeff(monom));
-            ++nquadterms;
-         }
-      }
-
-      SCIP_CALL( SCIPcreateConsQuadratic(scip, &cons, name, nlinvars, linvars, lincoefs, nquadterms, quadvar1, quadvar2, quadcoefs, sciplhs, sciprhs,
-            initial, separate, enforce, check, propagate, local, modifiable, readerdata->dynamicconss, readerdata->dynamicrows) );
-      SCIP_CALL( SCIPaddCons(scip, cons) );
-
-      SCIPfreeBufferArray(scip, &linvars);
-      SCIPfreeBufferArray(scip, &quadvar1);
-      SCIPfreeBufferArray(scip, &quadvar2);
-      SCIPfreeBufferArray(scip, &lincoefs);
-      SCIPfreeBufferArray(scip, &quadcoefs);
-
-      (*created) = TRUE;
-   }
    else
    {
-      SCIP_VAR** polyvars;
-      int        npolyvars;
-      int        polyvarssize;
-      SCIP_HASHMAP* polyvarmap;
-      SCIP_VAR** vars;
-      int        nvars;
-      int        varssize;
-      SCIP_HASHMAP* varmap;
-      SCIP_EXPRDATA_MONOMIAL** simplemonomials;
-      int        nsimplemonomials;
-      int        simplemonomialssize;
-      SCIP_EXPR** extramonomials;
-      SCIP_Real* extracoefs;
-      int        nextramonomials;
-      int        extramonomialssize;
-      Mono*      monomial;
-      int varpos;
-      int j;
+      SCIP_EXPR* expr;
 
-      (*created) = TRUE;
+      /* convert term into expression */
+      SCIP_CALL( createExpr(scip, readerdata, &expr, term) );
 
-      vars = NULL;
-      nvars = 0;
-      varssize = 0;
-      varmap = NULL;
-
-      polyvars = NULL;
-      npolyvars = 0;
-      polyvarssize = 0;
-
-      simplemonomials = NULL;
-      nsimplemonomials = 0;
-      simplemonomialssize = 0;
-
-      extramonomials = NULL;
-      extracoefs = NULL;
-      nextramonomials = 0;
-      extramonomialssize = 0;
-
-      SCIP_CALL( SCIPhashmapCreate(&varmap, SCIPblkmem(scip), SCIPcalcMemGrowSize(scip, 10)) );
-      SCIP_CALL( SCIPhashmapCreate(&polyvarmap, SCIPblkmem(scip), SCIPcalcMemGrowSize(scip, 10)) );
-
-      for( i = 0; i < term_get_elements(term); ++i )
+      if( expr == NULL )
       {
-         monomial = term_get_element(term, i);
-         assert(monomial != NULL);
-         assert(!numb_equal(mono_get_coeff(monomial), numb_zero()));
-         assert(mono_get_degree(monomial) > 0);
-
-         if( mono_get_function(monomial) == MFUN_NONE )
-         {
-            /* nonlinear monomial without extra function around it */
-            SCIP_Real one;
-
-            one = 1.0;
-
-            /* create SCIP monomial */
-            if( simplemonomialssize == 0 )
-            {
-               simplemonomialssize = SCIPcalcMemGrowSize(scip, 1);
-               SCIP_CALL( SCIPallocBufferArray(scip, &simplemonomials, simplemonomialssize) );
-            }
-            else if( simplemonomialssize < nsimplemonomials + 1 )
-            {
-               simplemonomialssize = SCIPcalcMemGrowSize(scip, nsimplemonomials+1);
-               SCIP_CALL( SCIPreallocBufferArray(scip, &simplemonomials, simplemonomialssize) );
-            }
-            assert(simplemonomials != NULL);
-            SCIP_CALL( SCIPexprCreateMonomial(SCIPblkmem(scip), &simplemonomials[nsimplemonomials], numb_todbl(mono_get_coeff(monomial)), 0, NULL, NULL) );
-
-            for( j = 0; j < mono_get_degree(monomial); ++j )
-            {
-               /* get variable index in polyvars; add to polyvars if not existing yet */
-               if( !SCIPhashmapExists(polyvarmap, (void*)mono_get_var(monomial, j)) )  /*lint !e826*/
-               {
-                  if( polyvarssize == 0 )
-                  {
-                     polyvarssize = SCIPcalcMemGrowSize(scip, 1);
-                     SCIP_CALL( SCIPallocBufferArray(scip, &polyvars, polyvarssize) );
-                  }
-                  else if( polyvarssize < npolyvars + 1 )
-                  {
-                     polyvarssize = SCIPcalcMemGrowSize(scip, npolyvars+1);
-                     SCIP_CALL( SCIPreallocBufferArray(scip, &polyvars, polyvarssize) );
-                  }
-                  assert(polyvars != NULL);
-
-                  polyvars[npolyvars] = (SCIP_VAR*)mono_get_var(monomial, j);  /*lint !e826*/
-                  ++npolyvars;
-                  varpos = npolyvars-1;
-                  SCIP_CALL( SCIPhashmapInsert(polyvarmap, (void*)mono_get_var(monomial, j), (void*)(size_t)varpos) );  /*lint !e826*/
-               }
-               else
-               {
-                  varpos = (int)(size_t)SCIPhashmapGetImage(polyvarmap, (void*)mono_get_var(monomial, j));  /*lint !e826*/
-               }
-               assert(polyvars != NULL);
-               assert(polyvars[varpos] == (SCIP_VAR*)mono_get_var(monomial, j));
-
-               SCIP_CALL( SCIPexprAddMonomialFactors(SCIPblkmem(scip), simplemonomials[nsimplemonomials], 1, &varpos, &one) );
-            }
-            SCIPexprMergeMonomialFactors(simplemonomials[nsimplemonomials], 0.0);
-
-            ++nsimplemonomials;
-         }
-         else
-         {
-            /* nonlinear monomial with extra function around it, put into new expression */
-            SCIP_EXPR** children;
-            SCIP_EXPR* expr;
-            SCIP_EXPROP op;
-            SCIP_Real coef;
-            SCIP_Real argdbl;
-            int argint;
-
-            coef = 1.0;
-            argint = 0;
-            argdbl = 0.0;
-            switch( mono_get_function(monomial) )
-            {
-            case MFUN_SQRT:
-               op = SCIP_EXPR_SQRT;
-               break;
-            case MFUN_LOG:
-               /* log10(x) = ln(x) / ln(10.0) */
-               op = SCIP_EXPR_LOG;
-               coef = 1.0 / log(10.0);
-               break;
-            case MFUN_EXP:
-               op = SCIP_EXPR_EXP;
-               break;
-#if ZIMPL_VERSION >= 330
-            case MFUN_LN:
-               op = SCIP_EXPR_LOG;
-               break;
-            /*
-            case MFUN_SIN:
-               op = SCIP_EXPR_SIN;
-               break;
-            case MFUN_COS:
-               op = SCIP_EXPR_COS;
-               break;
-            case MFUN_TAN:
-               op = SCIP_EXPR_TAN;
-               break;
-            */
-            case MFUN_ABS:
-               op = SCIP_EXPR_ABS;
-               break;
-            case MFUN_SGN:
-               op = SCIP_EXPR_SIGN;
-               break;
-            case MFUN_POW:
-               if( numb_is_int(mono_get_coeff(monomial)) )
-               {
-                  op = SCIP_EXPR_INTPOWER;
-                  argint = numb_toint(mono_get_coeff(monomial));
-               }
-               else
-               {
-                  op = SCIP_EXPR_REALPOWER;
-                  argdbl = numb_todbl(mono_get_coeff(monomial));
-               }
-               break;
-            case MFUN_SGNPOW:
-               op = SCIP_EXPR_SIGNPOWER;
-               argdbl = numb_todbl(mono_get_coeff(monomial));
-               break;
-#endif
-            case MFUN_NONE:
-            case MFUN_TRUE:
-            case MFUN_FALSE:
-               SCIPerrorMessage("ZIMPL function %d invalid here.\n", mono_get_function(monomial));
-               (*created) = FALSE;
-               break;
-#if ZIMPL_VERSION >= 330
-            case MFUN_SIN:
-            case MFUN_COS:
-            case MFUN_TAN:
-#endif
-            default:
-               SCIPerrorMessage("ZIMPL function %d not supported\n", mono_get_function(monomial));
-               (*created) = FALSE;
-               break;
-            }  /*lint !e788*/
-            if( !(*created) )
-               break;
-
-            if( extramonomialssize == 0 )
-            {
-               extramonomialssize = SCIPcalcMemGrowSize(scip, 1);
-               SCIP_CALL( SCIPallocBufferArray(scip, &extramonomials, extramonomialssize) );
-               SCIP_CALL( SCIPallocBufferArray(scip, &extracoefs,  extramonomialssize) );
-            }
-            else if( extramonomialssize < nextramonomials + 1 )
-            {
-               extramonomialssize = SCIPcalcMemGrowSize(scip, nextramonomials+1);
-               SCIP_CALL( SCIPreallocBufferArray(scip, &extramonomials, extramonomialssize) );
-               SCIP_CALL( SCIPreallocBufferArray(scip, &extracoefs,  extramonomialssize) );
-            }
-            assert(extracoefs != NULL);
-            assert(extramonomials != NULL);
-            extracoefs[nextramonomials] = coef;
-
-            /* create children expressions */
-            SCIP_CALL( SCIPallocBufferArray(scip, &children, mono_get_degree(monomial)) );
-            for( j = 0; j < mono_get_degree(monomial); ++j )
-            {
-               /* get variable index in vars; add to vars if not existing yet */
-               if( !SCIPhashmapExists(varmap, (void*)mono_get_var(monomial, j)) )  /*lint !e826*/
-               {
-                  if( varssize == 0 )
-                  {
-                     varssize = SCIPcalcMemGrowSize(scip, 1);
-                     SCIP_CALL( SCIPallocBufferArray(scip, &vars, varssize) );
-                  }
-                  else if( varssize < nvars + 1 )
-                  {
-                     varssize = SCIPcalcMemGrowSize(scip, nvars+1);
-                     SCIP_CALL( SCIPreallocBufferArray(scip, &vars, varssize) );
-                  }
-                  assert(vars != NULL);
-
-                  vars[nvars] = (SCIP_VAR*)mono_get_var(monomial, j);  /*lint !e826*/
-                  ++nvars;
-                  varpos = nvars-1;
-                  SCIP_CALL( SCIPhashmapInsert(varmap, (void*)mono_get_var(monomial, j), (void*)(size_t)varpos) );  /*lint !e826*/
-               }
-               else
-               {
-                  varpos = (int)(size_t)SCIPhashmapGetImage(varmap, (void*)mono_get_var(monomial, j));  /*lint !e826*/
-               }
-               assert(vars != NULL);
-               assert(vars[varpos] == (SCIP_VAR*)mono_get_var(monomial, j));
-
-               SCIP_CALL( SCIPexprCreate(SCIPblkmem(scip), &children[j], SCIP_EXPR_VARIDX, varpos) );
-            }
-
-            /* create expression for product of variables */
-            SCIP_CALL( SCIPexprCreate(SCIPblkmem(scip), &expr, SCIP_EXPR_PRODUCT, mono_get_degree(monomial), children) );
-
-            /* create expression for function of product of variables */
-            if( op == SCIP_EXPR_INTPOWER )  /*lint !e644 */
-            {
-               SCIP_CALL( SCIPexprCreate(SCIPblkmem(scip), &extramonomials[nextramonomials], op, expr, argint) );  /*lint !e644*/
-            }
-            else if( op == SCIP_EXPR_REALPOWER || op == SCIP_EXPR_SIGNPOWER )
-            {
-               SCIP_CALL( SCIPexprCreate(SCIPblkmem(scip), &extramonomials[nextramonomials], op, expr, argdbl) );  /*lint !e644*/
-            }
-            else
-            {
-               SCIP_CALL( SCIPexprCreate(SCIPblkmem(scip), &extramonomials[nextramonomials], op, expr) );  /*lint !e644*/
-            }
-
-            ++nextramonomials;
-
-            SCIPfreeBufferArray(scip, &children);
-         }
+         /* ZIMPL term could not be represented as SCIP expression */
+         (*created) = FALSE;
       }
-
-      if( *created )
+      else
       {
-         SCIP_EXPRTREE* exprtree;
-         SCIP_EXPR* polynomial;
-         SCIP_EXPR** children;
-         int nchildren;
-
-         assert(polyvars != NULL || npolyvars == 0);
-
-         nchildren = npolyvars + nextramonomials;
-         SCIP_CALL( SCIPallocBufferArray(scip, &children, nchildren) );
-         /* add polynomial variables to vars
-          * create children expressions for polynomial variables
-          */
-         for( i = 0; i < npolyvars; ++i )
-         {
-            /* get variable index in vars; add to vars if not existing yet */
-            if( !SCIPhashmapExists(varmap, (void*)polyvars[i]) )  /*lint !e613*/
-            {
-               if( varssize == 0 )
-               {
-                  varssize = SCIPcalcMemGrowSize(scip, 1);
-                  SCIP_CALL( SCIPallocBufferArray(scip, &vars, varssize) );
-               }
-               else if( varssize < nvars + 1 )
-               {
-                  varssize = SCIPcalcMemGrowSize(scip, nvars+1);
-                  SCIP_CALL( SCIPreallocBufferArray(scip, &vars, varssize) );
-               }
-               assert(vars != NULL);
-
-               vars[nvars] = polyvars[i];  /*lint !e613*/
-               ++nvars;
-               varpos = nvars-1;
-               SCIP_CALL( SCIPhashmapInsert(varmap, (void*)polyvars[i], (void*)(size_t)varpos) );  /*lint !e613*/
-            }
-            else
-            {
-               varpos = (int)(size_t)SCIPhashmapGetImage(varmap, (void*)polyvars[i]);  /*lint !e613*/
-            }
-            assert(vars[varpos] == polyvars[i]);  /*lint !e613*/
-
-            SCIP_CALL( SCIPexprCreate(SCIPblkmem(scip), &children[i], SCIP_EXPR_VARIDX, varpos) );  /*lint !e866*/
-         }
-
-         /* add simple monomials as additional children */
-         BMScopyMemoryArray(&children[npolyvars], extramonomials, nextramonomials);  /*lint !e866*/
-
-         assert(extracoefs     != NULL || nextramonomials == 0);
-         assert(extramonomials != NULL || nextramonomials == 0);
-
-         /* create polynomial expression including simple monomials */
-         SCIP_CALL( SCIPexprCreatePolynomial(SCIPblkmem(scip), &polynomial, nchildren, children, nsimplemonomials, simplemonomials, 0.0, FALSE) );
-         /* add extra monomials */
-         for( i = 0; i < nextramonomials; ++i )
-         {
-            SCIP_EXPRDATA_MONOMIAL* monomialdata;
-            int childidx;
-            SCIP_Real exponent;
-
-            childidx = npolyvars + i;
-            exponent = 1.0;
-            SCIP_CALL( SCIPexprCreateMonomial(SCIPblkmem(scip), &monomialdata, extracoefs[i], 1, &childidx, &exponent) );  /*lint !e613*/
-            SCIP_CALL( SCIPexprAddMonomials(SCIPblkmem(scip), polynomial, 1, &monomialdata, FALSE) );
-         }
-
-         SCIPfreeBufferArray(scip, &children);
-
-         /* create expression tree */
-         SCIP_CALL( SCIPexprtreeCreate(SCIPblkmem(scip), &exprtree, polynomial, nvars, 0, NULL) );
-         SCIP_CALL( SCIPexprtreeSetVars(exprtree, nvars, vars) );
-
-         /* create constraint */
-         SCIP_CALL( SCIPcreateConsNonlinear(scip, &cons, name, 0, NULL, NULL, 1, &exprtree, NULL, sciplhs, sciprhs,
-               initial, separate, enforce, check, propagate, local, modifiable, readerdata->dynamicconss, readerdata->dynamicrows, FALSE) );
-         SCIP_CALL( SCIPexprtreeFree(&exprtree) );
+         /* create constraint with expression */
+         SCIP_CALL( SCIPcreateConsNonlinear(scip, &cons, name, expr, sciplhs, sciprhs,
+            initial, separate, enforce, check, propagate, local, modifiable, readerdata->dynamicconss, readerdata->dynamicrows) );
          SCIP_CALL( SCIPaddCons(scip, cons) );
-      }
 
-      /* free memory */
-      SCIPhashmapFree(&varmap);
-      SCIPfreeBufferArrayNull(scip, &vars);
-      SCIPhashmapFree(&polyvarmap);
-      SCIPfreeBufferArrayNull(scip, &polyvars);
-      SCIPfreeBufferArrayNull(scip, &simplemonomials);
-      SCIPfreeBufferArrayNull(scip, &extramonomials);
-      SCIPfreeBufferArrayNull(scip, &extracoefs);
+         SCIP_CALL( SCIPreleaseExpr(scip, &expr) );
+
+         (*created) = TRUE;
+      }
    }
 
    if( cons != NULL )
    {
       SCIP_CALL( SCIPreleaseCons(scip, &cons) );
    }
+
+   return SCIP_OKAY;
+}
+
+/** method adds objective term and is called directly from ZIMPL
+ *
+ *  @note this method is used by ZIMPL beginning from version 3.4.1
+ */
+static
+SCIP_RETCODE addObjTerm(
+   SCIP*                 scip,               /**< SCIP data structure */
+   SCIP_READERDATA*      readerdata,         /**< reader data */
+   const Term*           term                /**< term to use */
+   )
+{
+   SCIP_Real objoffset;
+
+   if( term_is_linear(term) )
+   {
+      int i;
+      for( i = 0; i < term_get_elements(term); i++ )
+      {
+         SCIP_VAR* scipvar;
+         SCIP_Real scipval;
+
+         assert(!numb_equal(mono_get_coeff(term_get_element(term, i)), numb_zero()));
+         assert(mono_is_linear(term_get_element(term, i)));
+
+         scipvar = (SCIP_VAR*)mono_get_var(term_get_element(term, i), 0);
+         scipval = numb_todbl(mono_get_coeff(term_get_element(term, i)));
+
+         SCIP_CALL( SCIPaddVarObj(scip, scipvar, scipval) );
+      }
+   }
+   else
+   {
+      /* create variable objvar, add 1*objvar to objective, and add constraint term - objvar = 0 */
+      SCIP_EXPR* expr;
+      SCIP_CONS* cons;
+      SCIP_VAR* objvar;
+
+      SCIP_CALL( createExpr(scip, readerdata, &expr, term) );
+
+      if( expr == NULL )
+      {
+         SCIPerrorMessage("Could not convert ZIMPL objective term into SCIP expression due to unsupported ZIMPL function.\n");
+         return SCIP_READERROR;
+      }
+
+      SCIP_CALL( SCIPcreateConsNonlinear(scip, &cons, "obj", expr,
+         SCIPgetObjsense(scip) == SCIP_OBJSENSE_MINIMIZE ? -SCIPinfinity(scip) : 0.0,
+         SCIPgetObjsense(scip) == SCIP_OBJSENSE_MAXIMIZE ?  SCIPinfinity(scip) : 0.0,
+         readerdata->initialconss, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, readerdata->dynamicconss, FALSE) );
+
+      SCIP_CALL( SCIPcreateVarBasic(scip, &objvar, "objvar", -SCIPinfinity(scip), SCIPinfinity(scip), 1.0, SCIP_VARTYPE_CONTINUOUS) );
+      SCIP_CALL( SCIPaddLinearVarNonlinear(scip, cons, objvar, -1.0) );
+
+      SCIP_CALL( SCIPaddVar(scip, objvar) );
+      SCIP_CALL( SCIPaddCons(scip, cons) );
+
+      SCIP_CALL( SCIPreleaseExpr(scip, &expr) );
+      SCIP_CALL( SCIPreleaseCons(scip, &cons) );
+      SCIP_CALL( SCIPreleaseVar(scip, &objvar) );
+   }
+
+   objoffset = numb_todbl(term_get_constant(term));
+   SCIP_CALL( SCIPaddOrigObjoffset(scip, objoffset) );
 
    return SCIP_OKAY;
 }
@@ -1253,19 +1227,13 @@ Bound* xlp_getupper(
    return bound;
 }
 
-/* set the name of the objective function */
-void xlp_objname(
+/** Set the name and direction of the objective function, i.e. minimization or maximization
+ *  Coefficents of the objective function will be set to all zero.
+ */
+bool xlp_setobj(
    Lps*                  data,               /**< pointer to reader data */
-   const char*           name                /**< name of the objective function */
-   )
-{  /*lint --e{715}*/
-   /* nothing to be done */
-}
-
-/* set the name of the objective function */
-void xlp_setdir(
-   Lps*                  data,               /**< pointer to reader data */
-   bool                  minimize            /**<True if the problem should be minimized, False if it should be maximized  */
+   const char*           name,               /**< name of the objective function */
+   bool                  minimize            /**< True if the problem should be minimized, False if it should be maximized  */
    )
 {
    SCIP* scip;
@@ -1279,42 +1247,22 @@ void xlp_setdir(
    assert(scip != NULL);
 
    if( readerdata->retcode != SCIP_OKAY || readerdata->readerror )
-      return;
+      return FALSE;
 
    objsense = (minimize ? SCIP_OBJSENSE_MINIMIZE : SCIP_OBJSENSE_MAXIMIZE);
    readerdata->retcode = SCIPsetObjsense(scip, objsense);
-}
 
-/** Set the name and direction of the objective function, i.e. minimization or maximization
- *  Coefficents of the objective function will be set to all zero.
- */
-bool xlp_setobj(
-   Lps*                  data,               /**< pointer to reader data */
-   const char*           name,               /**< name of the objective function */
-   bool                  minimize            /**< True if the problem should be minimized, False if it should be maximized  */
-   )
-{
-   assert(data != NULL);
-   assert(name != NULL);
-
-   xlp_objname(data, name);
-   xlp_setdir(data, minimize);
-
-   /* always return FALSE to indicate that the objective has not been set already */
    return FALSE;
 }
 
-/** changes objective coefficient of a variable */
-void xlp_addtocost(
+/** adds objective function */
+void xlp_addtoobj(
    Lps*                  data,               /**< pointer to reader data */
-   Var*                  var,                /**< variable */
-   const Numb*           cost                /**< objective coefficient */
+   const Term*           term                /**< objective term */
    )
 {
    SCIP* scip;
    SCIP_READERDATA* readerdata;
-   SCIP_VAR* scipvar;
-   SCIP_Real scipval;
 
    readerdata = (SCIP_READERDATA*)data;
    assert(readerdata != NULL);
@@ -1325,11 +1273,7 @@ void xlp_addtocost(
    if( readerdata->retcode != SCIP_OKAY || readerdata->readerror )
       return;
 
-   scipvar = (SCIP_VAR*)var;
-   assert(scipvar != NULL);
-   scipval = numb_todbl(cost);
-
-   readerdata->retcode = SCIPchgVarObj(scip, scipvar, SCIPvarGetObj(scipvar) + scipval);
+   readerdata->retcode = addObjTerm(scip, readerdata, term);
 }
 
 /*
@@ -1379,8 +1323,7 @@ SCIP_DECL_READERREAD(readerReadZpl)
       /* change to the directory of the ZIMPL file, s.t. paths of data files read by the ZIMPL model are relative to
        * the location of the ZIMPL file
        */
-      (void)strncpy(buffer, filename, SCIP_MAXSTRLEN-1);
-      buffer[SCIP_MAXSTRLEN-1] = '\0';
+      (void)SCIPstrncpy(buffer, filename, SCIP_MAXSTRLEN);
       SCIPsplitFilename(buffer, &path, &name, &extension, &compression);
       if( compression != NULL )
          (void) SCIPsnprintf(compextension, SCIP_MAXSTRLEN, ".%s", compression);
@@ -1608,16 +1551,18 @@ SCIP_DECL_READERREAD(readerReadZpl)
  * reader specific interface methods
  */
 
-/** includes the zpl file reader in SCIP */
+/** includes the zpl file reader in SCIP */ /*lint --e{715}*/
 SCIP_RETCODE SCIPincludeReaderZpl(
    SCIP*                 scip                /**< SCIP data structure */
    )
-{
-#ifdef WITH_ZIMPL
-#if (ZIMPL_VERSION >= 320)
+{ /*lint --e{715}*/
+#ifdef SCIP_WITH_ZIMPL
+#if (ZIMPL_VERSION >= 341)
    SCIP_READERDATA* readerdata;
    SCIP_READER* reader;
    char extcodename[SCIP_MAXSTRLEN];
+
+   assert(scip != NULL);
 
    /* create zpl reader data */
    readerdata = NULL;
@@ -1643,7 +1588,9 @@ SCIP_RETCODE SCIPincludeReaderZpl(
    (void) SCIPsnprintf(extcodename, SCIP_MAXSTRLEN, "ZIMPL %d.%d.%d", ZIMPL_VERSION/100, (ZIMPL_VERSION%100)/10, ZIMPL_VERSION%10); /*lint !e778*/
    SCIP_CALL( SCIPincludeExternalCodeInformation(scip, extcodename, "Zuse Institute Mathematical Programming Language developed by T. Koch (zimpl.zib.de)"));
 #else
-   SCIPwarningMessage(scip, "SCIP does only support ZIMPL 3.2.0 and higher. Please update your ZIMPL version %d.%d.%d\n",
+   assert(scip != NULL);
+
+   SCIPwarningMessage(scip, "SCIP does only support ZIMPL 3.4.1 and higher. Please update your ZIMPL version %d.%d.%d\n",
       ZIMPL_VERSION/100, (ZIMPL_VERSION%100)/10, ZIMPL_VERSION%10);
 #endif
 #endif

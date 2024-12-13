@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_LU_INVERT_HPP
-# define CPPAD_LU_INVERT_HPP
+# ifndef CPPAD_UTILITY_LU_INVERT_HPP
+# define CPPAD_UTILITY_LU_INVERT_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -140,7 +139,7 @@ output value solves the matrix equation $icode%A% * %X% = %B%$$.
 
 
 $children%
-	example/lu_invert.cpp%
+	example/utility/lu_invert.cpp%
 	omh/lu_invert_hpp.omh
 %$$
 $head Example$$
@@ -159,7 +158,7 @@ $end
 --------------------------------------------------------------------------
 */
 // BEGIN C++
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 # include <cppad/utility/check_simple_vector.hpp>
 # include <cppad/utility/check_numeric_type.hpp>
 

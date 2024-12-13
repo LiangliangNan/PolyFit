@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_ROMBERG_ONE_HPP
-# define CPPAD_ROMBERG_ONE_HPP
+# ifndef CPPAD_UTILITY_ROMBERG_ONE_HPP
+# define CPPAD_UTILITY_ROMBERG_ONE_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -125,11 +124,11 @@ returns the $code bool$$ value true if $icode x$$ is less than
 $icode y$$ and false otherwise.
 
 $children%
-	example/romberg_one.cpp
+	example/utility/romberg_one.cpp
 %$$
 $head Example$$
 $comment%
-	example/romberg_one.cpp
+	example/utility/romberg_one.cpp
 %$$
 The file
 $cref romberg_one.cpp$$
@@ -144,7 +143,7 @@ $end
 */
 
 # include <cppad/utility/check_numeric_type.hpp>
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 # include <cppad/utility/vector.hpp>
 
 namespace CppAD { // BEGIN CppAD namespace
@@ -183,7 +182,7 @@ Float RombergOne(
 		sum    = zero;
 		for(k = 1; k < ipow2; k += 2)
 		{	// start = a + (b-a)/pow2, increment = 2*(b-a)/pow2
-			x    = ( (pow2 - Float(int(k))) * a + k * b ) / pow2;
+			x    = ( (pow2 - Float(double(k))) * a + double(k) * b ) / pow2;
 			sum  = sum + F(x);
 		}
 		// combine function evaluations in sum with those in T[i-1]

@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_POW_OP_HPP
-# define CPPAD_POW_OP_HPP
+# ifndef CPPAD_LOCAL_POW_OP_HPP
+# define CPPAD_LOCAL_POW_OP_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -13,7 +12,7 @@ A copy of this license is included in the COPYING file of this distribution.
 Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file pow_op.hpp
 Forward and reverse mode calculations for z = pow(x, y).
@@ -27,7 +26,7 @@ In the documentation below,
 this operations is for the case where both x and y are variables
 and the argument \a parameter is not used.
 
-\copydetails forward_pow_op
+\copydetails CppAD::local::forward_pow_op
 */
 
 template <class Base>
@@ -48,13 +47,14 @@ inline void forward_powvv_op(
 	CPPAD_ASSERT_UNKNOWN( NumRes(PowvvOp) == 3 );
 	CPPAD_ASSERT_UNKNOWN( q < cap_order );
 	CPPAD_ASSERT_UNKNOWN( p <= q );
+	CPPAD_ASSERT_UNKNOWN( std::numeric_limits<addr_t>::max() >= i_z );
 
 	// z_0 = log(x)
 	forward_log_op(p, q, i_z, arg[0], cap_order, taylor);
 
 	// z_1 = z_0 * y
 	addr_t adr[2];
-	adr[0] = i_z;
+	adr[0] = addr_t( i_z );
 	adr[1] = arg[1];
 	forward_mulvv_op(p, q, i_z+1, adr, parameter, cap_order, taylor);
 
@@ -82,7 +82,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a variable and y is a parameter.
 
-\copydetails forward_pow_op_dir
+\copydetails CppAD::local::forward_pow_op_dir
 */
 
 template <class Base>
@@ -103,13 +103,14 @@ inline void forward_powvv_op_dir(
 	CPPAD_ASSERT_UNKNOWN( NumRes(PowvvOp) == 3 );
 	CPPAD_ASSERT_UNKNOWN( 0 < q );
 	CPPAD_ASSERT_UNKNOWN( q < cap_order );
+	CPPAD_ASSERT_UNKNOWN( std::numeric_limits<addr_t>::max() >= i_z );
 
 	// z_0 = log(x)
 	forward_log_op_dir(q, r, i_z, arg[0], cap_order, taylor);
 
 	// z_1 = y * z_0
 	addr_t adr[2];
-	adr[0] = i_z;
+	adr[0] = addr_t( i_z );
 	adr[1] = arg[1];
 	forward_mulvv_op_dir(q, r, i_z+1, adr, parameter, cap_order, taylor);
 
@@ -127,7 +128,7 @@ In the documentation below,
 this operations is for the case where both x and y are variables
 and the argument \a parameter is not used.
 
-\copydetails forward_pow_op_0
+\copydetails CppAD::local::forward_pow_op_0
 */
 
 template <class Base>
@@ -169,7 +170,7 @@ In the documentation below,
 this operations is for the case where both x and y are variables
 and the argument \a parameter is not used.
 
-\copydetails reverse_pow_op
+\copydetails CppAD::local::reverse_pow_op
 */
 
 template <class Base>
@@ -191,6 +192,7 @@ inline void reverse_powvv_op(
 	CPPAD_ASSERT_UNKNOWN( NumRes(PowvvOp) == 3 );
 	CPPAD_ASSERT_UNKNOWN( d < cap_order );
 	CPPAD_ASSERT_UNKNOWN( d < nc_partial );
+	CPPAD_ASSERT_UNKNOWN( std::numeric_limits<addr_t>::max() >= i_z );
 
 	// z_2 = exp(z_1)
 	reverse_exp_op(
@@ -199,7 +201,7 @@ inline void reverse_powvv_op(
 
 	// z_1 = z_0 * y
 	addr_t adr[2];
-	adr[0] = i_z;
+	adr[0] = addr_t( i_z );
 	adr[1] = arg[1];
 	reverse_mulvv_op(
 	d, i_z+1, adr, parameter, cap_order, taylor, nc_partial, partial
@@ -222,7 +224,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a parameter and y is a variable.
 
-\copydetails forward_pow_op
+\copydetails CppAD::local::forward_pow_op
 */
 
 template <class Base>
@@ -253,13 +255,20 @@ inline void forward_powpv_op(
 	for(d = p; d <= q; d++)
 	{	if( d == 0 )
 			z_0[d] = log(x);
-		else	z_0[d] = Base(0);
+		else	z_0[d] = Base(0.0);
 	}
+
+	// 2DO: remove requirement that i_z * cap_order <= max addr_t value
+	CPPAD_ASSERT_KNOWN(
+		std::numeric_limits<addr_t>::max() >= i_z * cap_order,
+		"cppad_tape_addr_type maximum value has been exceeded\n"
+		"This is due to a kludge in the pow operation and should be fixed."
+	);
 
 	// z_1 = z_0 * y
 	addr_t adr[2];
 	// offset of z_i in taylor (as if it were a parameter); i.e., log(x)
-	adr[0] = i_z * cap_order;
+	adr[0] = addr_t( i_z * cap_order );
 	// offset of y in taylor (as a variable)
 	adr[1] = arg[1];
 
@@ -287,7 +296,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a parameter and y is a variable.
 
-\copydetails forward_pow_op_dir
+\copydetails CppAD::local::forward_pow_op_dir
 */
 
 template <class Base>
@@ -316,12 +325,19 @@ inline void forward_powpv_op_dir(
 	// z_0 = log(x)
 	size_t m  = (q-1) * r + 1;
 	for(size_t ell = 0; ell < r; ell++)
-		z_0[m+ell] = Base(0);
+		z_0[m+ell] = Base(0.0);
+
+	// 2DO: remove requirement i_z * num_taylor_per_var <= max addr_t value
+	CPPAD_ASSERT_KNOWN(
+		std::numeric_limits<addr_t>::max() >= i_z * num_taylor_per_var,
+		"cppad_tape_addr_type maximum value has been exceeded\n"
+		"This is due to a kludge in the pow operation and should be fixed."
+	);
 
 	// z_1 = z_0 * y
 	addr_t adr[2];
 	// offset of z_0 in taylor (as if it were a parameter); i.e., log(x)
-	adr[0] = i_z * num_taylor_per_var;
+	adr[0] = addr_t( i_z * num_taylor_per_var );
 	// ofset of y in taylor (as a variable)
 	adr[1] = arg[1];
 
@@ -341,7 +357,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a parameter and y is a variable.
 
-\copydetails forward_pow_op_0
+\copydetails CppAD::local::forward_pow_op_0
 */
 
 template <class Base>
@@ -389,7 +405,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a parameter and y is a variable.
 
-\copydetails reverse_pow_op
+\copydetails CppAD::local::reverse_pow_op
 */
 
 template <class Base>
@@ -417,10 +433,17 @@ inline void reverse_powpv_op(
 		d, i_z+2, i_z+1, cap_order, taylor, nc_partial, partial
 	);
 
+	// 2DO: remove requirement that i_z * cap_order <= max addr_t value
+	CPPAD_ASSERT_KNOWN(
+		std::numeric_limits<addr_t>::max() >= i_z * cap_order,
+		"cppad_tape_addr_type maximum value has been exceeded\n"
+		"This is due to a kludge in the pow operation and should be fixed."
+	);
+
 	// z_1 = z_0 * y
 	addr_t adr[2];
-	adr[0] = i_z * cap_order; // offset of z_0[0] in taylor
-	adr[1] = arg[1];          // index of y in taylor and partial
+	adr[0] = addr_t( i_z * cap_order ); // offset of z_0[0] in taylor
+	adr[1] = arg[1];                    // index of y in taylor and partial
 	// use taylor both for parameter and variable values
 	reverse_mulpv_op(
 		d, i_z+1, adr, taylor, cap_order, taylor, nc_partial, partial
@@ -441,7 +464,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a variable and y is a parameter.
 
-\copydetails forward_pow_op
+\copydetails CppAD::local::forward_pow_op
 */
 
 template <class Base>
@@ -462,6 +485,7 @@ inline void forward_powvp_op(
 	CPPAD_ASSERT_UNKNOWN( NumRes(PowvpOp) == 3 );
 	CPPAD_ASSERT_UNKNOWN( q < cap_order );
 	CPPAD_ASSERT_UNKNOWN( p <= q );
+	CPPAD_ASSERT_UNKNOWN( std::numeric_limits<addr_t>::max() >= i_z );
 
 	// z_0 = log(x)
 	forward_log_op(p, q, i_z, arg[0], cap_order, taylor);
@@ -469,7 +493,7 @@ inline void forward_powvp_op(
 	// z_1 = y * z_0
 	addr_t adr[2];
 	adr[0] = arg[1];
-	adr[1] = i_z;
+	adr[1] = addr_t( i_z );
 	forward_mulpv_op(p, q, i_z+1, adr, parameter, cap_order, taylor);
 
 	// z_2 = exp(z_1)
@@ -494,7 +518,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a variable and y is a parameter.
 
-\copydetails forward_pow_op_dir
+\copydetails CppAD::local::forward_pow_op_dir
 */
 
 template <class Base>
@@ -515,6 +539,7 @@ inline void forward_powvp_op_dir(
 	CPPAD_ASSERT_UNKNOWN( NumRes(PowvpOp) == 3 );
 	CPPAD_ASSERT_UNKNOWN( 0 < q );
 	CPPAD_ASSERT_UNKNOWN( q < cap_order );
+	CPPAD_ASSERT_UNKNOWN( std::numeric_limits<addr_t>::max() >= i_z );
 
 	// z_0 = log(x)
 	forward_log_op_dir(q, r, i_z, arg[0], cap_order, taylor);
@@ -522,7 +547,7 @@ inline void forward_powvp_op_dir(
 	// z_1 = y * z_0
 	addr_t adr[2];
 	adr[0] = arg[1];
-	adr[1] = i_z;
+	adr[1] = addr_t( i_z );
 	forward_mulpv_op_dir(q, r, i_z+1, adr, parameter, cap_order, taylor);
 
 	// z_2 = exp(z_1)
@@ -539,7 +564,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a variable and y is a parameter.
 
-\copydetails forward_pow_op_0
+\copydetails CppAD::local::forward_pow_op_0
 */
 
 template <class Base>
@@ -587,7 +612,7 @@ The C++ source code corresponding to this operation is
 In the documentation below,
 this operations is for the case where x is a variable and y is a parameter.
 
-\copydetails reverse_pow_op
+\copydetails CppAD::local::reverse_pow_op
 */
 
 template <class Base>
@@ -609,6 +634,7 @@ inline void reverse_powvp_op(
 	CPPAD_ASSERT_UNKNOWN( NumRes(PowvpOp) == 3 );
 	CPPAD_ASSERT_UNKNOWN( d < cap_order );
 	CPPAD_ASSERT_UNKNOWN( d < nc_partial );
+	CPPAD_ASSERT_UNKNOWN( std::numeric_limits<addr_t>::max() >= i_z );
 
 	// z_2 = exp(z_1)
 	reverse_exp_op(
@@ -618,7 +644,7 @@ inline void reverse_powvp_op(
 	// z_1 = y * z_0
 	addr_t adr[2];
 	adr[0] = arg[1];
-	adr[1] = i_z;
+	adr[1] = addr_t( i_z );
 	reverse_mulpv_op(
 	d, i_z+1, adr, parameter, cap_order, taylor, nc_partial, partial
 	);
@@ -627,7 +653,20 @@ inline void reverse_powvp_op(
 	reverse_log_op(
 		d, i_z, arg[0], cap_order, taylor, nc_partial, partial
 	);
+
+    // For sake of this discussion, consider case where nc_partial = 1.
+    // There is a special case when partial[i_z + 2] != 0 and x <= 0.
+    // In this case partial[i_z] is zero and hence partial[i_z] * (1 / x)
+    // is zero, because reverse_log_op is using the azmul operator for the
+    // multiply. We only want absolute zero multiply when partia[i_z + 2] == 0.
+   Base zero(0);
+   if( partial[ (i_z + 2) * nc_partial ] != zero  )
+   {   if( ! GreaterThanZero( taylor[ size_t(arg[0]) * cap_order ] ) )
+            for(size_t k = 0; k < nc_partial; ++k)
+                partial[k + size_t(arg[0]) * nc_partial] =
+                    numeric_limits<Base>::quiet_NaN();
+   }
 }
 
-} // END_CPPAD_NAMESPACE
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

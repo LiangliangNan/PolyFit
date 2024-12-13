@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   visual.c
+ * @ingroup OTHER_CFILES
  * @brief  methods for creating output for visualization tools (VBC, BAK)
  * @author Tobias Achterberg
  * @author Marc Pfetsch
@@ -87,6 +97,7 @@ SCIP_RETCODE SCIPvisualCreate(
    (*visual)->lastnode = NULL;
    (*visual)->lastcolor = SCIP_VBCCOLOR_NONE;
    (*visual)->userealtime = FALSE;
+   (*visual)->lastlowerbound = SCIP_INVALID;
 
    return SCIP_OKAY;
 }
@@ -118,6 +129,8 @@ SCIP_RETCODE SCIPvisualInit(
    assert( set->visual_vbcfilename != NULL );
    assert( set->visual_bakfilename != NULL );
    assert( visual->nodenum == NULL );
+
+   visual->lastlowerbound = -SCIPsetInfinity(set);
 
    /* check whether we should initialize VBC output */
    if ( set->visual_vbcfilename[0] != '-' || set->visual_vbcfilename[1] != '\0' )
@@ -261,8 +274,8 @@ SCIP_RETCODE SCIPvisualNewChild(
    SCIP_BOUNDTYPE branchtype;
    SCIP_Real branchbound;
    SCIP_Real lowerbound;
-   size_t parentnodenum;
-   size_t nodenum;
+   int parentnodenum;
+   int nodenum;
 
    assert( visual != NULL );
    assert( stat != NULL );
@@ -283,12 +296,12 @@ SCIP_RETCODE SCIPvisualNewChild(
       return SCIP_INVALIDDATA;
    }
 
-   nodenum = (size_t)stat->ncreatednodesrun;
+   nodenum = (int)stat->ncreatednodesrun;
    assert(nodenum > 0);
-   SCIP_CALL( SCIPhashmapSetImage(visual->nodenum, node, (void*)nodenum) );
+   SCIP_CALL( SCIPhashmapSetImageInt(visual->nodenum, node, nodenum) );
 
    /* get nodenum of parent node from hash map */
-   parentnodenum = (node->parent != NULL ? (size_t)SCIPhashmapGetImage(visual->nodenum, node->parent) : 0);
+   parentnodenum = (node->parent != NULL ? SCIPhashmapGetImageInt(visual->nodenum, node->parent) : 0);
    assert(node->parent == NULL || parentnodenum > 0);
 
    /* get branching information */
@@ -303,19 +316,19 @@ SCIP_RETCODE SCIPvisualNewChild(
    if ( visual->vbcfile != NULL )
    {
       printTime(visual, stat, TRUE);
-      SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "N %d %d %d\n", (int)parentnodenum, (int)nodenum, SCIP_VBCCOLOR_UNSOLVED);
+      SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "N %d %d %d\n", parentnodenum, nodenum, SCIP_VBCCOLOR_UNSOLVED);
       printTime(visual, stat, TRUE);
       if( branchvar != NULL )
       {
          SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "I %d \\inode:\\t%d (%p)\\idepth:\\t%d\\nvar:\\t%s [%g,%g] %s %f\\nbound:\\t%f\n",
-            (int)nodenum, (int)nodenum, node, SCIPnodeGetDepth(node),
+            nodenum, nodenum, (void*)node, SCIPnodeGetDepth(node),
             SCIPvarGetName(branchvar), SCIPvarGetLbLocal(branchvar), SCIPvarGetUbLocal(branchvar),
             branchtype == SCIP_BOUNDTYPE_LOWER ? ">=" : "<=",  branchbound, lowerbound);
       }
       else
       {
          SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "I %d \\inode:\\t%d (%p)\\idepth:\\t%d\\nvar:\\t-\\nbound:\\t%f\n",
-            (int)nodenum, (int)nodenum, node, SCIPnodeGetDepth(node), lowerbound);
+            nodenum, nodenum, (void*)node, SCIPnodeGetDepth(node), lowerbound);
       }
    }
 
@@ -336,7 +349,7 @@ SCIP_RETCODE SCIPvisualUpdateChild(
    SCIP_BOUNDTYPE branchtype;
    SCIP_Real branchbound;
    SCIP_Real lowerbound;
-   size_t nodenum;
+   int nodenum;
 
    assert( visual != NULL );
    assert( stat != NULL );
@@ -351,7 +364,7 @@ SCIP_RETCODE SCIPvisualUpdateChild(
       return SCIP_OKAY;
 
    /* get node num from hash map */
-   nodenum = (size_t)SCIPhashmapGetImage(visual->nodenum, node);
+   nodenum = SCIPhashmapGetImageInt(visual->nodenum, node);
    assert(nodenum > 0);
 
    /* get branching information */
@@ -369,20 +382,20 @@ SCIP_RETCODE SCIPvisualUpdateChild(
       if( branchvar != NULL )
       {
          SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "I %d \\inode:\\t%d (%p)\\idepth:\\t%d\\nvar:\\t%s [%g,%g] %s %f\\nbound:\\t%f\n",
-            (int)nodenum, (int)nodenum, node, SCIPnodeGetDepth(node),
+            nodenum, nodenum, (void*)node, SCIPnodeGetDepth(node),
             SCIPvarGetName(branchvar), SCIPvarGetLbLocal(branchvar), SCIPvarGetUbLocal(branchvar),
             branchtype == SCIP_BOUNDTYPE_LOWER ? ">=" : "<=",  branchbound, lowerbound);
       }
       else
       {
          SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "I %d \\inode:\\t%d (%p)\\idepth:\\t%d\\nvar:\\t-\\nbound:\\t%f\n",
-            (int)nodenum, (int)nodenum, node, SCIPnodeGetDepth(node), lowerbound);
+            nodenum, nodenum, (void*)node, SCIPnodeGetDepth(node), lowerbound);
       }
    }
 
    if ( visual->bakfile != NULL )
    {
-      size_t parentnodenum;
+      int parentnodenum;
       SCIP_Real* lpcandsfrac;
       SCIP_Real sum = 0.0;
       int nlpcands = 0;
@@ -395,7 +408,7 @@ SCIP_RETCODE SCIPvisualUpdateChild(
          t = (branchtype == SCIP_BOUNDTYPE_LOWER ? 'R' : 'L');
 
       /* get nodenum of parent node from hash map */
-      parentnodenum = (node->parent != NULL ? (size_t)SCIPhashmapGetImage(visual->nodenum, node->parent) : 0);
+      parentnodenum = (node->parent != NULL ? SCIPhashmapGetImageInt(visual->nodenum, node->parent) : 0);
       assert(node->parent == NULL || parentnodenum > 0);
 
       /* update info depending on the node type */
@@ -445,9 +458,9 @@ void vbcSetColor(
 
    if( visual->vbcfile != NULL && color != SCIP_VBCCOLOR_NONE && (node != visual->lastnode || color != visual->lastcolor) )
    {
-      size_t nodenum;
+      int nodenum;
 
-      nodenum = (size_t)SCIPhashmapGetImage(visual->nodenum, node);
+      nodenum = SCIPhashmapGetImageInt(visual->nodenum, node);
       assert(nodenum > 0);
       printTime(visual, stat, TRUE);
       SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "P %d %d\n", (int)nodenum, color);
@@ -468,7 +481,7 @@ void SCIPvisualSolvedNode(
    SCIP_BOUNDTYPE branchtype;
    SCIP_Real branchbound;
    SCIP_Real lowerbound;
-   size_t nodenum;
+   int nodenum;
 
    assert( visual != NULL );
    assert( stat != NULL );
@@ -483,7 +496,7 @@ void SCIPvisualSolvedNode(
       return;
 
    /* get node num from hash map */
-   nodenum = (size_t)SCIPhashmapGetImage(visual->nodenum, node);
+   nodenum = SCIPhashmapGetImageInt(visual->nodenum, node);
    assert(nodenum > 0);
 
    /* get branching information */
@@ -501,14 +514,14 @@ void SCIPvisualSolvedNode(
       if( branchvar != NULL )
       {
          SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "I %d \\inode:\\t%d (%p)\\idepth:\\t%d\\nvar:\\t%s [%g,%g] %s %f\\nbound:\\t%f\\nnr:\\t%" SCIP_LONGINT_FORMAT "\n",
-            (int)nodenum, (int)nodenum, node, SCIPnodeGetDepth(node),
+            nodenum, nodenum, (void*)node, SCIPnodeGetDepth(node),
             SCIPvarGetName(branchvar),  SCIPvarGetLbLocal(branchvar), SCIPvarGetUbLocal(branchvar),
             branchtype == SCIP_BOUNDTYPE_LOWER ? ">=" : "<=",  branchbound, lowerbound, stat->nnodes);
       }
       else
       {
          SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "I %d \\inode:\\t%d (%p)\\idepth:\\t%d\\nvar:\\t-\\nbound:\\t%f\\nnr:\\t%" SCIP_LONGINT_FORMAT "\n",
-            (int)nodenum, (int)nodenum, node, SCIPnodeGetDepth(node), lowerbound, stat->nnodes);
+            nodenum, nodenum, (void*)node, SCIPnodeGetDepth(node), lowerbound, stat->nnodes);
       }
       vbcSetColor(visual, stat, node, SCIP_VBCCOLOR_SOLVED);
    }
@@ -529,7 +542,7 @@ void SCIPvisualCutoffNode(
    SCIP_BOUNDTYPE branchtype;
    SCIP_Real branchbound;
    SCIP_Real lowerbound;
-   size_t nodenum;
+   int nodenum;
 
    assert( visual != NULL );
    assert( stat != NULL );
@@ -544,7 +557,7 @@ void SCIPvisualCutoffNode(
       return;
 
    /* get node num from hash map */
-   nodenum = (size_t)SCIPhashmapGetImage(visual->nodenum, node);
+   nodenum = SCIPhashmapGetImageInt(visual->nodenum, node);
    assert(nodenum > 0);
 
    /* get branching information */
@@ -562,21 +575,21 @@ void SCIPvisualCutoffNode(
       if( branchvar != NULL )
       {
          SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "I %d \\inode:\\t%d (%p)\\idepth:\\t%d\\nvar:\\t%s [%g,%g] %s %f\\nbound:\\t%f\\nnr:\\t%" SCIP_LONGINT_FORMAT "\n",
-            (int)nodenum, (int)nodenum, node, SCIPnodeGetDepth(node),
+            nodenum, nodenum, (void*)node, SCIPnodeGetDepth(node),
             SCIPvarGetName(branchvar),  SCIPvarGetLbLocal(branchvar), SCIPvarGetUbLocal(branchvar),
             branchtype == SCIP_BOUNDTYPE_LOWER ? ">=" : "<=",  branchbound, lowerbound, stat->nnodes);
       }
       else
       {
          SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "I %d \\inode:\\t%d (%p)\\idepth:\\t%d\\nvar:\\t-\\nbound:\\t%f\\nnr:\\t%" SCIP_LONGINT_FORMAT "\n",
-            (int)nodenum, (int)nodenum, node, SCIPnodeGetDepth(node), lowerbound, stat->nnodes);
+            nodenum, nodenum, (void*)node, SCIPnodeGetDepth(node), lowerbound, stat->nnodes);
       }
       vbcSetColor(visual, stat, node, SCIP_VBCCOLOR_CUTOFF);
    }
 
    if ( visual->bakfile != NULL )
    {
-      size_t parentnodenum;
+      int parentnodenum;
       char t = 'M';
 
       /* determine branching type */
@@ -584,14 +597,14 @@ void SCIPvisualCutoffNode(
          t = (branchtype == SCIP_BOUNDTYPE_LOWER ? 'R' : 'L');
 
       /* get nodenum of parent node from hash map */
-      parentnodenum = (node->parent != NULL ? (size_t)SCIPhashmapGetImage(visual->nodenum, node->parent) : 0);
+      parentnodenum = (node->parent != NULL ? SCIPhashmapGetImageInt(visual->nodenum, node->parent) : 0);
       assert(node->parent == NULL || parentnodenum > 0);
 
       printTime(visual, stat, FALSE);
       if ( infeasible )
-         SCIPmessageFPrintInfo(visual->messagehdlr, visual->bakfile, "infeasible %d %d %c\n", (int)nodenum, (int)parentnodenum, t);
+         SCIPmessageFPrintInfo(visual->messagehdlr, visual->bakfile, "infeasible %d %d %c\n", nodenum, parentnodenum, t);
       else
-         SCIPmessageFPrintInfo(visual->messagehdlr, visual->bakfile, "fathomed %d %d %c\n", (int)nodenum, (int)parentnodenum, t);
+         SCIPmessageFPrintInfo(visual->messagehdlr, visual->bakfile, "fathomed %d %d %c\n", nodenum, parentnodenum, t);
    }
 }
 
@@ -668,7 +681,7 @@ void SCIPvisualFoundSolution(
    if( visual->vbcfile != NULL )
    {
       SCIP_Real obj;
-      size_t nodenum;
+      int nodenum;
 
       /* if we are in probing, determine original parent node */
       while ( SCIPnodeGetType(node) == SCIP_NODETYPE_PROBINGNODE )
@@ -676,7 +689,7 @@ void SCIPvisualFoundSolution(
 
       /* get node num from hash map */
       assert(node != NULL);
-      nodenum = (size_t)SCIPhashmapGetImage(visual->nodenum, node);
+      nodenum = SCIPhashmapGetImageInt(visual->nodenum, node);
       assert(nodenum > 0);
 
       /* get objective of solution */
@@ -713,8 +726,8 @@ void SCIPvisualFoundSolution(
          SCIP_BOUNDTYPE branchtype;
          SCIP_Real branchbound;
          SCIP_NODE *pnode;
-         size_t parentnodenum;
-         size_t nodenum;
+         int parentnodenum;
+         int nodenum;
          char t = 'M';
 
          /* find first parent that is not a probing node */
@@ -726,10 +739,10 @@ void SCIPvisualFoundSolution(
          if( pnode != NULL )
          {
             /* get node num from hash map */
-            nodenum = (size_t)SCIPhashmapGetImage(visual->nodenum, pnode);
+            nodenum = SCIPhashmapGetImageInt(visual->nodenum, pnode);
 
             /* get nodenum of parent node from hash map */
-            parentnodenum = (pnode->parent != NULL ? (size_t)SCIPhashmapGetImage(visual->nodenum, pnode->parent) : 0);
+            parentnodenum = (pnode->parent != NULL ? SCIPhashmapGetImageInt(visual->nodenum, pnode->parent) : 0);
             assert(pnode->parent == NULL || parentnodenum > 0);
 
             /* get branching information */
@@ -740,9 +753,9 @@ void SCIPvisualFoundSolution(
                t = (branchtype == SCIP_BOUNDTYPE_LOWER ? 'R' : 'L');
 
             printTime(visual, stat, FALSE);
-            SCIPmessageFPrintInfo(visual->messagehdlr, visual->bakfile, "integer %d %d %c %f\n", (int)nodenum, (int)parentnodenum, t, obj);
+            SCIPmessageFPrintInfo(visual->messagehdlr, visual->bakfile, "integer %d %d %c %f\n", nodenum, parentnodenum, t, obj);
          }
-      }
+      }  /*lint !e438*/
       else
       {
          printTime(visual, stat, FALSE);
@@ -761,19 +774,29 @@ void SCIPvisualLowerbound(
 {
    assert(visual != NULL);
 
+   /* do not output if not required */
+   if ( ! set->visual_displb )
+      return;
+
    /* check, if VBC output should be created */
    if( visual->vbcfile == NULL )
       return;
 
-   /* determine external lower bound */
-   if( set->visual_objextern )
-      lowerbound = SCIPretransformObj(set->scip, lowerbound);
+   /* only output if lowerbound has improved and is finite */
+   if ( ! SCIPsetIsInfinity(set, lowerbound) && SCIPsetIsGT(set, lowerbound, visual->lastlowerbound) )
+   {
+      visual->lastlowerbound = lowerbound;
 
-   printTime(visual, stat, TRUE);
-   if( SCIPgetObjsense(set->scip) == SCIP_OBJSENSE_MINIMIZE )
-      SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "L %f\n", lowerbound);
-   else
-      SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "U %f\n", lowerbound);
+      /* determine external lower bound */
+      if( set->visual_objextern )
+         lowerbound = SCIPretransformObj(set->scip, lowerbound);
+
+      printTime(visual, stat, TRUE);
+      if( SCIPgetObjsense(set->scip) == SCIP_OBJSENSE_MINIMIZE )
+         SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "L %f\n", lowerbound);
+      else
+         SCIPmessageFPrintInfo(visual->messagehdlr, visual->vbcfile, "U %f\n", lowerbound);
+   }
 
    /* do nothing for BAK */
 }

@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -27,9 +36,11 @@
 
 #include "scip/def.h"
 #include "blockmemshell/memory.h"
+#include "scip/type_event.h"
 #include "scip/type_retcode.h"
 #include "scip/type_result.h"
 #include "scip/type_set.h"
+#include "scip/type_sol.h"
 #include "scip/type_stat.h"
 #include "scip/type_lp.h"
 #include "scip/type_sepastore.h"
@@ -41,7 +52,6 @@ extern "C" {
 #endif
 
 /** creates cut pool */
-extern
 SCIP_RETCODE SCIPcutpoolCreate(
    SCIP_CUTPOOL**        cutpool,            /**< pointer to store cut pool */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -51,7 +61,6 @@ SCIP_RETCODE SCIPcutpoolCreate(
    );
 
 /** frees cut pool */
-extern
 SCIP_RETCODE SCIPcutpoolFree(
    SCIP_CUTPOOL**        cutpool,            /**< pointer to store cut pool */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -60,7 +69,6 @@ SCIP_RETCODE SCIPcutpoolFree(
    );
 
 /** removes all rows from the cut pool */
-extern
 SCIP_RETCODE SCIPcutpoolClear(
    SCIP_CUTPOOL*         cutpool,            /**< cut pool */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -69,7 +77,6 @@ SCIP_RETCODE SCIPcutpoolClear(
    );
 
 /** checks if cut is already existing */
-extern
 SCIP_Bool SCIPcutpoolIsCutNew(
    SCIP_CUTPOOL*         cutpool,            /**< cut pool */
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -77,7 +84,6 @@ SCIP_Bool SCIPcutpoolIsCutNew(
    );
 
 /** if not already existing, adds row to cut pool and captures it */
-extern
 SCIP_RETCODE SCIPcutpoolAddRow(
    SCIP_CUTPOOL*         cutpool,            /**< cut pool */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -88,7 +94,6 @@ SCIP_RETCODE SCIPcutpoolAddRow(
    );
 
 /** adds row to cut pool and captures it; doesn't check for multiple cuts */
-extern
 SCIP_RETCODE SCIPcutpoolAddNewRow(
    SCIP_CUTPOOL*         cutpool,            /**< cut pool */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -99,7 +104,6 @@ SCIP_RETCODE SCIPcutpoolAddNewRow(
    );
 
 /** removes the LP row from the cut pool */
-extern
 SCIP_RETCODE SCIPcutpoolDelRow(
    SCIP_CUTPOOL*         cutpool,            /**< cut pool */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -110,7 +114,6 @@ SCIP_RETCODE SCIPcutpoolDelRow(
    );
 
 /** separates cuts of the cut pool */
-extern
 SCIP_RETCODE SCIPcutpoolSeparate(
    SCIP_CUTPOOL*         cutpool,            /**< cut pool */
    BMS_BLKMEM*           blkmem,             /**< block memory */
@@ -124,6 +127,48 @@ SCIP_RETCODE SCIPcutpoolSeparate(
    SCIP_Bool             cutpoolisdelayed,   /**< is the cutpool delayed (count cuts found)? */
    SCIP_Bool             root,               /**< are we at the root node? */
    SCIP_RESULT*          result              /**< pointer to store the result of the separation call */
+   );
+
+/** adds the maximum number of cuts that were stored in the pool;
+ *  this is primarily used to keep statistics when SCIP performs a restart */
+void SCIPcutpoolAddMaxNCuts(
+   SCIP_CUTPOOL*         cutpool,             /**< cut pool */
+   SCIP_Longint          ncuts             /**< number of cuts to add */
+   );
+
+/** sets time in seconds used for separating cuts from the pool;
+ *  this is primarily used to keep statistics when SCIP performs a restart */
+void SCIPcutpoolSetTime(
+   SCIP_CUTPOOL*         cutpool,             /**< cut pool */
+   SCIP_Real             time                 /**< poolclock time */
+   );
+
+/** adds the number of times the cut pool was separated;
+ *  this is primarily used to keep statistics when SCIP performs a restart */
+void SCIPcutpoolAddNCalls(
+   SCIP_CUTPOOL*         cutpool,             /**< cut pool */
+   SCIP_Longint          ncalls               /**< ncalls */
+   );
+
+/** adds the number of times the cut pool was separated at the root;
+ *  this is primarily used to keep statistics when SCIP performs a restart */
+void SCIPcutpoolAddNRootCalls(
+   SCIP_CUTPOOL*         cutpool,             /**< cut pool */
+   SCIP_Longint          nrootcalls           /**< nrootcalls */
+);
+
+/** adds the total number of cuts that were added to the pool;
+ *  this is primarily used to keep statistics when SCIP performs a restart */
+void SCIPcutpoolAddNCutsFound(
+   SCIP_CUTPOOL*         cutpool,             /**< cut pool */
+   SCIP_Longint          ncutsfound           /**< total number of cuts added to cut pool */
+   );
+
+/** adds the total number of cuts that were separated from the pool;
+ *  this is primarily used to keep statistics when SCIP performs a restart */
+void SCIPcutpoolAddNCutsAdded(
+   SCIP_CUTPOOL*         cutpool,             /**< cut pool */
+   SCIP_Longint          ncutsadded           /**< total number of cuts added from cut pool to sepastore */
    );
 
 #ifdef __cplusplus

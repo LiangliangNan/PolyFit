@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License.             */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -24,6 +33,7 @@
 #define __SCIP_OBJRELAX_H__
 
 #include <cstring>
+#include <utility>
 
 #include "scip/scip.h"
 #include "objscip/objcloneable.h"
@@ -83,6 +93,25 @@ public:
       SCIP_CALL_ABORT( SCIPduplicateMemoryArray(scip_, &scip_desc_, desc, std::strlen(desc)+1) );
    }
 
+   /** copy constructor */
+   ObjRelax(const ObjRelax& o)
+       : ObjRelax(o.scip_, o.scip_name_, o.scip_desc_, o.scip_priority_, o.scip_priority_, o.scip_includeslp_)
+   {
+   }
+
+   /** move constructor */
+   ObjRelax(ObjRelax&& o)
+       : scip_(o.scip_),
+         scip_name_(0),
+         scip_desc_(0),
+         scip_priority_(o.scip_priority_),
+         scip_freq_(o.scip_freq_),
+         scip_includeslp_(o.scip_includeslp_)
+   {
+      std::swap(scip_name_, o.scip_name_);
+      std::swap(scip_desc_, o.scip_desc_);
+   }
+
    /** destructor */
    virtual ~ObjRelax()
    {
@@ -91,6 +120,12 @@ public:
       SCIPfreeMemoryArray(scip_, &scip_name_);
       SCIPfreeMemoryArray(scip_, &scip_desc_);
    }
+
+   /** assignment of polymorphic classes causes slicing and is therefore disabled. */
+   ObjRelax& operator=(const ObjRelax& o) = delete;
+
+   /** assignment of polymorphic classes causes slicing and is therefore disabled. */
+   ObjRelax& operator=(ObjRelax&& o) = delete;
 
    /** destructor of relaxator to free user data (called when SCIP is exiting)
     *
@@ -168,7 +203,7 @@ public:
  *       ...
  *       SCIP_CALL( SCIPfree(&scip) );  // destructor of MyRelax is called here
  */
-EXTERN
+SCIP_EXPORT
 SCIP_RETCODE SCIPincludeObjRelax(
    SCIP*                 scip,               /**< SCIP data structure */
    scip::ObjRelax*  objrelax,           /**< relaxator object */
@@ -176,14 +211,14 @@ SCIP_RETCODE SCIPincludeObjRelax(
    );
 
 /** returns the relax object of the given name, or 0 if not existing */
-EXTERN
+SCIP_EXPORT
 scip::ObjRelax* SCIPfindObjRelax(
    SCIP*                 scip,               /**< SCIP data structure */
    const char*           name                /**< name of relaxator */
    );
 
 /** returns the relax object for the given relaxator */
-EXTERN
+SCIP_EXPORT
 scip::ObjRelax* SCIPgetObjRelax(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_RELAX*           relax               /**< relaxator */

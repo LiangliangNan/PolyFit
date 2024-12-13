@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   sepa_gauge.c
+ * @ingroup DEFPLUGINS_SEPA
  * @brief  gauge separator
  * @author Felipe Serrano
  *
@@ -27,11 +37,32 @@
 #include <assert.h>
 #include <string.h>
 
+#include "blockmemshell/memory.h"
+#include "scip/scip_nlpi.h"
+#include "scip/nlpi_ipopt.h"
+#include "scip/nlpioracle.h"
+#include "scip/scip_expr.h"
+#include "scip/pub_expr.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_nlp.h"
+#include "scip/pub_sepa.h"
+#include "scip/pub_var.h"
+#include "scip/scip_cut.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_nlp.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sepa.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_timing.h"
 #include "scip/sepa_gauge.h"
-#include "nlpi/exprinterpret.h"
-#include "nlpi/nlpi.h"
-#include "nlpi/nlpioracle.h"
-#include "nlpi/nlpi_ipopt.h"
+#include <string.h>
 
 
 #define SEPA_NAME              "gauge"
@@ -42,16 +73,15 @@
 #define SEPA_USESSUBSCIP          FALSE /**< does the separator use a secondary SCIP instance? */
 #define SEPA_DELAY                FALSE /**< should separation method be delayed, if other separators found cuts? */
 
-#define VIOLATIONFAC                100 /* constraints regarded as violated when violation > VIOLATIONFAC*SCIPfeastol */
-#define MAX_ITER                     75 /* maximum number of iterations for the line search */
+#define VIOLATIONFAC                100 /**< constraints regarded as violated when violation > VIOLATIONFAC*SCIPfeastol */
+#define MAX_ITER                     75 /**< maximum number of iterations for the line search */
 
-#define DEFAULT_NLPTIMELIMIT        0.0 /**< default time limit of NLP solver; 0.0 for no limit */
 #define DEFAULT_NLPITERLIM         1000 /**< default NLP iteration limit */
 
 #define NLPFEASFAC                  1e-1/**< NLP feasibility tolerance = NLPFEASFAC * SCIP's feasibility tolerance */
-#define NLPVERBOSITY                  0 /**< NLP solver verbosity */
 
 #define INTERIOROBJVARLB           -100 /**< lower bound of the objective variable when computing interior point */
+
 /*
  * Data structures
  */
@@ -87,12 +117,9 @@ struct SCIP_SepaData
    SCIP_Bool             skipsepa;           /**< whether separator should be skipped */
    SCIP_SOL*             intsol;             /**< stores interior point */
 
-   SCIP_EXPRINT*         exprinterpreter;    /**< expression interpreter to compute gradients */
-
    int                   ncuts;              /**< number of cuts generated */
 
    /* parameters */
-   SCIP_Real             nlptimelimit;       /**< time limit of NLP solver; 0.0 for no limit */
    int                   nlpiterlimit;       /**< iteration limit of NLP solver; 0 for no limit */
 };
 
@@ -132,8 +159,7 @@ SCIP_RETCODE storeNonlinearConvexNlrows(
       assert(nlrow != NULL);
 
       /* linear case */
-      if( SCIPnlrowGetCurvature(nlrow) == SCIP_EXPRCURV_LINEAR ||
-            (SCIPnlrowGetNQuadElems(nlrow) == 0 && SCIPnlrowGetExprtree(nlrow) == NULL) )
+      if( SCIPnlrowGetCurvature(nlrow) == SCIP_EXPRCURV_LINEAR || SCIPnlrowGetExpr(nlrow) == NULL )
          continue;
 
       /* nonlinear case */
@@ -154,7 +180,9 @@ SCIP_RETCODE storeNonlinearConvexNlrows(
    return SCIP_OKAY;
 }
 
-/** computes an interior point of a convex NLP relaxation; builds the convex relaxation, modifies it to find an interior
+/** computes an interior point of a convex NLP relaxation
+ *
+ * builds the convex relaxation, modifies it to find an interior
  * point, solves it and frees it; more details in @ref sepa_gauge.h
  *
  * @note the method also counts the number of nonlinear convex constraints and if there are < 2, then the convex
@@ -170,12 +198,10 @@ SCIP_RETCODE computeInteriorPoint(
    SCIP_NLPIPROBLEM* nlpiprob;
    SCIP_NLPI* nlpi;
    SCIP_HASHMAP* var2nlpiidx;
-   SCIP_Real timelimit;
    SCIP_Real objvarlb;
    SCIP_Real minusone;
    SCIP_Real one;
    int nconvexnlrows;
-   int iterlimit;
    int objvaridx;
    int nconss;
    int nvars;
@@ -194,17 +220,16 @@ SCIP_RETCODE computeInteriorPoint(
    assert(nlpi != NULL);
 
    nvars = SCIPgetNVars(scip);
-   SCIP_CALL( SCIPnlpiCreateProblem(nlpi, &nlpiprob, "gauge-interiorpoint-nlp") );
    SCIP_CALL( SCIPhashmapCreate(&var2nlpiidx, SCIPblkmem(scip), nvars) );
-   SCIP_CALL( SCIPcreateNlpiProb(scip, nlpi, SCIPgetNLPNlRows(scip), SCIPgetNNLPNlRows(scip), nlpiprob, var2nlpiidx,
-            NULL, SCIPgetCutoffbound(scip), FALSE, TRUE) );
+   SCIP_CALL( SCIPcreateNlpiProblemFromNlRows(scip, nlpi, &nlpiprob, "gauge-interiorpoint-nlp", SCIPgetNLPNlRows(scip), SCIPgetNNLPNlRows(scip), var2nlpiidx,
+            NULL, NULL, SCIPgetCutoffbound(scip), FALSE, TRUE) );
 
    /* add objective variable; the problem is \min t, s.t. g(x) <= t, l(x) <= 0, where g are nonlinear and l linear */
    objvaridx = nvars;
    objvarlb = INTERIOROBJVARLB;
    one = 1.0;
-   SCIP_CALL( SCIPnlpiAddVars(nlpi, nlpiprob, 1, &objvarlb, NULL, NULL) );
-   SCIP_CALL( SCIPnlpiSetObjective(nlpi, nlpiprob, 1, &objvaridx, &one, 0, NULL, NULL, NULL, 0.0) );
+   SCIP_CALL( SCIPaddNlpiVars(scip, nlpi, nlpiprob, 1, &objvarlb, NULL, NULL) );
+   SCIP_CALL( SCIPsetNlpiObjective(scip, nlpi, nlpiprob, 1, &objvaridx, &one, NULL, 0.0) );
 
    /* add objective variables to constraints; for this we need to get nlpi oracle to have access to number of
     * constraints and which constraints are nonlinear
@@ -220,13 +245,13 @@ SCIP_RETCODE computeInteriorPoint(
    nconss = SCIPnlpiOracleGetNConstraints(nlpioracle);
    for( i = 0; i < nconss; i++ )
    {
-      if( SCIPnlpiOracleGetConstraintDegree(nlpioracle, i) > 1 )
+      if( SCIPnlpiOracleIsConstraintNonlinear(nlpioracle, i) )
       {
-         SCIP_CALL( SCIPnlpiChgLinearCoefs(nlpi, nlpiprob, i, 1, &objvaridx, &minusone) );
+         SCIP_CALL( SCIPchgNlpiLinearCoefs(scip, nlpi, nlpiprob, i, 1, &objvaridx, &minusone) );
          ++nconvexnlrows;
       }
    }
-   SCIPdebug( SCIP_CALL( SCIPnlpiOraclePrintProblem(nlpioracle, SCIPgetMessagehdlr(scip), NULL) ) );
+   SCIPdebug( SCIP_CALL( SCIPnlpiOraclePrintProblem(scip, nlpioracle, NULL) ) );
 
    /* check if convex relaxation is interesting */
    if( nconvexnlrows < 2 )
@@ -237,59 +262,34 @@ SCIP_RETCODE computeInteriorPoint(
    }
 
    /* add linear rows */
-   SCIP_CALL( SCIPaddNlpiProbRows(scip, nlpi, nlpiprob, var2nlpiidx, SCIPgetLPRows(scip), SCIPgetNLPRows(scip)) );
-
-   /* set parameters in nlpi; time and iterations limit, tolerance, verbosity; for time limit, get time limit of scip;
-    * if scip doesn't have much time left, don't run separator. otherwise, timelimit is the minimum between whats left
-    * for scip and the timelimit setting
-    */
-   SCIP_CALL( SCIPgetRealParam(scip, "limits/time", &timelimit) );
-   if( !SCIPisInfinity(scip, timelimit) )
-   {
-      timelimit -= SCIPgetSolvingTime(scip);
-      if( timelimit <= 1.0 )
-      {
-         SCIPdebugMsg(scip, "skip NLP solve; no time left\n");
-         sepadata->skipsepa = TRUE;
-         goto CLEANUP;
-      }
-   }
-   if( sepadata->nlptimelimit > 0.0 )
-      timelimit = MIN(sepadata->nlptimelimit, timelimit);
-   SCIP_CALL( SCIPnlpiSetRealPar(nlpi, nlpiprob, SCIP_NLPPAR_TILIM, timelimit) );
-
-   iterlimit = sepadata->nlpiterlimit > 0 ? sepadata->nlpiterlimit : INT_MAX;
-   SCIP_CALL( SCIPnlpiSetIntPar(nlpi, nlpiprob, SCIP_NLPPAR_ITLIM, iterlimit) );
-   SCIP_CALL( SCIPnlpiSetRealPar(nlpi, nlpiprob, SCIP_NLPPAR_FEASTOL, NLPFEASFAC * SCIPfeastol(scip)) );
-   SCIP_CALL( SCIPnlpiSetRealPar(nlpi, nlpiprob, SCIP_NLPPAR_RELOBJTOL, MAX(SCIPfeastol(scip), SCIPdualfeastol(scip))) ); /*lint !e666*/
-   SCIP_CALL( SCIPnlpiSetIntPar(nlpi, nlpiprob, SCIP_NLPPAR_VERBLEVEL, NLPVERBOSITY) );
+   SCIP_CALL( SCIPaddNlpiProblemRows(scip, nlpi, nlpiprob, var2nlpiidx, SCIPgetLPRows(scip), SCIPgetNLPRows(scip)) );
 
    /* compute interior point */
    SCIPdebugMsg(scip, "starting interior point computation\n");
-   SCIP_CALL( SCIPnlpiSolve(nlpi, nlpiprob) );
+   SCIP_CALL( SCIPsolveNlpi(scip, nlpi, nlpiprob,
+      .iterlimit = sepadata->nlpiterlimit > 0 ? sepadata->nlpiterlimit : INT_MAX,
+      .feastol = NLPFEASFAC * SCIPfeastol(scip),
+      .opttol = MAX(SCIPfeastol(scip), SCIPdualfeastol(scip))) );   /*lint !e666*/
    SCIPdebugMsg(scip, "finish interior point computation\n");
 
 #ifdef SCIP_DEBUG
    {
-      SCIP_NLPSTATISTICS* nlpstatistics;
+      SCIP_NLPSTATISTICS nlpstatistics;
 
       /* get statistics */
-      SCIP_CALL( SCIPnlpStatisticsCreate(SCIPblkmem(scip), &nlpstatistics) );
-      SCIP_CALL( SCIPnlpiGetStatistics(nlpi, nlpiprob, nlpstatistics) );
+      SCIP_CALL( SCIPgetNlpiStatistics(scip, nlpi, nlpiprob, &nlpstatistics) );
 
       SCIPdebugMsg(scip, "nlpi took iters %d, time %g searching for an find interior point: solstat %d\n",
-            SCIPnlpStatisticsGetNIterations(nlpstatistics), SCIPnlpStatisticsGetTotalTime(nlpstatistics),
-            SCIPnlpiGetSolstat(nlpi, nlpiprob));
-
-      SCIPnlpStatisticsFree(SCIPblkmem(scip), &nlpstatistics);
+            nlpstatistics.niterations, nlpstatistics.totaltime,
+            SCIPgetNlpiSolstat(scip, nlpi, nlpiprob));
    }
 #endif
 
-   if( SCIPnlpiGetSolstat(nlpi, nlpiprob) <= SCIP_NLPSOLSTAT_FEASIBLE )
+   if( SCIPgetNlpiSolstat(scip, nlpi, nlpiprob) <= SCIP_NLPSOLSTAT_FEASIBLE )
    {
       SCIP_Real* nlpisol;
 
-      SCIP_CALL( SCIPnlpiGetSolution(nlpi, nlpiprob, &nlpisol, NULL, NULL, NULL, NULL) );
+      SCIP_CALL( SCIPgetNlpiSolution(scip, nlpi, nlpiprob, &nlpisol, NULL, NULL, NULL, NULL) );
 
       assert(nlpisol != NULL);
       SCIPdebugMsg(scip, "NLP solved: sol found has objvalue = %g\n", nlpisol[objvaridx]);
@@ -308,7 +308,7 @@ SCIP_RETCODE computeInteriorPoint(
 
             /* @todo: filter zero? */
             SCIP_CALL( SCIPsetSolVal(scip, sepadata->intsol, var,
-                     nlpisol[(int)(size_t)SCIPhashmapGetImage(var2nlpiidx, (void *)var)]) );
+                     nlpisol[SCIPhashmapGetImageInt(var2nlpiidx, (void *)var)]) );
          }
 
          sepadata->isintsolavailable = TRUE;
@@ -321,22 +321,23 @@ SCIP_RETCODE computeInteriorPoint(
    }
    else
    {
-      SCIPdebugMsg(scip, "We couldn't get an interior point (stat: %d)\n", SCIPnlpiGetSolstat(nlpi, nlpiprob));
+      SCIPdebugMsg(scip, "We couldn't get an interior point (stat: %d)\n", SCIPgetNlpiSolstat(scip, nlpi, nlpiprob));
       sepadata->skipsepa = TRUE;
    }
 
 CLEANUP:
    /* free memory */
    SCIPhashmapFree(&var2nlpiidx);
-   SCIP_CALL( SCIPnlpiFreeProblem(nlpi, &nlpiprob) );
+   SCIP_CALL( SCIPfreeNlpiProblem(scip, nlpi, &nlpiprob) );
 
    return SCIP_OKAY;
 }
 
 
-/** find whether point is in the interior, at the boundary or in the exterior of the region described by the
- * intersection of nlrows[i] <= rhs if convexsides[i] = RHS or lhs <= nlrows[i] if convexsides[i] = LHS
- * @note: point corresponds to a convex combination between the lp solution and the interior point
+/** find whether point is in the interior, at the boundary, or in the exterior of the region described by the
+ * intersection of `nlrows[i]` &le; rhs if `convexsides[i]` = RHS or lhs &le; `nlrows[i]` if `convexsides[i]` = LHS
+ *
+ * @note point corresponds to a convex combination between the LP solution and the interior point
  */
 static
 SCIP_RETCODE findPointPosition(
@@ -413,7 +414,8 @@ SCIP_RETCODE findPointPosition(
 
 
 /** returns, in convexcomb, the convex combination
- * \f$ \lambda \f$ endpoint + (1 - \f$ lambda \f$) startpoint = startpoint + \f$ \lambda \f$ (endpoint - tosepasol) */
+ * \f$ \lambda\, \text{endpoint} + (1 - \lambda) \text{startpoint} = \text{startpoint} + \lambda (\text{endpoint} - \text{startpoint})\f$
+ */
 static
 SCIP_RETCODE buildConvexCombination(
    SCIP*                 scip,               /**< SCIP data structure */
@@ -457,9 +459,9 @@ SCIP_RETCODE buildConvexCombination(
 }
 
 
-/** performs binary search to find the point belonging to the segment [intsol, tosepasol] that intersects the boundary
- * of the region described by the intersection of nlrows[i] <= rhs if convexsides[i] = RHS or lhs <= nlrows[i] if not,
- * for i in nlrowsidx
+/** performs binary search to find the point belonging to the segment [`intsol`, `tosepasol`] that intersects the boundary
+ * of the region described by the intersection of `nlrows[i]` &le; rhs if `convexsides[i] = RHS` or lhs &le; `nlrows[i]` if not,
+ * for i in `nlrowsidx`
  */
 static
 SCIP_RETCODE findBoundaryPoint(
@@ -497,7 +499,7 @@ SCIP_RETCODE findBoundaryPoint(
 
       /* find poisition of point: boundary, interior, exterior */
       SCIP_CALL( findPointPosition(scip, nlrows, nlrowsidx, nnlrowsidx, convexsides, sol, position) );
-      SCIPdebugMsg(scip, "Position: %d, lambda: %g\n", position, (ub + lb)/2.0);
+      SCIPdebugMsg(scip, "Position: %d, lambda: %g\n", *position, (ub + lb)/2.0);
 
       switch( *position )
       {
@@ -521,137 +523,77 @@ SCIP_RETCODE findBoundaryPoint(
 }
 
 
-/** computes gradient of exprtree at sol */
-static
-SCIP_RETCODE computeGradient(
-   SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_EXPRINT*         exprint,            /**< expressions interpreter */
-   SCIP_SOL*             sol,                /**< point where we compute gradient */
-   SCIP_EXPRTREE*        exprtree,           /**< exprtree for which we compute the gradient */
-   SCIP_Real*            grad                /**< buffer to store the gradient */
-   )
-{
-   SCIP_Real* x;
-   SCIP_Real val;
-   int nvars;
-   int i;
-
-   assert(scip != NULL);
-   assert(exprint != NULL);
-   assert(sol != NULL);
-   assert(exprtree != NULL);
-   assert(grad != NULL);
-
-   nvars = SCIPexprtreeGetNVars(exprtree);
-   assert(nvars > 0);
-
-   SCIP_CALL( SCIPallocBufferArray(scip, &x, nvars) );
-
-   /* compile expression exprtree, if not done before */
-   if( SCIPexprtreeGetInterpreterData(exprtree) == NULL )
-   {
-      SCIP_CALL( SCIPexprintCompile(exprint, exprtree) );
-   }
-
-   for( i = 0; i < nvars; ++i )
-   {
-      x[i] = SCIPgetSolVal(scip, sol, SCIPexprtreeGetVars(exprtree)[i]);
-   }
-
-   SCIP_CALL( SCIPexprintGrad(exprint, exprtree, x, TRUE, &val, grad) );
-
-   /*SCIPdebug( for( i = 0; i < nvars; ++i ) printf("%e [%s]\n", grad[i], SCIPvarGetName(SCIPexprtreeGetVars(exprtree)[i])) );*/
-
-   SCIPfreeBufferArray(scip, &x);
-
-   return SCIP_OKAY;
-}
-
-
 /** computes gradient cut (linearization) of nlrow at sol */
 static
 SCIP_RETCODE generateCut(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_SOL*             sol,                /**< point used to construct gradient cut (x_0) */
-   SCIP_EXPRINT*         exprint,            /**< expression interpreter */
    SCIP_NLROW*           nlrow,              /**< constraint */
    CONVEXSIDE            convexside,         /**< whether we use rhs or lhs of nlrow */
-   SCIP_ROW*             row                 /**< storage for cut */
+   SCIP_EXPRITER*        exprit,             /**< expression iterator that can be used */
+   SCIP_ROW*             row,                /**< storage for cut */
+   SCIP_Bool*            success             /**< buffer to store whether the gradient was finite */
    )
 {
-   SCIP_Real activity;
+   SCIP_EXPR* expr;
+   SCIP_Real exprval;
    SCIP_Real gradx0; /* <grad f(x_0), x_0> */
    int i;
 
    assert(scip != NULL);
-   assert(exprint != NULL);
    assert(nlrow != NULL);
    assert(row != NULL);
 
    gradx0 = 0.0;
-
-   /* an nlrow has a linear part, quadratic part and expression tree; ideally one would just build the gradient but we
-    * do not know if the different parts share variables or not, so we can't just build the gradient; for this reason
-    * we create the row right away and compute the gradients of each part independently and add them to the row; the
-    * row takes care to add coeffs corresponding to the same variable when they appear in different parts of the nlrow
-    */
+   *success = TRUE;
 
    SCIP_CALL( SCIPcacheRowExtensions(scip, row) );
+
+#ifdef CUT_DEBUG
+   SCIPdebug( SCIP_CALL( SCIPprintNlRow(scip, nlrow, NULL) ) );
+#endif
 
    /* linear part */
    for( i = 0; i < SCIPnlrowGetNLinearVars(nlrow); i++ )
    {
-      gradx0 += SCIPgetSolVal(scip, sol, SCIPnlrowGetLinearVars(nlrow)[i]) * SCIPnlrowGetLinearCoefs(nlrow)[i];
       SCIP_CALL( SCIPaddVarToRow(scip, row, SCIPnlrowGetLinearVars(nlrow)[i], SCIPnlrowGetLinearCoefs(nlrow)[i]) );
    }
 
-   /* quadratic part */
-   for( i = 0; i < SCIPnlrowGetNQuadElems(nlrow); i++ )
+   expr = SCIPnlrowGetExpr(nlrow);
+   assert(expr != NULL);
+
+   SCIP_CALL( SCIPevalExprGradient(scip, expr, sol, 0L) );
+
+   SCIP_CALL( SCIPexpriterInit(exprit, expr, SCIP_EXPRITER_DFS, FALSE) );
+   for( ; !SCIPexpriterIsEnd(exprit); expr = SCIPexpriterGetNext(exprit) )  /*lint !e441*/  /*lint !e440*/
    {
-      SCIP_VAR* var1;
-      SCIP_VAR* var2;
-      SCIP_Real grad1;
-      SCIP_Real grad2;
-      SCIP_Real solval1;
-      SCIP_Real solval2;
+      SCIP_Real grad;
+      SCIP_VAR* var;
 
-      var1    = SCIPnlrowGetQuadVars(nlrow)[SCIPnlrowGetQuadElems(nlrow)[i].idx1];
-      var2    = SCIPnlrowGetQuadVars(nlrow)[SCIPnlrowGetQuadElems(nlrow)[i].idx2];
-      solval1 = SCIPgetSolVal(scip, sol, var1);
-      solval2 = SCIPgetSolVal(scip, sol, var2);
-      grad1   = SCIPnlrowGetQuadElems(nlrow)[i].coef * solval2; /* note that solval2 is correct */
-      grad2   = SCIPnlrowGetQuadElems(nlrow)[i].coef * solval1;
+      if( !SCIPisExprVar(scip, expr) )
+         continue;
 
-      SCIP_CALL( SCIPaddVarToRow(scip, row, var1, grad1) );
-      SCIP_CALL( SCIPaddVarToRow(scip, row, var2, grad2) );
+      grad = SCIPexprGetDerivative(expr);
+      var = SCIPgetVarExprVar(expr);
+      assert(var != NULL);
 
-      gradx0 += grad1 * solval1 + grad2 * solval2;
-   }
-
-   /* expression tree part */
-   {
-      SCIP_Real* grad;
-      SCIP_EXPRTREE* tree;
-
-      tree = SCIPnlrowGetExprtree(nlrow);
-
-      if( tree != NULL && SCIPexprtreeGetNVars(tree) > 0 )
+      /* check gradient entries: function might not be differentiable */
+      if( !SCIPisFinite(grad) || grad == SCIP_INVALID ) /*lint !e777*/
       {
-         SCIP_CALL( SCIPallocBufferArray(scip, &grad, SCIPexprtreeGetNVars(tree)) );
-
-         SCIP_CALL( computeGradient(scip, exprint, sol, tree, grad) );
-
-         for( i = 0; i < SCIPexprtreeGetNVars(tree); i++ )
-         {
-            gradx0 +=  grad[i] * SCIPgetSolVal(scip, sol, SCIPexprtreeGetVars(tree)[i]);
-            SCIP_CALL( SCIPaddVarToRow(scip, row, SCIPexprtreeGetVars(tree)[i], grad[i]) );
-         }
-
-         SCIPfreeBufferArray(scip, &grad);
+         *success = FALSE;
+         break;
       }
+      /* SCIPdebugMsg(scip, "grad w.r.t. <%s> (%g) = %g, gradx0 += %g\n", SCIPvarGetName(var), SCIPgetSolVal(scip, sol, var), grad, grad * SCIPgetSolVal(scip, sol, var)); */
+
+      gradx0 += grad * SCIPgetSolVal(scip, sol, var);
+      SCIP_CALL( SCIPaddVarToRow(scip, row, var, grad) );
    }
 
    SCIP_CALL( SCIPflushRowExtensions(scip, row) );
+
+   /* if there was a problem computing the cut -> return */
+   if( ! *success )
+      return SCIP_OKAY;
 
 #ifdef CUT_DEBUG
    SCIPdebugMsg(scip, "gradient: ");
@@ -659,18 +601,19 @@ SCIP_RETCODE generateCut(
    SCIPdebugMsg(scip, "gradient dot x_0: %g\n", gradx0);
 #endif
 
-   /* gradient cut is f(x_0) - <grad f(x_0), x_0> + <grad f(x_0), x> <= rhs or >= lhs */
-   SCIP_CALL( SCIPgetNlRowSolActivity(scip, nlrow, sol, &activity) );
+   /* gradient cut is linear part + f(x_0) - <grad f(x_0), x_0> + <grad f(x_0), x> <= rhs or >= lhs */
+   exprval = SCIPexprGetEvalValue(SCIPnlrowGetExpr(nlrow));
+   assert(exprval != SCIP_INVALID);  /* we should have noticed a domain error above */  /*lint !e777*/
    if( convexside == RHS )
    {
       assert(!SCIPisInfinity(scip, SCIPnlrowGetRhs(nlrow)));
-      SCIP_CALL( SCIPchgRowRhs(scip, row, SCIPnlrowGetRhs(nlrow) - activity + gradx0) );
+      SCIP_CALL( SCIPchgRowRhs(scip, row, SCIPnlrowGetRhs(nlrow) - SCIPnlrowGetConstant(nlrow) - exprval + gradx0) );
    }
    else
    {
       assert(convexside == LHS);
       assert(!SCIPisInfinity(scip, -SCIPnlrowGetLhs(nlrow)));
-      SCIP_CALL( SCIPchgRowLhs(scip, row, SCIPnlrowGetLhs(nlrow) - activity + gradx0) );
+      SCIP_CALL( SCIPchgRowLhs(scip, row, SCIPnlrowGetLhs(nlrow) - SCIPnlrowGetConstant(nlrow) - exprval + gradx0) );
    }
 
 #ifdef CUT_DEBUG
@@ -681,10 +624,11 @@ SCIP_RETCODE generateCut(
    return SCIP_OKAY;
 }
 
-/** tries to generate gradient cuts at the point on the segment [intsol, tosepasol] that intersecs the boundary of the
+/** tries to generate gradient cuts at the point on the segment [`intsol`, `tosepasol`] that intersecs the boundary of the
  * convex relaxation
+ *
  * -# checks that the relative interior of the segment actually intersects the boundary
- *    (this check is needed since intsol is not necessarily an interior point)
+ *    (this check is needed since `intsol` is not necessarily an interior point)
  * -# finds point on the boundary
  * -# generates gradient cut at point on the boundary
  */
@@ -705,6 +649,7 @@ SCIP_RETCODE separateCuts(
    int*           nlrowsidx;
    int            nnlrowsidx;
    int            i;
+   SCIP_EXPRITER* exprit;
 
    assert(sepa != NULL);
 
@@ -780,6 +725,9 @@ SCIP_RETCODE separateCuts(
       }
    }
 
+   /** @todo: could probably be moved inside generateCut */
+   SCIP_CALL( SCIPcreateExpriter(scip, &exprit) );
+
    /* generate cuts at sol */
    for( i = 0; i < nnlrowsidx; i++ )
    {
@@ -787,6 +735,7 @@ SCIP_RETCODE separateCuts(
       SCIP_ROW*   row;
       SCIP_Real   activity;
       CONVEXSIDE  convexside;
+      SCIP_Bool   success;
       char        rowname[SCIP_MAXSTRLEN];
 
       nlrow = nlrows[nlrowsidx[i]];
@@ -806,11 +755,11 @@ SCIP_RETCODE separateCuts(
       /* @todo: when local nlrows get supported in SCIP, one can think of recomputing the interior point */
       SCIP_CALL( SCIPcreateEmptyRowSepa(scip, &row, sepa, rowname, -SCIPinfinity(scip), SCIPinfinity(scip),
                FALSE, FALSE , TRUE) );
-      SCIP_CALL( generateCut(scip, sol, sepadata->exprinterpreter, nlrow, convexside, row) );
+      SCIP_CALL( generateCut(scip, sol, nlrow, convexside, exprit, row, &success) );
 
       /* add cut */
       SCIPdebugMsg(scip, "cut <%s> has efficacy %g\n", SCIProwGetName(row), SCIPgetCutEfficacy(scip, NULL, row));
-      if( SCIPisCutEfficacious(scip, NULL, row) )
+      if( success && SCIPisCutEfficacious(scip, NULL, row) )
       {
          SCIP_Bool infeasible;
 
@@ -832,6 +781,8 @@ SCIP_RETCODE separateCuts(
       /* release the row */
       SCIP_CALL( SCIPreleaseRow(scip, &row) );
    }
+
+   SCIPfreeExpriter(&exprit);
 
 CLEANUP:
    SCIP_CALL( SCIPfreeSol(scip, &sol) );
@@ -883,7 +834,6 @@ SCIP_DECL_SEPAEXITSOL(sepaExitsolGauge)
       SCIPfreeBlockMemoryArray(scip, &sepadata->convexsides, sepadata->nlrowssize);
       SCIPfreeBlockMemoryArray(scip, &sepadata->nlrows, sepadata->nlrowssize);
       SCIP_CALL( SCIPfreeSol(scip, &sepadata->intsol) );
-      SCIP_CALL( SCIPexprintFree(&sepadata->exprinterpreter) );
 
       sepadata->nnlrows = 0;
       sepadata->nnlrowsidx = 0;
@@ -952,7 +902,6 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpGauge)
          return SCIP_OKAY;
 
       SCIP_CALL( storeNonlinearConvexNlrows(scip, sepadata, SCIPgetNLPNlRows(scip), SCIPgetNNLPNlRows(scip)) );
-      SCIP_CALL( SCIPexprintCreate(SCIPblkmem(scip), &sepadata->exprinterpreter) );
    }
 
 #ifdef SCIP_DISABLED_CODE
@@ -961,17 +910,6 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpGauge)
     *        - we can also use convex combination of solutions; there is a function SCIPvarGetAvgSol!
     *        - can add an event handler to only update when a new solution has been found
     */
-   if( !sepadata->isintsolavailable && sepadata->computeintsol )
-   {
-      SCIP_Bool success;
-
-      success = FALSE;
-      SCIP_CALL( computeInteriorPoint(scip, sepa, &success) );
-
-      if( success )
-         sepadata->isintsolavailable = TRUE;
-   }
-
    if( !sepadata->isintsolavailable )
    {
       if( SCIPgetNSols(scip) > 0 )
@@ -980,7 +918,7 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpGauge)
          SCIP_CALL( SCIPcreateSolCopy(scip, &sepadata->intsol, SCIPgetBestSol(scip)) );
          sepadata->isintsolavailable = TRUE;
       }
-      else if( SCIPhasNLPSolution(scip, NULL) )
+      else if( SCIPnlpGetSolstat(scip) <= SCIP_NLPSOLSTAT_FEASIBLE )
       {
          SCIPdebugMsg(scip, "Using NLP solution as interior point!\n");
          SCIP_CALL( SCIPcreateNLPSol(scip, &sepadata->intsol, NULL) );
@@ -1076,10 +1014,6 @@ SCIP_RETCODE SCIPincludeSepaGauge(
    SCIP_CALL( SCIPaddIntParam(scip, "separating/" SEPA_NAME "/nlpiterlimit",
          "iteration limit of NLP solver; 0 for no limit",
          &sepadata->nlpiterlimit, TRUE, DEFAULT_NLPITERLIM, 0, INT_MAX, NULL, NULL) );
-
-   SCIP_CALL( SCIPaddRealParam(scip, "separating/" SEPA_NAME "/nlptimelimit",
-         "time limit of NLP solver; 0.0 for no limit",
-         &sepadata->nlptimelimit, TRUE, DEFAULT_NLPTIMELIMIT, 0.0, SCIP_REAL_MAX, NULL, NULL) );
 
    return SCIP_OKAY;
 }

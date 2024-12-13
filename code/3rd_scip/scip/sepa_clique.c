@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   sepa_clique.c
+ * @ingroup DEFPLUGINS_SEPA
  * @brief  clique separator
  * @author Kati Wolter
  * @author Tobias Achterberg
@@ -21,12 +31,32 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
+#include "blockmemshell/memory.h"
+#include "scip/pub_implics.h"
+#include "scip/pub_lp.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_sepa.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cut.h"
+#include "scip/scip_general.h"
+#include "scip/scip_lp.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sepa.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_var.h"
 #include "scip/sepa_clique.h"
 #include "tclique/tclique.h"
-#include "scip/pub_misc.h"
+#include <string.h>
+#if defined(_WIN32) || defined(_WIN64)
+#else
+#include <strings.h> /*lint --e{766}*/
+#endif
 
 
 #define SEPA_NAME              "clique"
@@ -676,17 +706,13 @@ SCIP_RETCODE newsolCliqueAddRow(
    SCIP_SEPA*            sepa,               /**< the cut separator itself */
    SCIP_SEPADATA*        sepadata,           /**< data of separator */
    int                   ncliquenodes,       /**< number of nodes in clique */
-   int*                  cliquenodes,        /**< nodes in clique */
-   SCIP_Bool*            cutoff              /**< whether a cutoff has been detected */
+   int*                  cliquenodes         /**< nodes in clique */
    )
 {
    SCIP_VAR** vars;
    SCIP_ROW* cut;
    char cutname[SCIP_MAXSTRLEN];
    int i;
-
-   assert( cutoff != NULL );
-   *cutoff = FALSE;
 
    vars = sepadata->tcliquegraph->vars;
    assert(sepadata->tcliquegraph->nnodes > 0);
@@ -757,7 +783,6 @@ TCLIQUE_NEWSOL(tcliqueNewsolClique)
       SCIP_SEPA* sepa;
       SCIP_Real* varsolvals;
       SCIP_Real unscaledweight;
-      SCIP_Bool cutoff;
       int i;
 
       scip = sepadata->scip;
@@ -775,30 +800,20 @@ TCLIQUE_NEWSOL(tcliqueNewsolClique)
          SCIP_RETCODE retcode;
 
          /* explicitly handle return code */
-         retcode = newsolCliqueAddRow(scip, sepa, sepadata, ncliquenodes, cliquenodes, &cutoff);
+         retcode = newsolCliqueAddRow(scip, sepa, sepadata, ncliquenodes, cliquenodes);
          if ( retcode == SCIP_OKAY )
          {
-            if ( cutoff )
-            {
-               sepadata->cutoff = TRUE;
-               *acceptsol = FALSE;
-               *stopsolving = TRUE;
-            }
-            else
-            {
-               SCIPdebugMsg(scip, " -> found clique cut (act=%g)\n", unscaledweight);
-               sepadata->ncuts++;
+            SCIPdebugMsg(scip, " -> found clique cut (act=%g)\n", unscaledweight);
+            sepadata->ncuts++;
 
-               /* if we found more than half the cuts we are allowed to generate, we accept the clique as new incumbent,
-                * such that only more violated cuts are generated afterwards
-                */
-               if( sepadata->maxsepacuts >= 0 )
-               {
-                  if( sepadata->ncuts > sepadata->maxsepacuts/2 )
-                     *acceptsol = TRUE;
-                  if( sepadata->ncuts >= sepadata->maxsepacuts )
-                     *stopsolving = TRUE;
-               }
+            /* if we found more than half the cuts we are allowed to generate, we accept the clique as new incumbent,
+             * such that only more violated cuts are generated afterwards */
+            if( sepadata->maxsepacuts >= 0 )
+            {
+               if( sepadata->ncuts > sepadata->maxsepacuts/2 )
+                  *acceptsol = TRUE;
+               if( sepadata->ncuts >= sepadata->maxsepacuts )
+                  *stopsolving = TRUE;
             }
          }
          else

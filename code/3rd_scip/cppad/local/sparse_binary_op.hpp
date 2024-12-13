@@ -1,8 +1,8 @@
-// $Id$
-# ifndef CPPAD_SPARSE_BINARY_OP_HPP
-# define CPPAD_SPARSE_BINARY_OP_HPP
+// $Id: sparse_binary_op.hpp 3865 2017-01-19 01:57:55Z bradbell $
+# ifndef CPPAD_LOCAL_SPARSE_BINARY_OP_HPP
+# define CPPAD_LOCAL_SPARSE_BINARY_OP_HPP
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -12,7 +12,7 @@ A copy of this license is included in the COPYING file of this distribution.
 Please visit http://www.coin-or.org/CppAD/ for information on other licenses.
 -------------------------------------------------------------------------- */
 
-namespace CppAD { // BEGIN_CPPAD_NAMESPACE
+namespace CppAD { namespace local { // BEGIN_CPPAD_LOCAL_NAMESPACE
 /*!
 \file sparse_binary_op.hpp
 Forward and reverse mode sparsity patterns for binary operators.
@@ -35,7 +35,7 @@ where op is a C++ binary unary operator and both x and y are variables.
 
 \tparam Vector_set
 is the type used for vectors of sets. It can be either
-\c sparse_pack, \c sparse_set, or \c sparse_list.
+sparse_pack or sparse_list.
 
 \param i_z
 variable index corresponding to the result for this operation;
@@ -114,7 +114,7 @@ and it uses them to compute the sparsity patterns for
 
 \tparam Vector_set
 is the type used for vectors of sets. It can be either
-\c sparse_pack, \c sparse_set, or \c sparse_list.
+sparse_pack or sparse_list.
 
 \param i_z
 variable index corresponding to the result for this operation;
@@ -167,7 +167,7 @@ inline void reverse_sparse_jacobian_binary_op(
 
 	return;
 }
-
+// ---------------------------------------------------------------------------
 /*!
 Reverse mode Hessian sparsity pattern for add and subtract operators.
 
@@ -177,14 +177,14 @@ The C++ source code corresponding to a unary operation has the form
 \endverbatim
 where op is + or - and x, y are variables.
 
-\copydetails reverse_sparse_hessian_binary_op
+\copydetails CppAD::local::reverse_sparse_hessian_binary_op
 */
 template <class Vector_set>
 inline void reverse_sparse_hessian_addsub_op(
 	size_t               i_z                ,
 	const addr_t*        arg                ,
 	bool*                jac_reverse        ,
-	Vector_set&          for_jac_sparsity   ,
+	const Vector_set&    for_jac_sparsity   ,
 	Vector_set&          rev_hes_sparsity   )
 {
 	// check assumptions
@@ -209,14 +209,14 @@ The C++ source code corresponding to a unary operation has the form
 \endverbatim
 where x and y are variables.
 
-\copydetails reverse_sparse_hessian_binary_op
+\copydetails CppAD::local::reverse_sparse_hessian_binary_op
 */
 template <class Vector_set>
 inline void reverse_sparse_hessian_mul_op(
 	size_t               i_z                ,
 	const addr_t*        arg                ,
 	bool*                jac_reverse        ,
-	Vector_set&          for_jac_sparsity   ,
+	const Vector_set&    for_jac_sparsity   ,
 	Vector_set&          rev_hes_sparsity   )
 {
 	// check assumptions
@@ -247,14 +247,14 @@ The C++ source code corresponding to a unary operation has the form
 \endverbatim
 where x and y are variables.
 
-\copydetails reverse_sparse_hessian_binary_op
+\copydetails CppAD::local::reverse_sparse_hessian_binary_op
 */
 template <class Vector_set>
 inline void reverse_sparse_hessian_div_op(
 	size_t               i_z                ,
 	const addr_t*        arg                ,
 	bool*                jac_reverse        ,
-	Vector_set&          for_jac_sparsity   ,
+	const Vector_set&    for_jac_sparsity   ,
 	Vector_set&          rev_hes_sparsity   )
 {
 	// check assumptions
@@ -287,14 +287,14 @@ The C++ source code corresponding to a unary operation has the form
 \endverbatim
 where x and y are variables.
 
-\copydetails reverse_sparse_hessian_binary_op
+\copydetails CppAD::local::reverse_sparse_hessian_binary_op
 */
 template <class Vector_set>
 inline void reverse_sparse_hessian_pow_op(
 	size_t               i_z                ,
 	const addr_t*        arg                ,
 	bool*                jac_reverse        ,
-	Vector_set&          for_jac_sparsity   ,
+	const Vector_set&    for_jac_sparsity   ,
 	Vector_set&          rev_hes_sparsity   )
 {
 	// check assumptions
@@ -323,6 +323,163 @@ inline void reverse_sparse_hessian_pow_op(
 	jac_reverse[arg[1]] |= jac_reverse[i_z];
 	return;
 }
+// ---------------------------------------------------------------------------
+/*!
+Forward mode Hessian sparsity pattern for multiplication operator.
 
-} // END_CPPAD_NAMESPACE
+The C++ source code corresponding to this operation is
+\verbatim
+        w(x) = v0(x) * v1(x)
+\endverbatim
+
+\param arg
+is the index of the argument vector for the multiplication operation; i.e.,
+arg[0], arg[1] are the left and right operands.
+
+\param for_jac_sparsity
+for_jac_sparsity(arg[0]) constains the Jacobian sparsity for v0(x),
+for_jac_sparsity(arg[1]) constains the Jacobian sparsity for v1(x).
+
+\param for_hes_sparsity
+On input, for_hes_sparsity includes the Hessian sparsity for v0(x)
+and v1(x); i.e., the sparsity can be a super set.
+Upon return it includes the Hessian sparsity for  w(x)
+*/
+template <class Vector_set>
+inline void forward_sparse_hessian_mul_op(
+	const addr_t*       arg               ,
+	const Vector_set&   for_jac_sparsity  ,
+	Vector_set&         for_hes_sparsity  )
+{	// --------------------------------------------------
+	// set of independent variables that v0 depends on
+	typename Vector_set::const_iterator itr_0(for_jac_sparsity, arg[0]);
+
+	// loop over dependent variables with non-zero partial
+	size_t i_x = *itr_0;
+	while( i_x < for_jac_sparsity.end() )
+	{	// N(i_x) = N(i_x) union L(v1)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[1], for_jac_sparsity);
+		i_x = *(++itr_0);
+	}
+	// --------------------------------------------------
+	// set of independent variables that v1 depends on
+	typename Vector_set::const_iterator itr_1(for_jac_sparsity, arg[1]);
+
+	// loop over dependent variables with non-zero partial
+	i_x = *itr_1;
+	while( i_x < for_jac_sparsity.end() )
+	{	// N(i_x) = N(i_x) union L(v0)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[0], for_jac_sparsity);
+		i_x = *(++itr_1);
+	}
+	return;
+}
+/*!
+Forward mode Hessian sparsity pattern for division operator.
+
+The C++ source code corresponding to this operation is
+\verbatim
+        w(x) = v0(x) / v1(x)
+\endverbatim
+
+\param arg
+is the index of the argument vector for the division operation; i.e.,
+arg[0], arg[1] are the left and right operands.
+
+\param for_jac_sparsity
+for_jac_sparsity(arg[0]) constains the Jacobian sparsity for v0(x),
+for_jac_sparsity(arg[1]) constains the Jacobian sparsity for v1(x).
+
+\param for_hes_sparsity
+On input, for_hes_sparsity includes the Hessian sparsity for v0(x)
+and v1(x); i.e., the sparsity can be a super set.
+Upon return it includes the Hessian sparsity for  w(x)
+*/
+template <class Vector_set>
+inline void forward_sparse_hessian_div_op(
+	const addr_t*       arg               ,
+	const Vector_set&   for_jac_sparsity  ,
+	Vector_set&         for_hes_sparsity  )
+{	// --------------------------------------------------
+	// set of independent variables that v0 depends on
+	typename Vector_set::const_iterator itr_0(for_jac_sparsity, arg[0]);
+
+	// loop over dependent variables with non-zero partial
+	size_t i_x = *itr_0;
+	while( i_x < for_jac_sparsity.end() )
+	{	// N(i_x) = N(i_x) union L(v1)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[1], for_jac_sparsity);
+		i_x = *(++itr_0);
+	}
+	// --------------------------------------------------
+	// set of independent variables that v1 depends on
+	typename Vector_set::const_iterator itr_1(for_jac_sparsity, arg[1]);
+
+	// loop over dependent variables with non-zero partial
+	i_x = *itr_1;
+	while( i_x < for_jac_sparsity.end() )
+	{	// N(i_x) = N(i_x) union L(v0)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[0], for_jac_sparsity);
+		// N(i_x) = N(i_x) union L(v1)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[1], for_jac_sparsity);
+		i_x = *(++itr_1);
+	}
+	return;
+}
+/*!
+Forward mode Hessian sparsity pattern for power operator.
+
+The C++ source code corresponding to this operation is
+\verbatim
+        w(x) = pow( v0(x) , v1(x) )
+\endverbatim
+
+\param arg
+is the index of the argument vector for the power operation; i.e.,
+arg[0], arg[1] are the left and right operands.
+
+\param for_jac_sparsity
+for_jac_sparsity(arg[0]) constains the Jacobian sparsity for v0(x),
+for_jac_sparsity(arg[1]) constains the Jacobian sparsity for v1(x).
+
+\param for_hes_sparsity
+On input, for_hes_sparsity includes the Hessian sparsity for v0(x)
+and v1(x); i.e., the sparsity can be a super set.
+Upon return it includes the Hessian sparsity for  w(x)
+*/
+template <class Vector_set>
+inline void forward_sparse_hessian_pow_op(
+	const addr_t*       arg               ,
+	const Vector_set&   for_jac_sparsity  ,
+	Vector_set&         for_hes_sparsity  )
+{	// --------------------------------------------------
+	// set of independent variables that v0 depends on
+	typename Vector_set::const_iterator itr_0(for_jac_sparsity, arg[0]);
+
+	// loop over dependent variables with non-zero partial
+	size_t i_x = *itr_0;
+	while( i_x < for_jac_sparsity.end() )
+	{	// N(i_x) = N(i_x) union L(v0)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[0], for_jac_sparsity);
+		// N(i_x) = N(i_x) union L(v1)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[1], for_jac_sparsity);
+		i_x = *(++itr_0);
+	}
+	// --------------------------------------------------
+	// set of independent variables that v1 depends on
+	typename Vector_set::const_iterator itr_1(for_jac_sparsity, arg[1]);
+
+	// loop over dependent variables with non-zero partial
+	i_x = *itr_1;
+	while( i_x < for_jac_sparsity.end() )
+	{	// N(i_x) = N(i_x) union L(v0)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[0], for_jac_sparsity);
+		// N(i_x) = N(i_x) union L(v1)
+		for_hes_sparsity.binary_union(i_x, i_x, arg[1], for_jac_sparsity);
+		i_x = *(++itr_1);
+	}
+	return;
+}
+// ---------------------------------------------------------------------------
+} } // END_CPPAD_LOCAL_NAMESPACE
 # endif

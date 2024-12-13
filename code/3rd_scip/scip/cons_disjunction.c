@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file cons_disjunction.c
+ * @ingroup DEFPLUGINS_CONS
  * @brief  constraint handler for disjunction constraints
  * @author Stefan Heinz
  * @author Michael Winkler
@@ -21,11 +31,24 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-#include <limits.h>
-
+#include "blockmemshell/memory.h"
 #include "scip/cons_disjunction.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_message.h"
+#include "scip/pub_tree.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_copy.h"
+#include "scip/scip_general.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_probing.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solvingstats.h"
+#include "scip/scip_tree.h"
+#include <string.h>
 
 
 /* constraint handler properties */
@@ -79,7 +102,7 @@ SCIP_RETCODE consdataCreate(
    SCIP_CONSDATA**       consdata,           /**< pointer to constraint data */
    SCIP_CONS**           conss,              /**< initial constraint in disjunction */
    int                   nconss,             /**< number of initial constraints in disjunction */
-   SCIP_CONS*            relaxcons           /**< a conjuction constraint containing the liner relaxation of the disjunction constraint, or NULL */
+   SCIP_CONS*            relaxcons           /**< a conjunction constraint containing the liner relaxation of the disjunction constraint, or NULL */
    )
 {
    assert(scip != NULL);
@@ -120,7 +143,7 @@ SCIP_RETCODE consdataCreate(
 
          if( (*consdata)->relaxcons != NULL )
          {
-            SCIP_CALL( SCIPcaptureCons(scip, relaxcons) );
+            SCIP_CALL( SCIPcaptureCons(scip, (*consdata)->relaxcons) );
          }
       }
    }
@@ -245,8 +268,15 @@ SCIP_RETCODE branchCons(
          SCIP_CALL( SCIPsetConsChecked(scip, conss[i], TRUE) );
       }
 
+      /* mark constraint to be local; otherwise during INITLP the (global) row of all constraints of the disjunction
+       * constrtaint will enter the LP
+       */
+      SCIP_CALL( SCIPsetConsLocal(scip, conss[i], TRUE) );
+
       /* add constraints to nodes */
       SCIP_CALL( SCIPaddConsNode(scip, child, conss[i], NULL) );
+      SCIPdebugMsg(scip, "add cons %s to node %lld from %lld\n", SCIPconsGetName(conss[i]), SCIPnodeGetNumber(child),
+         SCIPnodeGetNumber(SCIPgetCurrentNode(scip)));
 
       /* remove disjunction constraint, from child node */
       SCIP_CALL( SCIPdelConsNode(scip, child, cons) );
@@ -388,6 +418,7 @@ SCIP_RETCODE enforceConstraint(
    SCIP_CONSHDLR*        conshdlr,           /**< constraint handler */
    SCIP_CONS**           conss,              /**< constraints to process */
    int                   nconss,             /**< number of constraints */
+   SCIP_SOL*             sol,                /**< solution to enforce (NULL for LP solution) */
    SCIP_RESULT*          result              /**< pointer to store the result of the enforcing call */
    )
 {
@@ -405,7 +436,7 @@ SCIP_RETCODE enforceConstraint(
    for( c = 0; c < nconss && *result != SCIP_BRANCHED; ++c )
    {
       /* check the disjunction */
-      SCIP_CALL( checkCons(scip, conss[c], NULL, FALSE, FALSE, FALSE, result) );
+      SCIP_CALL( checkCons(scip, conss[c], sol, FALSE, FALSE, FALSE, result) );
 
       if( *result == SCIP_INFEASIBLE && branch )
       {
@@ -519,7 +550,7 @@ SCIP_DECL_CONSINITLP(consInitlpDisjunction)
 static
 SCIP_DECL_CONSENFOLP(consEnfolpDisjunction)
 {  /*lint --e{715}*/
-   SCIP_CALL( enforceConstraint(scip, conshdlr,  conss,  nconss,  result) );
+   SCIP_CALL( enforceConstraint(scip, conshdlr,  conss,  nconss, NULL, result) );
 
    return SCIP_OKAY;
 }
@@ -529,7 +560,7 @@ SCIP_DECL_CONSENFOLP(consEnfolpDisjunction)
 static
 SCIP_DECL_CONSENFORELAX(consEnforelaxDisjunction)
 {  /*lint --e{715}*/
-   SCIP_CALL( enforceConstraint(scip, conshdlr,  conss,  nconss,  result) );
+   SCIP_CALL( enforceConstraint(scip, conshdlr,  conss,  nconss, sol, result) );
 
    return SCIP_OKAY;
 }
@@ -539,7 +570,7 @@ SCIP_DECL_CONSENFORELAX(consEnforelaxDisjunction)
 static
 SCIP_DECL_CONSENFOPS(consEnfopsDisjunction)
 {  /*lint --e{715}*/
-   SCIP_CALL( enforceConstraint(scip, conshdlr,  conss,  nconss,  result) );
+   SCIP_CALL( enforceConstraint(scip, conshdlr,  conss,  nconss, NULL, result) );
 
    return SCIP_OKAY;
 }
@@ -659,13 +690,15 @@ SCIP_DECL_CONSLOCK(consLockDisjunction)
    SCIP_CONSDATA* consdata;
    int c;
 
+   assert(locktype == SCIP_LOCKTYPE_MODEL);
+
    consdata = SCIPconsGetData(cons);
    assert(consdata != NULL);
 
    /* lock sub constraints */
    for( c = 0; c < consdata->nconss; ++c )
    {
-      SCIP_CALL( SCIPaddConsLocks(scip, consdata->conss[c], nlockspos, nlocksneg) );
+      SCIP_CALL( SCIPaddConsLocksType(scip, consdata->conss[c], locktype, nlockspos, nlocksneg) );
    }
 
    return SCIP_OKAY;
@@ -746,6 +779,7 @@ SCIP_DECL_CONSPARSE(consParseDisjunction)
       *success = FALSE;
       goto TERMINATE;
    }
+   assert(saveptr != NULL); /* for lint */
 
    /* skip '(' */
    ++saveptr;
@@ -1144,6 +1178,5 @@ SCIP_RETCODE SCIPaddConsElemDisjunction(
    SCIP_CALL( consdataAddCons(scip, consdata, addcons) );
 
    return SCIP_OKAY;
-
 }
 

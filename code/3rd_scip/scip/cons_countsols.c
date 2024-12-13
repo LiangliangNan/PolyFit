@@ -3,17 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   cons_countsols.c
+ * @ingroup DEFPLUGINS_CONS
  * @brief  constraint handler for counting feasible solutions
  * @author Stefan Heinz
  * @author Michael Winkler
@@ -21,7 +31,7 @@
  * If this constraint handler is activated than it counts or collects all feasible solutions. We refer to \ref COUNTER for
  * more details about using SCIP for counting feasible solutions.
  *
- * @todo In the last round of presolving we should check if variables exist, which have up and down lock one. In that
+ * @todo In the last round of presolving we should check if variables exist, which have up and down lock one. In this
  *       case we know that these locks are coming from this constraint handler. Therefore, they are totally free and can
  *       be ignored in the branch and bound process. To get this result we have to store these variables in the
  *       constraint handler data structure (to remember this free dimensions) and fix them to any feasible value.
@@ -29,19 +39,42 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <string.h>
-
-#include "scip/cons_and.h"
-#include "scip/cons_knapsack.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_bounddisjunction.h"
+#include "scip/cons_countsols.h"
+#include "scip/cons_knapsack.h"
 #include "scip/cons_logicor.h"
 #include "scip/cons_setppc.h"
 #include "scip/cons_varbound.h"
-#include "scip/cons_countsols.h"
 #include "scip/dialog_default.h"
+#include "scip/pub_cons.h"
+#include "scip/pub_dialog.h"
+#include "scip/pub_disp.h"
+#include "scip/pub_heur.h"
+#include "scip/pub_message.h"
+#include "scip/pub_misc.h"
+#include "scip/pub_misc_sort.h"
+#include "scip/pub_sol.h"
+#include "scip/pub_var.h"
+#include "scip/scip_branch.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_dialog.h"
+#include "scip/scip_disp.h"
+#include "scip/scip_general.h"
+#include "scip/scip_heur.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_sol.h"
+#include "scip/scip_solve.h"
+#include "scip/scip_var.h"
+#include "symmetry/type_symmetry.h"
+#include <string.h>
 
-/* depending if the GMP library is available we use a GMP data type or a SCIP_Longint */
-#ifdef WITH_GMP
+/* depending on whether the GMP library is available we use a GMP data type or a SCIP_Longint */
+#ifdef SCIP_WITH_GMP
 #include <gmp.h>
 typedef mpz_t                Int;
 #else
@@ -81,8 +114,7 @@ typedef SCIP_Longint         Int;
 #define DISP_CUTS_POSITION         110000
 #define DISP_CUTS_STRIPLINE        TRUE
 
-/** creates and adds a constraint which cuts off the solution from the feasibility
- *  region
+/** creates and adds a constraint which cuts off the solution from the feasibility region
  *
  *  input:
  *  - scip            : SCIP main data structure
@@ -100,19 +132,19 @@ struct SCIP_ConshdlrData
    int                   nsolutions;         /**< number of solution stored */
    int                   ssolutions;         /**< size of the solution array */
    int                   feasST;             /**< number of non trivial feasible subtrees */
-   int                   nDiscardSols;       /**< number of discard solutions */
+   int                   nDiscardSols;       /**< number of discarded solutions */
    int                   nNonSparseSols;     /**< number of non sparse solutions */
    Int                   nsols;              /**< number of solutions */
    CUTOFF_CONSTRAINT((*cutoffSolution));     /**< method for cutting of a solution */
 
    /* constraint handler parameters */
-   SCIP_Longint          sollimit;           /**< counting stops, if the given number of solutions were found (-1: no limit) */
+   SCIP_Longint          sollimit;           /**< counting stops, if the given number of solutions have been found (-1: no limit) */
    SCIP_Bool             active;             /**< constraint handler active */
    SCIP_Bool             discardsols;        /**< allow to discard solutions */
    SCIP_Bool             sparsetest;         /**< allow to check for sparse solutions */
    SCIP_Bool             collect;            /**< should the solutions be collected */
 
-   SCIP_Bool             warning;            /**< was the warning messages already posted? */
+   SCIP_Bool             warning;            /**< has the warning message already been posted? */
 
    /* specific problem data */
    SCIP_HASHMAP*         hashmap;            /**< hashmap to store position of active transformed problem variable in our vars array */
@@ -134,7 +166,7 @@ void allocInt(
    Int*                  value               /**< pointer to the value to allocate memory */
    )
 {  /*lint --e{715}*/
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    mpz_init(*value);
 #endif
 }
@@ -149,7 +181,7 @@ void setInt(
 {
    assert(newvalue < LONG_MAX);
 
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    mpz_set_si(*value, (long) newvalue);
 #else
    (*value) = newvalue;
@@ -166,7 +198,7 @@ void setPowerOfTwo(
 {
    assert(0 <= exponent && exponent < LONG_MAX);
 
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    mpz_ui_pow_ui(*value, 2UL, (unsigned long) exponent);
 #else
    assert(exponent < 64);
@@ -181,7 +213,7 @@ void freeInt(
    Int*                  value               /**< pointer to the value to free */
    )
 {  /*lint --e{715}*/
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    mpz_clear(*value);
 #endif
 }
@@ -193,7 +225,7 @@ void addOne(
    Int*                  value               /**< pointer to the value to increase */
    )
 {
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    mpz_add_ui(*value, *value, 1UL);
 #else
    (*value)++;
@@ -208,7 +240,7 @@ void addInt(
    Int*                  summand             /**< summand to add on */
    )
 {
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    mpz_add(*value, *value, *summand);
 #else
    (*value) += (*summand);
@@ -225,7 +257,7 @@ void multInt(
 {
    assert(0 <= factor && factor < LONG_MAX);
 
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    mpz_mul_ui(*value, *value, (unsigned long) factor);
 #else
    (*value) *= factor;
@@ -233,7 +265,7 @@ void multInt(
 }
 
 
-/** method for creating a string out of an Int which is a mpz_t or SCIP_Longint */
+/** method for creating a string out of an Int which is a mpz_t or SCIP_Longint */   /*lint -e{715}*/
 static
 void toString(
    Int                   value,              /**< number */
@@ -241,7 +273,7 @@ void toString(
    int                   buffersize          /**< length of the buffer */
    )
 {  /*lint --e{715}*/
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    (void) mpz_get_str(*buffer, 10, value);
 #else
    (void) SCIPsnprintf (*buffer, buffersize, "%" SCIP_LONGINT_FORMAT "", value);
@@ -256,7 +288,7 @@ SCIP_Longint getNCountedSols(
    SCIP_Bool*            valid               /**< pointer to store if the return value is valid */
    )
 {
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    *valid = FALSE;
    if( 0 != mpz_fits_sint_p(value) )
       (*valid) = TRUE;
@@ -356,7 +388,7 @@ void checkSolutionOrig(
 #define checkSolutionOrig(scip, sol, conshdlrdata) /**/
 #endif
 
-/** check if the current parameter setting is correct for a save counting process */
+/** check if the current parameter setting is correct for a safe counting process */
 static
 SCIP_RETCODE checkParameters(
    SCIP*                 scip                /**< SCIP data structure */
@@ -364,10 +396,8 @@ SCIP_RETCODE checkParameters(
 {
    SCIP_HEUR** heuristics;
    int nheuristics;
-
    int h;
    int intvalue;
-
    SCIP_Bool valid;
 
    assert( scip != NULL );
@@ -387,23 +417,37 @@ SCIP_RETCODE checkParameters(
    if( valid )
    {
       SCIPverbMessage(scip, SCIP_VERBLEVEL_FULL, NULL,
-         "At least one heuristic is not turned off! Heuristic solutions are currently not accepted.\n");
+         "At least one heuristic is not turned off! Heuristic solutions are currently not accepted while couting.\n");
    }
 
    /* check if restart is turned off */
    SCIP_CALL( SCIPgetIntParam(scip,  "presolving/maxrestarts", &intvalue) );
    if( intvalue != 0 )
    {
-      /* need to disabled restarts, since collecting solutions won't work but also the captures for variables are not
+      /* need to disable restarts, since collecting solutions won't work, but also the capturing for variables is not
        * correctly handled
        */
-      SCIPwarningMessage(scip, "counting forces parameter <presolving/maxrestarts> to 0\n");
+      SCIPwarningMessage(scip, "counting forces parameter <presolving/maxrestarts> to 0.\n");
       if( SCIPisParamFixed(scip, "presolving/maxrestarts") )
       {
          SCIP_CALL( SCIPunfixParam(scip, "presolving/maxrestarts") );
       }
 
       SCIP_CALL( SCIPsetIntParam(scip, "presolving/maxrestarts", 0) );
+   }
+
+   /* check if symmetry handling is turned off */
+   SCIP_CALL( SCIPgetIntParam(scip, "misc/usesymmetry", &intvalue) );
+   if ( intvalue != 0 )
+   {
+      /* need to disable symmetry handling, since counting is not supported if symmetry handling is enabled */
+      SCIPwarningMessage(scip, "counting forces parameter <misc/usesymmetry> to 0.\n");
+      if( SCIPisParamFixed(scip, "misc/usesymmetry") )
+      {
+         SCIP_CALL( SCIPunfixParam(scip, "misc/usesymmetry") );
+      }
+
+      SCIP_CALL( SCIPsetIntParam(scip, "misc/usesymmetry", 0) );
    }
 
    return SCIP_OKAY;
@@ -416,11 +460,9 @@ static
 CUTOFF_CONSTRAINT(addBinaryCons)
 {
    int v;
-
    SCIP_VAR** consvars;
    SCIP_VAR** vars;
    int nvars;
-
    SCIP_Real value;
    SCIP_VAR* var;
    SCIP_CONS* cons;
@@ -476,7 +518,6 @@ static
 CUTOFF_CONSTRAINT(addIntegerCons)
 {
    int v;
-
    SCIP_VAR** consvars;
    SCIP_VAR** vars;
    SCIP_Real* bounds;
@@ -486,7 +527,6 @@ CUTOFF_CONSTRAINT(addIntegerCons)
    int nconsvars;
    SCIP_VAR* var;
    SCIP_Real value;
-
    SCIP_CONS* cons;
 
    assert( scip != NULL );
@@ -568,7 +608,7 @@ CUTOFF_CONSTRAINT(addIntegerCons)
       ++nconsvars;
    }
 
-   /* check if only binary variables appear in the constraint; if this is the case we
+   /* check if only binary variables appear in the constraint; if this is the case, we
     * create a set covering constraint instead of a bound disjunction constraint
     */
    if( nvars == nbinvars )
@@ -620,8 +660,8 @@ SCIP_RETCODE collectSolution(
 
    /* ensure size of solution array
     *
-    * we use normal memory instead of block memory because this plugin is rarely used and the size of 'solutions'
-    * can be arbitrary large and the change that the other blocks can be used is quite small
+    * we use normal memory instead of block memory because this plugin is rarely used, the size of 'solutions'
+    * can be arbitrary large, and the change that the other blocks can be used is quite small
     */
    if( conshdlrdata->nsolutions == conshdlrdata->ssolutions )
    {
@@ -697,7 +737,7 @@ SCIP_RETCODE countSparseSol(
    assert( conshdlrdata != NULL );
    assert( result != NULL );
 
-   /* the result should be infeasible since we reject any solution; however, if the solution passes the sparse test the
+   /* the result should be infeasible since we reject any solution; however, if the solution passes the sparse test, the
     * result is set to SCIP_CUTOFF which cuts off the subtree initialized through the current node
     */
    assert(*result == SCIP_INFEASIBLE);
@@ -705,12 +745,9 @@ SCIP_RETCODE countSparseSol(
    if( feasible )
    {
       int v;
-
       Int newsols;
-
       SCIP_VAR** vars;
       int nvars;
-
       SCIP_VAR* var;
       SCIP_Real lb;
       SCIP_Real ub;
@@ -718,7 +755,7 @@ SCIP_RETCODE countSparseSol(
       SCIPdebugMsg(scip, "counts number of solutions represented through the given one\n");
 
       /**@note aggregations and multi aggregations: we do not have to care about these things
-       *       since we count solution from the transformed problem and therefore, SCIP does
+       *       since we count solutions from the transformed problem and therefore, SCIP does
        *       it for us
        */
       assert( SCIPgetNPseudoBranchCands(scip) != 0 );
@@ -749,6 +786,7 @@ SCIP_RETCODE countSparseSol(
          {
             var = vars[v];
             origvar = var;
+
             /* get original variable to decide if we will count the domain; continuous variables aren't counted */
             SCIP_CALL( SCIPvarGetOrigvarSum(&origvar, &scalar, &constant) );
 
@@ -765,7 +803,7 @@ SCIP_RETCODE countSparseSol(
                assert( SCIPisFeasIntegral(scip, ub - lb) );
                assert( SCIPisFeasLT(scip, lb, ub) );
 
-               /* the number of integers laying in the interval [lb,ub] is (ub - lb + 1); to make everything integral we
+               /* the number of integers lying in the interval [lb,ub] is (ub - lb + 1); to make everything integral we
                 * add another 0.5 and cut the fractional part off
                 */
                multInt(&newsols, (SCIP_Longint)(ub - lb + 1.5) );  /*lint !e545*/
@@ -939,7 +977,7 @@ SCIP_RETCODE checkKnapsack(
 
          if( !varIsUnfixedLocal(vars[v]) )
          {
-            /* variables is fixed locally; therefore, subtract fixed variable value multiplied by
+            /* variable is fixed locally; therefore, subtract fixed variable value multiplied by
              * the weight;
              */
             capa -= weights[v] * SCIPvarGetLbLocal(vars[v]);
@@ -1244,7 +1282,7 @@ SCIP_RETCODE checkSolution(
    assert( conshdlrdata != NULL );
    assert( result != NULL );
 
-   /* the solution should not be found through a heuristic since in this case the informations of SCIP are not valid for
+   /* the solution should not be found through a heuristic since in this case the information of SCIP is not valid for
     * this solution
     */
 
@@ -1258,7 +1296,7 @@ SCIP_RETCODE checkSolution(
    assert( SCIPsolGetHeur(sol) == NULL);
 
    /* setting result to infeasible since we reject any solution; however, if the solution passes the sparse test or is
-    * completely fixed the result is set to SCIP_CUTOFF which cuts off the subtree initialized through the current node
+    * completely fixed, the result is set to SCIP_CUTOFF which cuts off the subtree initialized through the current node
     */
    *result = SCIP_INFEASIBLE;
 
@@ -1298,14 +1336,14 @@ SCIP_RETCODE checkSolution(
       }
 
       /* in case of continuous variables are present we explicitly cutoff the integer assignment since in case of
-       * nonlinear constraint we want to avoid the count that integer assignment again
+       * nonlinear constraint we want to avoid to count that integer assignment again
        */
       if( conshdlrdata->continuous )
       {
          SCIP_CALL( conshdlrdata->cutoffSolution(scip, sol, conshdlrdata) );
       }
 
-      /* since all integer are fixed we cut off the subtree */
+      /* since all integer are fixed, we cut off the subtree */
       *result = SCIP_CUTOFF;
    }
    else if( conshdlrdata->sparsetest )
@@ -1349,7 +1387,7 @@ SCIP_DECL_CONSHDLRCOPY(conshdlrCopyCountsols)
    conshdlrdata = SCIPconshdlrGetData(conshdlr);
    assert(conshdlrdata != NULL);
 
-   /* in case the count constraint handler is active we avoid copying to ensure a safe count */
+   /* in case the countsols constraint handler is active we avoid copying to ensure a safe count */
    if( conshdlrdata->active )
       *valid = FALSE;
    else
@@ -1450,7 +1488,7 @@ SCIP_DECL_CONSINIT(consInitCountsols)
             if( strncmp(SCIPvarGetName(conshdlrdata->allvars[nallvars]), "t_andresultant_", strlen("t_andresultant_")) != 0 )
             {
                /* lock variable to avoid dual reductions */
-               SCIP_CALL( SCIPaddVarLocks(scip, conshdlrdata->allvars[nallvars], 1, 1) );
+               SCIP_CALL( SCIPaddVarLocksType(scip, conshdlrdata->allvars[nallvars], SCIP_LOCKTYPE_MODEL, 1, 1) );
             }
 
             nallvars++;
@@ -1503,7 +1541,7 @@ SCIP_DECL_CONSEXIT(consExitCountsols)
          if( strncmp(SCIPvarGetName(conshdlrdata->allvars[v]), "t_andresultant_", strlen("t_andresultant_")) != 0 )
          {
             /* remove the previously added variable locks */
-            SCIP_CALL( SCIPaddVarLocks(scip, conshdlrdata->allvars[v], -1, -1) );
+            SCIP_CALL( SCIPaddVarLocksType(scip, conshdlrdata->allvars[v], SCIP_LOCKTYPE_MODEL, -1, -1) );
          }
 
          SCIP_CALL( SCIPreleaseVar(scip, &conshdlrdata->allvars[v]) );
@@ -1611,7 +1649,7 @@ SCIP_DECL_CONSINITSOL(consInitsolCountsols)
       for( v = conshdlrdata->nvars - 1; v >= 0; --v )
       {
          assert(SCIPvarGetProbindex(conshdlrdata->vars[v]) == v);
-         SCIP_CALL( SCIPhashmapInsert(conshdlrdata->hashmap, conshdlrdata->vars[v], (void*) (size_t)(v+1)) );
+         SCIP_CALL( SCIPhashmapInsertInt(conshdlrdata->hashmap, conshdlrdata->vars[v], v+1) );
          SCIP_CALL( SCIPcaptureVar(scip, conshdlrdata->vars[v]) );
       }
 
@@ -1733,7 +1771,6 @@ SCIP_DECL_CONSENFOPS(consEnfopsCountsols)
    conshdlrdata = SCIPconshdlrGetData(conshdlr);
    assert( conshdlrdata != NULL );
 
-
    if( conshdlrdata->active )
    {
       if( !solinfeasible )
@@ -1774,7 +1811,7 @@ SCIP_DECL_CONSCHECK(consCheckCountsols)
    {
       if( !conshdlrdata->warning )
       {
-         SCIPwarningMessage(scip, "a solution comes in over <SCIP_DECL_CONSCHECK(consCheckCountsols)>; currently these solutions are ignored\n");
+         SCIPwarningMessage(scip, "a solution comes in over <SCIP_DECL_CONSCHECK(consCheckCountsols)>; currently these solutions are ignored.\n");
          conshdlrdata->warning = TRUE;
       }
 
@@ -1803,6 +1840,38 @@ SCIP_DECL_CONSLOCK(consLockCountsols)
 SCIP_DECL_DIALOGEXEC(SCIPdialogExecCountPresolve)
 {  /*lint --e{715}*/
    SCIP_Bool active;
+   int usesymmetry;
+
+   SCIP_CALL( SCIPgetIntParam(scip, "misc/usesymmetry", &usesymmetry) );
+
+   if ( usesymmetry != 0 )
+   {
+      int symcomptiming = 2;
+
+      /* get timing of symmetry computation */
+      if ( ((unsigned) usesymmetry & SYM_HANDLETYPE_SYMCONS) != 0 )
+      {
+         SCIP_CALL( SCIPgetIntParam(scip, "propagating/symmetry/addconsstiming", &symcomptiming) );
+      }
+      else if ( usesymmetry == 2 )
+      {
+         SCIP_CALL( SCIPgetIntParam(scip, "propagating/symmetry/ofsymcomptiming", &symcomptiming) );
+      }
+
+      if ( symcomptiming < SYM_COMPUTETIMING_AFTERPRESOL &&
+           (SCIPgetStage(scip) >= SCIP_STAGE_PRESOLVING || SCIPgetStage(scip) == SCIP_STAGE_INITPRESOLVE) )
+      {
+         SCIPerrorMessage("Symmetry handling and solution counting are not compatible. " \
+            "You might want to disable symmetry by setting parameter <misc/usesymmetry> to 0.\n");
+
+         return SCIP_INVALIDCALL;
+      }
+
+      SCIPwarningMessage(scip, "Symmetry handling has been deactivated since it is not compatible with counting.\n");
+      SCIPwarningMessage(scip, "=> counting forces parameter <misc/usesymmetry> to 0.\n");
+
+      SCIP_CALL( SCIPsetIntParam(scip, "misc/usesymmetry", 0) );
+   }
 
    SCIP_CALL( SCIPdialoghdlrAddHistory(dialoghdlr, dialog, NULL, FALSE) );
    SCIPdialogMessage(scip, NULL, "\n");
@@ -1873,6 +1942,7 @@ SCIP_DECL_DIALOGEXEC(SCIPdialogExecCount)
    int displaysols;
    int displayfeasST;
    int nrestarts;
+   int usesymmetry;
 
    SCIP_CALL( SCIPdialoghdlrAddHistory(dialoghdlr, dialog, NULL, FALSE) );
    SCIPdialogMessage(scip, NULL, "\n");
@@ -1881,15 +1951,46 @@ SCIP_DECL_DIALOGEXEC(SCIPdialogExecCount)
 
    if( nrestarts != 0 )
    {
-      /* need to disabled restarts, since collecting solutions won't work but also the captures for variables are not
+      /* need to disable restarts, since collecting solutions won't work, but also the capturing for variables is not
        * correctly handled
        */
-      SCIPwarningMessage(scip, "counting forces parameter <presolving/maxrestarts> to 0\n");
+      SCIPwarningMessage(scip, "counting forces parameter <presolving/maxrestarts> to 0.\n");
       if( SCIPisParamFixed(scip, "presolving/maxrestarts") )
       {
          SCIP_CALL( SCIPunfixParam(scip, "presolving/maxrestarts") );
       }
       SCIP_CALL( SCIPsetIntParam(scip, "presolving/maxrestarts", 0) );
+   }
+
+   SCIP_CALL( SCIPgetIntParam(scip, "misc/usesymmetry", &usesymmetry) );
+
+   if ( usesymmetry != 0 )
+   {
+      int symcomptiming = 2;
+
+      /* get timing of symmetry computation */
+      if ( ((unsigned) usesymmetry & SYM_HANDLETYPE_SYMCONS) != 0 )
+      {
+         SCIP_CALL( SCIPgetIntParam(scip, "propagating/symmetry/addconsstiming", &symcomptiming) );
+      }
+      else if ( usesymmetry == 2 )
+      {
+         SCIP_CALL( SCIPgetIntParam(scip, "propagating/symmetry/ofsymcomptiming", &symcomptiming) );
+      }
+
+      if ( symcomptiming < SYM_COMPUTETIMING_AFTERPRESOL &&
+           (SCIPgetStage(scip) >= SCIP_STAGE_PRESOLVING || SCIPgetStage(scip) == SCIP_STAGE_INITPRESOLVE) )
+      {
+         SCIPerrorMessage("Symmetry handling and solution counting are not compatible. " \
+            "You might want to disable symmetry by setting parameter <misc/usesymmetry> to 0.\n");
+
+         return SCIP_INVALIDCALL;
+      }
+
+      SCIPwarningMessage(scip, "Symmetry handling has been deactivated since it is not compatible with counting.\n");
+      SCIPwarningMessage(scip, "=> counting forces parameter <misc/usesymmetry> to 0.\n");
+
+      SCIP_CALL( SCIPsetIntParam(scip, "misc/usesymmetry", 0) );
    }
 
    switch( SCIPgetStage(scip) )
@@ -1980,7 +2081,7 @@ SCIP_DECL_DIALOGEXEC(SCIPdialogExecCount)
          SCIPfreeBufferArray(scip, &buffer);
       }
 
-      SCIPdialogMessage(scip, NULL, " (%d non-trivial feasible subtrees)\n", SCIPgetNCountedFeasSubtrees(scip));
+      SCIPdialogMessage(scip, NULL, " (%" SCIP_LONGINT_FORMAT " non-trivial feasible subtrees)\n", SCIPgetNCountedFeasSubtrees(scip));
 
       *nextdialog = SCIPdialoghdlrGetRoot(dialoghdlr);
 
@@ -2143,7 +2244,7 @@ SCIP_RETCODE writeExpandedSolutions(
             for( i = 0; i < nvars; ++i )
             {
                assert(SCIPhashmapExists(hashmap, vars[i]));
-               idx = ((int) (size_t)SCIPhashmapGetImage(hashmap, vars[i])) - 1;
+               idx = SCIPhashmapGetImageInt(hashmap, vars[i]) - 1;
                assert(0 <= idx && idx < nactivevars);
                assert(activevars[idx] == vars[i]); /*lint !e613*/
 
@@ -2332,7 +2433,7 @@ SCIP_DECL_DIALOGEXEC(SCIPdialogExecWriteAllsolutions)
                {
 #ifndef NDEBUG
                   {
-                     /* check if the original variable fits to the transform variable the constraint handler has */
+                     /* check if the original variable fits to the transformed variable the constraint handler has stored */
                      SCIP_VAR* transvar;
                      SCIP_CALL( SCIPgetTransformedVar(scip, origvars[v], &transvar) );
                      assert(transvar != NULL);
@@ -2383,14 +2484,13 @@ SCIP_RETCODE createCountDialog(
 {
    SCIP_DIALOG* root;
    SCIP_DIALOG* dialog;
-   SCIP_DIALOG* setmenu;
    SCIP_DIALOG* submenu;
 
-   /* includes or updates the default dialog menus in SCIP */
-   SCIP_CALL( SCIPincludeDialogDefault(scip) );
-
    root = SCIPgetRootDialog(scip);
-   assert( root != NULL );
+
+   /* skip dialogs if they seem to be disabled */
+   if( root == NULL )
+      return SCIP_OKAY;
 
    /* add dialog entry for counting */
    if( !SCIPdialogHasEntry(root, "count") )
@@ -2426,14 +2526,6 @@ SCIP_RETCODE createCountDialog(
       SCIP_CALL( SCIPaddDialogEntry(scip, submenu, dialog) );
       SCIP_CALL( SCIPreleaseDialog(scip, &dialog) );
    }
-
-   /* search for the "set" sub menu to find the "emphasis" sub menu */
-   if( SCIPdialogFindEntry(root, "set", &setmenu) != 1 )
-   {
-      SCIPerrorMessage("set sub menu not found\n");
-      return SCIP_PLUGINNOTFOUND;
-   }
-   assert(setmenu != NULL);
 
    return SCIP_OKAY;
 }
@@ -2516,7 +2608,7 @@ SCIP_RETCODE includeConshdlrCountsols(
    SCIP_CONSHDLRDATA* conshdlrdata;
    SCIP_CONSHDLR* conshdlr;
 
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    char gmpversion[20];
 #endif
 
@@ -2576,7 +2668,7 @@ SCIP_RETCODE includeConshdlrCountsols(
          NULL, NULL, NULL, NULL, NULL, NULL, dispOutputFeasSubtrees,
          NULL, DISP_CUTS_WIDTH, DISP_CUTS_PRIORITY, DISP_CUTS_POSITION, DISP_CUTS_STRIPLINE) );
 
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
 #ifdef mpir_version
    /* add info about using MPIR to external codes information */
    (void) SCIPsnprintf(gmpversion, (int) sizeof(gmpversion), "MPIR %s", mpir_version);
@@ -2673,7 +2765,7 @@ void SCIPgetNCountedSolsstr(
    conshdlrdata = SCIPconshdlrGetData(conshdlr);
    assert( conshdlrdata != NULL );
 
-#ifdef WITH_GMP
+#ifdef SCIP_WITH_GMP
    /* size must be by two larger than the length of the string, since there need to be storage for a sign and a
     * null-termination
     */
@@ -2718,7 +2810,7 @@ SCIP_Longint SCIPgetNCountedFeasSubtrees(
  *
  *  @note You get the pointer to the sparse solutions stored in the constraint handler (not a copy).
  *
- *  @note The sparse solutions are stored w.r.t. the active variables. This are the variables which got not removed
+ *  @note The sparse solutions are stored w.r.t. the active variables. There are the variables which have not been removed
  *        during presolving. For none active variables the value has to be computed depending on their aggregation
  *        type. See for more details about that \ref COLLECTALLFEASEBLES.
  */

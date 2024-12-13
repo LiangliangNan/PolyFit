@@ -3,18 +3,27 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /**@file   presol_convertinttobin.c
- * @ingroup PRESOLVERS
+ * @ingroup DEFPLUGINS_PRESOL
  * @brief  presolver that converts integer variables to binaries
  * @author Michael Winkler
  *
@@ -25,13 +34,23 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
-#include <assert.h>
-#include <string.h>
-
-#include "scip/presol_convertinttobin.h"
+#include "blockmemshell/memory.h"
 #include "scip/cons_knapsack.h"
+#include "scip/debug.h"
+#include "scip/presol_convertinttobin.h"
+#include "scip/pub_message.h"
 #include "scip/pub_misc.h"
-
+#include "scip/pub_presol.h"
+#include "scip/pub_var.h"
+#include "scip/scip_cons.h"
+#include "scip/scip_mem.h"
+#include "scip/scip_message.h"
+#include "scip/scip_numerics.h"
+#include "scip/scip_param.h"
+#include "scip/scip_presol.h"
+#include "scip/scip_prob.h"
+#include "scip/scip_var.h"
+#include <string.h>
 
 #define PRESOL_NAME            "convertinttobin"
 #define PRESOL_DESC            "converts integer variables to binaries"
@@ -42,7 +61,7 @@
 
 #define DEFAULT_MAXDOMAINSIZE  SCIP_LONGINT_MAX   /**< absolute value of maximum domain size which will be converted */
 #define DEFAULT_ONLYPOWERSOFTWO           FALSE   /**< should only integer variables with a domain size of 2^p - 1 be
-                                                    *   converted(, there we don't need an knapsack-constraint) */
+                                                   *   converted(, there we don't need an knapsack-constraint) */
 #define DEFAULT_SAMELOCKSINBOTHDIRECTIONS FALSE   /**< should only integer variables with uplocks equals downlocks be converted */
 
 /** presolver data */
@@ -151,7 +170,8 @@ SCIP_DECL_PRESOLEXEC(presolExecConvertinttobin)
 	 continue;
 
       /* check for correct locks */
-      if( presoldata->samelocksinbothdirections && SCIPvarGetNLocksUp(vars[v]) != SCIPvarGetNLocksDown(vars[v]) )
+      if( presoldata->samelocksinbothdirections
+         && SCIPvarGetNLocksUpType(vars[v], SCIP_LOCKTYPE_MODEL) != SCIPvarGetNLocksDownType(vars[v], SCIP_LOCKTYPE_MODEL) )
          continue;
 
       /* get variable's bounds */
@@ -191,7 +211,8 @@ SCIP_DECL_PRESOLEXEC(presolExecConvertinttobin)
       nnewbinvars = (int)SCIPfloor(scip, (log((SCIP_Real) domainsize)/log(2.0))) + 1;
 
       SCIPdebugMsg(scip, "integer variable <%s> [%g,%g], domainsize %" SCIP_LONGINT_FORMAT "\n, <uplocks = %d, downlocks = %d will be 'binarized' by %d binary variables\n ",
-         SCIPvarGetName(vars[v]), lb, ub, domainsize, SCIPvarGetNLocksUp(vars[v]), SCIPvarGetNLocksDown(vars[v]), nnewbinvars);
+         SCIPvarGetName(vars[v]), lb, ub, domainsize, SCIPvarGetNLocksUpType(vars[v], SCIP_LOCKTYPE_MODEL),
+         SCIPvarGetNLocksDownType(vars[v], SCIP_LOCKTYPE_MODEL), nnewbinvars);
 
       assert(nnewbinvars > 0);
 
@@ -227,6 +248,37 @@ SCIP_DECL_PRESOLEXEC(presolExecConvertinttobin)
          newbinvarcoeffs[v2] = (SCIP_Real)scalar;
          weights[v2] = scalar;
       }
+
+#ifdef WITH_DEBUG_SOLUTION
+      /* set the debug solution values */
+      if( SCIPdebugIsMainscip(scip) )
+      {
+         SCIP_Real varval;
+
+         SCIP_CALL( SCIPdebugGetSolVal(scip, vars[v], &varval) );
+         assert(SCIPisIntegral(scip, varval));
+
+         if( SCIPisPositive(scip, varval) )
+         {
+            SCIP_Real resvarval = varval;
+
+            for( v2 = nnewbinvars - 1; v2 >= 0; --v2 )
+            {
+               assert(SCIPisPositive(scip, resvarval));
+               assert(SCIPisIntegral(scip, resvarval));
+
+               if( SCIPisLE(scip, newbinvarcoeffs[v2], resvarval) )
+               {
+                  SCIP_CALL( SCIPdebugAddSolVal(scip, newbinvars[v2], 1.0) );
+                  resvarval -= newbinvarcoeffs[v2];
+               }
+
+               if( SCIPisZero(scip, resvarval) )
+                  break;
+            }
+         }
+      }
+#endif
 
       /* aggregate integer and binary variable */
       SCIP_CALL( SCIPmultiaggregateVar(scip, vars[v], nnewbinvars, newbinvars, (SCIP_Real*)newbinvarcoeffs, lb, &infeasible, &aggregated) );

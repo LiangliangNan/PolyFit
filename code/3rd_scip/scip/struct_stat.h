@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -68,6 +77,8 @@ struct SCIP_Stat
    SCIP_Longint          nsblpiterations;    /**< number of simplex iterations used in strong branching */
    SCIP_Longint          nrootsblpiterations;/**< number of simplex iterations used in strong branching at the root node */
    SCIP_Longint          nconflictlpiterations;/**< number of simplex iterations used in conflict analysis */
+   SCIP_Longint          nresolveinstablelps;       /**< number of simplex resolves of instable LPs */
+   SCIP_Longint          nresolveinstablelpiters;   /**< number of simplex iterations used for resolving instable LPs */
    SCIP_Longint          nnodes;             /**< number of nodes processed in current run (including focus node) */
    SCIP_Longint          ninternalnodes;     /**< number of nodes processed in current run where a branching was performed */
    SCIP_Longint          nobjleaves;         /**< number of leaf nodes processed that reached the cutoff bound */
@@ -112,6 +123,9 @@ struct SCIP_Stat
    SCIP_Longint          ninitconssadded;    /**< total number of initial constraints added during the solve */
    SCIP_Longint          nactiveconssadded;  /**< total number of active constraints added */
    SCIP_Longint          externmemestim;     /**< estimation of external memory usage, e.g., by LP solver */
+   SCIP_Longint          exprlastvisitedtag; /**< last used visited tag; used by expression iterators to identify expression that have been visited already */
+   SCIP_Longint          exprlastsoltag;     /**< last solution tag; used by expression evaluation to identify whether expression has been evaluated for given sol already */
+   SCIP_Longint          exprlastdifftag;    /**< last differentiation tag; used by expression differentiation to identify whether expression has been differentiated for given sol already */
    SCIP_Real             avgnnz;             /**< average number of nonzeros per constraint in presolved problem */
    SCIP_Real             firstlpdualbound;   /**< dual bound of root node computed by first LP solve (without cuts) */
    SCIP_Real             rootlowerbound;     /**< lower bound of root node */
@@ -127,8 +141,12 @@ struct SCIP_Stat
    SCIP_Real             mincopytime;        /**< minimal time needed for copying a problem */
    SCIP_Real             firstlptime;        /**< time needed to solve the very first LP in the root node */
    SCIP_Real             lastbranchvalue;    /**< domain value of the last branching */
+   SCIP_Real             dualrefintegral;    /**< current reference-dual integral value */
+   SCIP_Real             primalrefintegral;  /**< current primal-reference integral value */
    SCIP_Real             primaldualintegral; /**< current primal-dual integral value */
    SCIP_Real             previousgap;        /**< primal dual gap preceding the current gap */
+   SCIP_Real             previousdualrefgap; /**< reference-dual gap preceding the current gap */
+   SCIP_Real             previousprimalrefgap; /**< primal-reference gap preceding the current gap */
    SCIP_Real             previntegralevaltime;/**< last time of primal-dual integral evaluation */
    SCIP_Real             lastprimalbound;    /**< last (non-infinite) primal bound (in transformed space) for integral evaluation */
    SCIP_Real             lastdualbound;      /**< last (non-infinite) dual bound (in transformed space) for integral evaluation */
@@ -147,6 +165,7 @@ struct SCIP_Stat
    SCIP_CLOCK*           duallptime;         /**< dual LP solution time */
    SCIP_CLOCK*           lexduallptime;      /**< lexicographic dual LP solution time */
    SCIP_CLOCK*           barrierlptime;      /**< barrier LP solution time */
+   SCIP_CLOCK*           resolveinstablelptime;/**< LP solution time for taking care of instable LPs */
    SCIP_CLOCK*           divinglptime;       /**< diving and probing LP solution time */
    SCIP_CLOCK*           strongbranchtime;   /**< strong branching time */
    SCIP_CLOCK*           conflictlptime;     /**< conflict analysis LP solution time */
@@ -183,6 +202,7 @@ struct SCIP_Stat
    SCIP_Longint          ndualresolvelps;    /**< number of dual LPs solved with advanced start basis and at least 1 iteration */
    SCIP_Longint          nlexdualresolvelps; /**< number of lexicographic dual LPs solved with advanced start basis and at least 1 iteration */
    SCIP_Longint          nnodelps;           /**< number of LPs solved for node relaxations */
+   SCIP_Longint          nnodezeroitlps;     /**< number of LPs solved with 0 iterations for node relaxations */
    SCIP_Longint          ninitlps;           /**< number of LPs solved for nodes' initial relaxations */
    SCIP_Longint          ndivinglps;         /**< number of LPs solved during diving and probing */
    SCIP_Longint          ndivesetlps;        /**< total number of diveset LPs */
@@ -212,7 +232,6 @@ struct SCIP_Stat
    int                   marked_nrowidx;     /**< number of used row indices before solving started */
    int                   npricerounds;       /**< number of pricing rounds performed in current node */
    int                   nseparounds;        /**< number of separation rounds performed in current node */
-   int                   nincseparounds;     /**< number of separation rounds performed in current node that increased the maximum number of rows in the LP */
    int                   ndisplines;         /**< number of displayed information lines */
    int                   maxdepth;           /**< maximal depth of all processed nodes in current run */
    int                   maxtotaldepth;      /**< maximal depth of all processed nodes over all runs */
@@ -254,6 +273,7 @@ struct SCIP_Stat
    int                   ncopies;            /**< counter how often SCIPcopy() was performed */
    int                   nreoptruns;         /**< number of reoptimization runs */
    int                   nclockskipsleft;    /**< how many times the timing should be skipped in SCIPsolveIsStopped() */
+   int                   nactiveexpriter;    /**< number of active expression iterators */
    SCIP_Bool             memsavemode;        /**< should algorithms be switched to memory saving mode? */
    SCIP_Bool             userinterrupt;      /**< has the user asked to interrupt the solving process? */
    SCIP_Bool             userrestart;        /**< has the user asked to restart the solving process? */

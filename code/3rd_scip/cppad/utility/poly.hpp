@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_POLY_HPP
-# define CPPAD_POLY_HPP
+# ifndef CPPAD_UTILITY_POLY_HPP
+# define CPPAD_UTILITY_POLY_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -103,8 +102,8 @@ and $icode i$$ is an $code int$$:
 $table
 $icode%x%  = %i%$$   $cnext assignment     $rnext
 $icode%x%  = %y%$$   $cnext assignment     $rnext
-$icode%x% *= %y%$$   $cnext multiplication computed assignment $rnext
-$icode%x% += %y%$$   $cnext addition computed assignment
+$icode%x% *= %y%$$   $cnext multiplication compound assignment $rnext
+$icode%x% += %y%$$   $cnext addition compound assignment
 
 $tend
 
@@ -124,7 +123,7 @@ of $icode z$$ and the elements of $icode a$$
 
 
 $children%
-	example/poly.cpp%
+	example/general/poly.cpp%
 	omh/poly_hpp.omh
 %$$
 
@@ -173,7 +172,7 @@ Type Poly(size_t k, const Vector &a, const Type &z)
 		Vector b(d - k + 1);
 		for(i = k; i <= d; i++)
 		{	factor   *= i;
-			tmp       = factor;
+			tmp       = double( factor );
 			b[i - k]  = a[i] * tmp;
 			factor   /= (i - k + 1);
 		}

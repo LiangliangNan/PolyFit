@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_ODE_ERR_CONTROL_HPP
-# define CPPAD_ODE_ERR_CONTROL_HPP
+# ifndef CPPAD_UTILITY_ODE_ERR_CONTROL_HPP
+# define CPPAD_UTILITY_ODE_ERR_CONTROL_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -374,8 +373,8 @@ if this is not the case.
 
 $head Example$$
 $children%
-	example/ode_err_control.cpp%
-	example/ode_err_maxabs.cpp
+	example/utility/ode_err_control.cpp%
+	example/utility/ode_err_maxabs.cpp
 %$$
 The files
 $cref ode_err_control.cpp$$
@@ -414,7 +413,7 @@ $end
 // link exp and log for float and double
 # include <cppad/base_require.hpp>
 
-# include <cppad/local/cppad_assert.hpp>
+# include <cppad/core/cppad_assert.hpp>
 # include <cppad/utility/check_simple_vector.hpp>
 # include <cppad/utility/nan.hpp>
 
@@ -464,11 +463,11 @@ Vector OdeErrControl(
 	Vector xa(n), xb(n), eb(n), nan_vec(n);
 
 	// initialization
-	Scalar zero(0);
-	Scalar one(1);
-	Scalar two(2);
-	Scalar three(3);
-	Scalar m1(m-1);
+	Scalar zero(0.0);
+	Scalar one(1.0);
+	Scalar two(2.0);
+	Scalar three(3.0);
+	Scalar m1(double(m-1));
 	Scalar ta = ti;
 	for(i = 0; i < n; i++)
 	{	nan_vec[i] = nan(zero);

@@ -3,13 +3,22 @@
 /*                  This file is part of the program and library             */
 /*         SCIP --- Solving Constraint Integer Programs                      */
 /*                                                                           */
-/*    Copyright (C) 2002-2018 Konrad-Zuse-Zentrum                            */
-/*                            fuer Informationstechnik Berlin                */
+/*  Copyright 2002-2022 Zuse Institute Berlin                                */
 /*                                                                           */
-/*  SCIP is distributed under the terms of the ZIB Academic License.         */
+/*  Licensed under the Apache License, Version 2.0 (the "License");          */
+/*  you may not use this file except in compliance with the License.         */
+/*  You may obtain a copy of the License at                                  */
 /*                                                                           */
-/*  You should have received a copy of the ZIB Academic License              */
-/*  along with SCIP; see the file COPYING. If not email to scip@zib.de.      */
+/*      http://www.apache.org/licenses/LICENSE-2.0                           */
+/*                                                                           */
+/*  Unless required by applicable law or agreed to in writing, software      */
+/*  distributed under the License is distributed on an "AS IS" BASIS,        */
+/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
+/*  See the License for the specific language governing permissions and      */
+/*  limitations under the License.                                           */
+/*                                                                           */
+/*  You should have received a copy of the Apache-2.0 license                */
+/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -49,7 +58,9 @@ struct SCIP_Cut
 struct SCIP_Cutpool
 {
    SCIP_Longint          ncalls;             /**< number of times, the cutpool was separated */
-   SCIP_Longint          ncutsfound;         /**< total number of cuts that were separated from the pool */
+   SCIP_Longint          nrootcalls;         /**< number of times, the cutpool was separated at the root */
+   SCIP_Longint          ncutsfound;         /**< total number of cuts that were added to the pool */
+   SCIP_Longint          ncutsadded;         /**< total number of cuts that were added from the pool */
    SCIP_CLOCK*           poolclock;          /**< separation time */
    SCIP_HASHTABLE*       hashtable;          /**< hash table to identify already stored cuts */
    SCIP_CUT**            cuts;               /**< stored cuts of the pool */
@@ -63,7 +74,7 @@ struct SCIP_Cutpool
    int                   agelimit;           /**< maximum age a cut can reach before it is deleted from the pool */
    int                   firstunprocessed;   /**< first cut that has not been processed in the last LP */
    int                   firstunprocessedsol;/**< first cut that has not been processed in the last LP when separating other solutions */
-   int                   maxncuts;           /**< maximal number of cuts stored in the pool at the same time */
+   SCIP_Longint          maxncuts;           /**< maximal number of cuts stored in the pool at the same time */
    SCIP_Bool             globalcutpool;      /**< is this the global cut pool of SCIP? */
 };
 

@@ -1,9 +1,8 @@
-// $Id$
-# ifndef CPPAD_CHECK_SIMPLE_VECTOR_HPP
-# define CPPAD_CHECK_SIMPLE_VECTOR_HPP
+# ifndef CPPAD_UTILITY_CHECK_SIMPLE_VECTOR_HPP
+# define CPPAD_UTILITY_CHECK_SIMPLE_VECTOR_HPP
 
 /* --------------------------------------------------------------------------
-CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-15 Bradley M. Bell
+CppAD: C++ Algorithmic Differentiation: Copyright (C) 2003-17 Bradley M. Bell
 
 CppAD is distributed under multiple licenses. This distribution is under
 the terms of the
@@ -85,7 +84,7 @@ can be used in $cref/parallel/ta_in_parallel/$$ mode.
 
 $head Example$$
 $children%
-	example/check_simple_vector.cpp
+	example/utility/check_simple_vector.cpp
 %$$
 The file $cref check_simple_vector.cpp$$
 contains an example and test of this function where $icode S$$
@@ -99,8 +98,8 @@ $end
 */
 
 # include <cstddef>
-# include <cppad/local/cppad_assert.hpp>
-# include <cppad/local/define.hpp>
+# include <cppad/core/cppad_assert.hpp>
+# include <cppad/core/define.hpp>
 # include <cppad/utility/thread_alloc.hpp>
 
 namespace CppAD {
