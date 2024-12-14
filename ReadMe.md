@@ -27,7 +27,7 @@ You can also build PolyFit from the source code:
    
 * Clone the repository or download the [source code](https://github.com/LiangliangNan/PolyFit).
 * Dependencies
-  - [Qt5 or Qt6](https://www.qt.io/download-qt-installer-oss) ([v5.14.2](https://download.qt.io/archive/qt/5.14/5.14.2/), 
+  - [Qt](https://www.qt.io) ([v5.14.2](https://download.qt.io/archive/qt/5.14/5.14.2/), 
     [v5.12.12](https://download.qt.io/archive/qt/5.12/5.12.12/), and [v6.7.3](https://www.qt.io/download-qt-installer-oss) 
     have been tested). Qt is required by the [GUI demo](./code/PolyFit). You should still be able to build 
     the [command-line example](./Example) without Qt. 
