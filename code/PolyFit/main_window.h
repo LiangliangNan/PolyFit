@@ -23,11 +23,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <QMainWindow>
 
-#include "ui_main_window.h"
 #include "../math/math_types.h"
 #include "../basic/logger.h"
 #include "../basic/progress.h"
 #include "../math/linear_program_solver.h"
+
+#include "ui_main_window.h"
 
 class QLabel;
 class QComboBox;
@@ -46,7 +47,7 @@ class MainWindow
 	Q_OBJECT
 
 public:
-	MainWindow(QWidget *parent = 0, Qt::WindowFlags flags = 0);
+	MainWindow(QWidget *parent = 0);
 	~MainWindow();
 
 	PaintCanvas* canvas() { return mainCanvas_; }
@@ -97,8 +98,6 @@ private:
 	QString strippedName(const QString &fullFileName);
 
 protected:
-	void dragEnterEvent(QDragEnterEvent *e);
-	void dropEvent(QDropEvent *e);
 	void closeEvent(QCloseEvent *e);
 
 private:

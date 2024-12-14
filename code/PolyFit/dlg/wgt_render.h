@@ -20,12 +20,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #ifndef WGT_RENDER_H
 #define WGT_RENDER_H
 
+#include <QWidget>
+
 #include "ui_wgt_render.h"
+
 
 class MainWindow;
 class SurfaceRender;
 class PointSetRender;
-
 
 class WgtRender : public QWidget, public Ui::WidgetRender
 {
@@ -68,7 +70,6 @@ private:
 
 	SurfaceRender*	mesh_render_;
 	PointSetRender* point_set_render_;
-
 };
 
 #endif 

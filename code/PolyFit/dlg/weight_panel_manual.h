@@ -21,9 +21,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #ifndef WEIGHT_PANEL_MANUAL_H
 #define WEIGHT_PANEL_MANUAL_H
 
-#include <QWidget>
-#include "ui_weight_panel_manual.h"
-
+#include <QDialog>
+#include <ui_weight_panel_manual.h>
 
 class MainWindow;
 

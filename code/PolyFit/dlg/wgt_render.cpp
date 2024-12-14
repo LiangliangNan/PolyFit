@@ -18,17 +18,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 #include "wgt_render.h"
-#include "main_window.h"
-#include "paint_canvas.h"
-#include "../basic/file_utils.h"
-#include "../renderer/surface_render.h"
-#include "../renderer/point_set_render.h"
+
 #include <QColorDialog>
 #include <QFileDialog>
 
+#include "../renderer/surface_render.h"
+#include "../renderer/point_set_render.h"
+
+#include "main_window.h"
+#include "paint_canvas.h"
 
 
-WgtRender::WgtRender(QWidget *parent) 
+WgtRender::WgtRender(QWidget *parent)
 {
 	setupUi(this);
 

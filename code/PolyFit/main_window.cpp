@@ -17,19 +17,17 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#include "main_window.h"
+
 #include <QMessageBox>
 #include <QFileDialog>
-#include <QLabel>
 #include <QStatusBar>
 #include <QSettings>
-#include <QCloseEvent>
-#include <QPlainTextEdit>
 #include <QProgressBar>
-#include <QMimeData>
 #include <QComboBox>
 #include <QMenu>
+#include <QToolButton>
 
-#include "main_window.h"
 #include "paint_canvas.h"
 
 #include "dlg/wgt_render.h"
@@ -46,8 +44,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../basic/attribute_serializer.h"
 
 
-MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
-: QMainWindow(parent, flags)
+MainWindow::MainWindow(QWidget *parent)
+: QMainWindow(parent)
 , curDataDirectory_(".")
 {	
 	setupUi(this);
@@ -92,15 +90,7 @@ MainWindow::MainWindow(QWidget *parent, Qt::WindowFlags flags)
 
 	//////////////////////////////////////////////////////////////////////////
 
-	// Setup the format to allow anti-aliasing if the graphic driver allows this.
-	QGLFormat format = QGLFormat::defaultFormat();
-	format.setProfile(QGLFormat::CompatibilityProfile);
-	format.setSampleBuffers(true); // you can also call setOption(QGL::SampleBuffers)
-	format.setSamples(8);  // 8 is enough
-
-	mainCanvas_ = new PaintCanvas(this, format);
-	mainCanvas_->setAttribute(Qt::WA_MouseTracking);
-	mainCanvas_->setMouseTracking(true);
+	mainCanvas_ = new PaintCanvas(this);
 	layoutCanvas->addWidget(mainCanvas_);
 
 	//////////////////////////////////////////////////////////////////////////
@@ -173,21 +163,6 @@ void MainWindow::notify_progress(std::size_t value) {
 	progress_bar_->setTextVisible(value != 0);
 	mainCanvas_->update_all();
 }
-
-
-void MainWindow::dragEnterEvent(QDragEnterEvent *e) {
-	if (e->mimeData()->hasUrls()) {
-		e->acceptProposedAction();
-	}
-}
-
-void MainWindow::dropEvent(QDropEvent *e) {
-    foreach (const QUrl &url, e->mimeData()->urls()) {
-        const QString &fileName = url.toLocalFile();
-        doOpen(fileName);
-    }
-}
-
 
 void MainWindow::createActions() {
 	connect(actionOpen, SIGNAL(triggered()), this, SLOT(open()));

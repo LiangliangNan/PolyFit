@@ -18,10 +18,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 #include "paint_canvas.h"
-#include "main_window.h"
-#include "dlg/weight_panel_manual.h"
 
-#include "../3rd_QGLViewer-2.6.3/manipulatedCameraFrame.h"
+#include <fstream>
+
+#include <QMessageBox>
+#include <QCoreApplication>
+
+#include "../3rd_QGLViewer/QGLViewer/manipulatedCameraFrame.h"
 #include "../basic/file_utils.h"
 #include "../basic/stop_watch.h"
 #include "../model/map_editor.h"
@@ -32,17 +35,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../method/hypothesis_generator.h"
 #include "../method/face_selection.h"
 
-#include <QMouseEvent>
-#include <QMessageBox>
-
-#include <fstream>
-#include <algorithm>
+#include "main_window.h"
 
 
 using namespace qglviewer;
 
-PaintCanvas::PaintCanvas(QWidget *parent, QGLFormat format)
-	: QGLViewer(format, parent)
+PaintCanvas::PaintCanvas(QWidget *parent)
+	: QGLViewer(parent)
 	, coord_system_region_size_(150)
 	, show_coord_sys_(true)
 	, point_set_(nil)
@@ -207,7 +206,6 @@ void PaintCanvas::init()
 	setFPSIsDisplayed(false);
 }
 
-
 void PaintCanvas::draw() {
 	if (fatal_opengl_error) {
 		return;
@@ -252,6 +250,11 @@ void PaintCanvas::draw() {
 		drawText(30, 180, "  - Pan:   right button", font);
 		drawText(30, 210, "  - Zoom:  wheel", font);
     }
+
+	// Liangliang: It seems the renderText() func disables multi-sample and depth test
+	// Is this a bug in Qt ?
+	glEnable(GL_MULTISAMPLE);
+	glEnable(GL_DEPTH_TEST);
 }
 
 
@@ -276,12 +279,12 @@ void PaintCanvas::snapshotScreen(const QString& fileName) {
 	if (need_hide)
 		show_coord_sys_ = true;
 
-	updateGL();
+	update();
 }
 
 
 void PaintCanvas::update_graphics() {
-	updateGL();
+	update();
 
 	// This approach has significant drawbacks. For example, imagine you wanted to perform two such loops 
 	// in parallel-calling one of them would effectively halt the other until the first one is finished 
@@ -293,7 +296,7 @@ void PaintCanvas::update_graphics() {
 }
 
 void PaintCanvas::update_all() {
-	updateGL();
+	update();
 	main_window_->updateStatusBar();
 
 	// This approach has significant drawbacks. For example, imagine you wanted to perform two such loops 
@@ -308,7 +311,7 @@ void PaintCanvas::update_all() {
 
 void PaintCanvas::showCoordinateSystem(bool b) {
 	show_coord_sys_ = b;
-	updateGL();
+	update();
 }
 
 
@@ -328,7 +331,7 @@ void PaintCanvas::fitScreen() {
 
 	setSceneBoundingBox(vmin, vmax);
 	showEntireScene();
-	updateGL();
+	update();
 }
 
 
@@ -371,15 +374,6 @@ void PaintCanvas::drawCornerAxis()
 
 	// Draw text id
 	glColor3f(0, 0, 0);
-
-	// Liangliang: It seems the renderText() func disables multi-sample.
-	// Is this a bug in Qt ?
-	GLboolean anti_alias = glIsEnabled(GL_MULTISAMPLE);
-	const_cast<PaintCanvas*>(this)->renderText(axis_size, 0, 0, "X");
-	const_cast<PaintCanvas*>(this)->renderText(0, axis_size, 0, "Y");
-	const_cast<PaintCanvas*>(this)->renderText(0, 0, axis_size, "Z");
-	if (anti_alias)
-		glEnable(GL_MULTISAMPLE);
 
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
@@ -463,97 +457,6 @@ void PaintCanvas::setShowCandidates(bool b) {
 void PaintCanvas::setShowResult(bool b) {
 	show_result_ = b;
 	update_all();
-}
-
-void PaintCanvas::saveStateAsMappleFormat() {
-	std::string str = FileUtils::replace_extension(stateFileName().toStdString(), "state");
-	QString name = QString::fromStdString(str);
-	if (name.isEmpty())
-		return;
-
-	// Write the state to file
-	std::ofstream output(name.toStdString().c_str());
-	if (output.fail()) {
-		QMessageBox::warning(window(), tr("Save state to file error"), tr("Unable to create file %1").arg(name));
-		return;
-	}
-
-	//-----------------------------------------------------
-
-	// first line is just a comment
-	output << "<Mapple state file version 263>" << std::endl << std::endl;
-
-	//-----------------------------------------------------
-
-	// write foreground and background colors
-	output << "<color>" << std::endl;
-	QColor fc = foregroundColor();
-	output << "\t foreground: " << fc.red() << " " << fc.green() << " " << fc.blue() << std::endl;
-	QColor bc = backgroundColor();
-	output << "\t background: " << bc.red() << " " << bc.green() << " " << bc.blue() << std::endl;
-	output << "</color>" << std::endl << std::endl;
-
-	//-----------------------------------------------------
-
-	// Revolve or fly camera mode is not saved
-	// ...
-
-	//-----------------------------------------------------
-
-	output << "<display>" << std::endl;
-	output << "\t cameraIsEdited: " << cameraIsEdited() << std::endl;
-	output << "\t gridIsDrawn: " << gridIsDrawn() << std::endl;
-	output << "\t axisIsDrawn: " << axisIsDrawn() << std::endl;
-	output << "\t FPSIsDisplayed: " << FPSIsDisplayed() << std::endl;
-	output << "</display>" << std::endl << std::endl;
-
-	//-----------------------------------------------------
-
-	output << "<windowState>" << std::endl;
-	output << "\t state: " << window()->windowState() << std::endl;;
-	if (window()->windowState() == Qt::WindowNoState) {
-		output << "\t size: " << window()->width() << " " << window()->height() << std::endl;
-		output << "\t position: " << window()->pos().x() << " " << window()->pos().y() << std::endl;
-	}
-	output << "</windowState>" << std::endl << std::endl;
-
-	//-----------------------------------------------------
-
-	output << "<camera>" << std::endl;
-	// Restore original QCamera zClippingCoefficient before saving.
-	if (cameraIsEdited())
-		camera()->setZClippingCoefficient(previousCameraZClippingCoefficient_);
-
-	switch (camera()->type()) {
-	case Camera::PERSPECTIVE:	output << "\t type: " << "PERSPECTIVE" << std::endl;	break;
-	case Camera::ORTHOGRAPHIC:	output << "\t type: " << "ORTHOGRAPHIC" << std::endl;	break;
-	}
-	output << "\t zClippingCoefficient: " << QString::number(camera()->zClippingCoefficient()).toStdString() << std::endl;
-	output << "\t zNearCoefficient: " << QString::number(camera()->zNearCoefficient()).toStdString() << std::endl;
-	output << "\t sceneRadius: " << QString::number(camera()->sceneRadius()).toStdString() << std::endl;
-	output << "\t orthoCoefficient: " << QString::number(camera()->orthoCoefficient()).toStdString() << std::endl;
-	output << "\t fieldOfView: " << QString::number(camera()->fieldOfView()).toStdString() << std::endl;
-	output << "\t sceneCenter: " << camera()->sceneCenter() << std::endl;
-
-	// ManipulatedCameraFrame
-	output << "\t position: " << camera()->frame()->position() << std::endl;
-	output << "\t orientation: " << camera()->frame()->orientation() << std::endl;
-	output << "\t wheelSens: " << camera()->frame()->wheelSensitivity() << std::endl;
-	output << "\t rotSens: " << camera()->frame()->rotationSensitivity() << std::endl;
-	output << "\t zoomSens: " << camera()->frame()->zoomSensitivity() << std::endl;
-	output << "\t spinSens: " << camera()->frame()->spinningSensitivity() << std::endl;
-	output << "\t transSens: " << camera()->frame()->translationSensitivity() << std::endl;
-
-	output << "\t zoomsOnPivotPoint: " << camera()->frame()->zoomsOnPivotPoint() << std::endl;
-	output << "\t pivotPoint: " << camera()->frame()->pivotPoint() << std::endl;
-	output << "\t rotatesAroundUpVector: " << camera()->frame()->rotatesAroundUpVector() << std::endl;
-	output << "\t flySpeed: " << camera()->frame()->flySpeed() << std::endl;
-	output << "\t sceneUpVector: " << camera()->frame()->sceneUpVector() << std::endl;
-
-	if (cameraIsEdited())
-		// #CONNECTION# 5.0 from setCameraIsEdited()
-		camera()->setZClippingCoefficient(5.0);
-	output << "</camera>" << std::endl << std::endl;
 }
 
 

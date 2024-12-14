@@ -22,14 +22,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 #include <GL/glew.h>
 
-#include "../3rd_QGLViewer-2.6.3/qglviewer.h"
+#include "../3rd_QGLViewer/QGLViewer/qglviewer.h"
 #include "../basic/color.h"
 #include "../math/math_types.h"
-#include "../basic/canvas.h"
 #include "../model/point_set.h"
 #include "../model/map.h"
-#include "../math/linear_program_solver.h"
-
 
 class MainWindow;
 class SurfaceRender;
@@ -41,7 +38,7 @@ class PaintCanvas : public QGLViewer
 	Q_OBJECT
 
 public:
-	PaintCanvas(QWidget *parent, QGLFormat format);
+	PaintCanvas(QWidget *parent);
 	~PaintCanvas();
 
 public:
@@ -97,8 +94,6 @@ public Q_SLOTS:
 	void setShowInput(bool);
 	void setShowCandidates(bool);
 	void setShowResult(bool);
-
-	void saveStateAsMappleFormat();
 
 private :
 	void drawCornerAxis();

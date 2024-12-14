@@ -18,10 +18,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 #include "weight_panel_manual.h"
-#include "main_window.h"
-#include "paint_canvas.h"
+
 #include "../math/math_types.h"
 #include "../method/method_global.h"
+
+#include "main_window.h"
+#include "paint_canvas.h"
+
+#include "ui_weight_panel_manual.h"
 
 
 WeightPanelManual::WeightPanelManual(QWidget *parent)

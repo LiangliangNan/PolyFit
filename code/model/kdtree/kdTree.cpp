@@ -440,8 +440,8 @@ namespace kdtree  {
 	}
 
 	float BaseKdNode::computeBoxDistance(const Vector3D &q, const Vector3D &lo, const Vector3D &hi) {
-		register float dist = 0.0;
-		register float t;
+		float dist = 0.0;
+		float t;
 
 		if (q[0] < lo[0]) {
 			t = lo[0] - q[0];
@@ -472,8 +472,8 @@ namespace kdtree  {
 	}
 
 	float BaseKdNode::computeBoxMaxDistance(const Vector3D &q, const Vector3D &lo, const Vector3D &hi) {
-		register float dist;
-		register float t1, t2;
+		float dist;
+		float t1, t2;
 
 		t1 = fabsf( q[0] - lo[0] );
 		t2 = fabsf( q[0] - hi[0] );
@@ -546,7 +546,7 @@ namespace kdtree  {
 			KdBoxFace( vert[2], vert[3], vert[7], vert[6] ), KdBoxFace( vert[0], vert[4], vert[5], vert[1] ),
 		};
 
-		register int i, j;
+		int i, j;
 		unsigned char bOutside[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 		// Check two end points against all 6 face planes, 
@@ -613,7 +613,7 @@ namespace kdtree  {
 		float absb = ( face.b > 0 ? face.b : -face.b );
 		float absc = ( face.c > 0 ? face.c : -face.c );
 
-		register int i;
+		int i;
 		Vector2D facePoints[4], point;
 
 		if( absa > absb && absa > absc )
@@ -702,8 +702,8 @@ namespace kdtree  {
 	}
 
 	void KdNode::queryNode(float rd, PQueue* queryPriorityQueue) {
-		register float old_off = g_queryOffsets[m_dim];
-		register float new_off = g_queryPosition[m_dim] - m_cutVal;
+		float old_off = g_queryOffsets[m_dim];
+		float new_off = g_queryPosition[m_dim] - m_cutVal;
 		if (new_off < 0) {
 			m_children[0]->queryNode(rd, queryPriorityQueue);
 			rd = rd - SQR(old_off) + SQR(new_off);
@@ -728,7 +728,7 @@ namespace kdtree  {
 	{
 		KdTreePoint points[4];
 		Vector3D vlow, vhigh;
-		for( register unsigned int i = 0; i < 2; i++ ) {
+		for( unsigned int i = 0; i < 2; i++ ) {
 			m_children[i]->createBoundingBox( vlow, vhigh );
 			points[2*i].pos = vlow;
 			points[2*i+1].pos = vhigh;
@@ -763,7 +763,7 @@ namespace kdtree  {
 		float sqrDist;
 		//use pointer arithmetic to speed up the linear traversing
 		KdTreePoint* point = m_points;
-		for (register unsigned int i=0; i<m_nOfElements; i++) {
+		for (unsigned int i=0; i<m_nOfElements; i++) {
 			sqrDist = (point->pos - g_queryPosition).getSquaredLength();
 			if (sqrDist < queryPriorityQueue->getMaxWeight()) {
 				queryPriorityQueue->insert(point->index, sqrDist, g_queryAll);
@@ -787,7 +787,7 @@ namespace kdtree  {
 			float sqrDist, sqrDistLine, sqrDistVert;
 			KdTreePoint* point = m_points;
 			// check points individually
-			for( register unsigned int i = 0; i < m_nOfElements; i++ ) {
+			for( unsigned int i = 0; i < m_nOfElements; i++ ) {
 				vc = point->pos - g_queryLine[0];
 				sqrDist = vc.getSquaredLength();
 				sqrDistLine = Vector3D::dotProduct( vc, g_queryLineDir );
@@ -823,7 +823,7 @@ namespace kdtree  {
 			float sqrDist, distLine, sqrDistVert, cosAngle;
 			KdTreePoint* point = m_points;
 			// check points individually
-			for( register unsigned int i = 0; i < m_nOfElements; i++ ) {
+			for( unsigned int i = 0; i < m_nOfElements; i++ ) {
 				vc = point->pos - g_queryEye;
 				sqrDist = vc.getSquaredLength();
 				if( sqrDist < g_queryMinSqrRange ) continue;

@@ -113,7 +113,7 @@ namespace kdtree  {
 				m_current++;
 				m_queue[m_current].index = index;
 				m_queue[m_current].weight = weight;
-				register int i=m_current;
+				int i=m_current;
 				while(i>1 && (m_queue[i].weight > m_queue[i>>1].weight)) {
 					swapElements(i, i>>1);
 					i >>= 1;
@@ -164,8 +164,8 @@ namespace kdtree  {
 
 
 	protected:
-		inline void restore(register int L, register int R) {
-			register int i, j;
+		inline void restore(int L, int R) {
+			int i, j;
 			i = L;
 			while (i <= (R>>1)) {
 				if( 2*i < R && m_queue[2*i+1].weight > m_queue[2*i].weight) {
@@ -282,7 +282,7 @@ namespace kdtree  {
 				m_current++;
 				m_queue[m_current].index = index;
 				m_queue[m_current].weight = weight;
-				register int i=m_current;
+				int i=m_current;
 				while(i>1 && (m_queue[i].weight < m_queue[i>>1].weight)) {
 					swapElements(i, i>>1);
 					i >>= 1;
@@ -333,8 +333,8 @@ namespace kdtree  {
 
 
 	protected:
-		inline void restore(register int L, register int R) {
-			register int i, j;
+		inline void restore(int L, int R) {
+			int i, j;
 			i = L;
 			while (i <= (R>>1)) {
 				if( 2*i < R && m_queue[2*i+1].weight < m_queue[2*i].weight) {

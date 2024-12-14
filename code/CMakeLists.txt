@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12)
 
 if (APPLE)
-        set(CMAKE_OSX_DEPLOYMENT_TARGET "10.12" CACHE STRING "Minimum OS X deployment version" FORCE)
+        set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum OS X deployment version" FORCE)
         message(STATUS "Minimum OS X deployment version: ${CMAKE_OSX_DEPLOYMENT_TARGET}")
 endif ()
 
@@ -19,7 +19,8 @@ endif()
 
 ################################################################################
 
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ################################################################################
 
@@ -39,10 +40,9 @@ set(POLYFIT_ROOT         ${CMAKE_CURRENT_LIST_DIR})
 set(POLYFIT_INCLUDE_DIR  ${POLYFIT_ROOT}  ${CMAKE_CURRENT_BINARY_DIR})
 set(POLYFIT_SOURCE_DIR   ${POLYFIT_ROOT})
 
-
 set(POLYFIT_glpk_DIR                ${POLYFIT_ROOT}/3rd_glpk)
 set(POLYFIT_lpsolve_DIR             ${POLYFIT_ROOT}/3rd_lpsolve)
-set(POLYFIT_qglviewer_DIR           ${POLYFIT_ROOT}/3rd_QGLViewer-2.6.3)
+set(POLYFIT_qglviewer_DIR           ${POLYFIT_ROOT}/3rd_QGLViewer)
 set(POLYFIT_scip_DIR                ${POLYFIT_ROOT}/3rd_scip)
 set(POLYFIT_soplex_DIR              ${POLYFIT_ROOT}/3rd_soplex)
 set(POLYFIT_glew_DIR                ${POLYFIT_ROOT}/3rd_glew)
@@ -50,6 +50,9 @@ set(POLYFIT_glew_DIR                ${POLYFIT_ROOT}/3rd_glew)
 ### conditionally compile certain modules depending on libraries found on the system
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
+if (POLICY CMP0167)
+        cmake_policy(SET CMP0167 NEW)
+endif ()
 find_package(Boost REQUIRED)
 
 ################################################################################
@@ -65,7 +68,7 @@ SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY
 
 add_subdirectory(3rd_glpk)
 add_subdirectory(3rd_lpsolve)
-add_subdirectory(3rd_QGLViewer-2.6.3)
+add_subdirectory(3rd_QGLViewer)
 add_subdirectory(3rd_scip)
 add_subdirectory(3rd_soplex)
 add_subdirectory(3rd_glew)
