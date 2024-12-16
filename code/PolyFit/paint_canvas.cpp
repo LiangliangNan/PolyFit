@@ -233,7 +233,7 @@ void PaintCanvas::draw() {
 		mesh_render_->draw(optimized_mesh_, interacting);
 	}
 
-	const static QFont font("Helvetica", 12/*, QFont::Bold*/); // "Times", "Helvetica", "Bradley Hand ITC"
+	const static QFont font("Times", 12/*, QFont::Bold*/); // "Times", "Helvetica", "Bradley Hand ITC"
 	if (show_hint_text_) {
 		if (!hint_text_.isEmpty()) {
 			glColor3f(0, 0, 0.7f);
@@ -245,10 +245,13 @@ void PaintCanvas::draw() {
 
 	if (show_mouse_hint_) {
 		glColor3f(0, 0, 0);
-		drawText(30, 120, "Mouse Operations:", font);
-		drawText(30, 150, "  - Orbit: left button", font);
-		drawText(30, 180, "  - Pan:   right button", font);
-		drawText(30, 210, "  - Zoom:  wheel", font);
+		drawText(30, 100, "Mouse Operations:", font);
+        glColor3f(0, 0, 0);
+		drawText(30, 130, "  - Orbit: left button", font);
+        glColor3f(0, 0, 0);
+		drawText(30, 160, "  - Pan:   right button", font);
+        glColor3f(0, 0, 0);
+		drawText(30, 190, "  - Zoom:  wheel", font);
     }
 
 	// Liangliang: It seems the renderText() func disables multi-sample and depth test
@@ -605,7 +608,6 @@ void PaintCanvas::optimization() {
 	HypothesisGenerator::Adjacency adjacency = hypothesis_->extract_adjacency(mesh);
 	FaceSelection selector(point_set_, mesh);
 	selector.optimize(adjacency, main_window_->active_solver());
-
 
     // to have consistent orientation for the final model
     adjacency = hypothesis_->extract_adjacency(mesh);

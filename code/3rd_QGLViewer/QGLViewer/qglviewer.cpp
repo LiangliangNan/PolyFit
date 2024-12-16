@@ -585,7 +585,11 @@ void QGLViewer::setDefaultMouseBindings() {
         (mh == FRAME) ? frameKeyboardModifiers : cameraKeyboardModifiers;
 
     setMouseBinding(modifiers, Qt::LeftButton, mh, ROTATE);
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     setMouseBinding(modifiers, Qt::MidButton, mh, ZOOM);
+#else
+    setMouseBinding(modifiers, Qt::MiddleButton, mh, ZOOM);
+#endif
     setMouseBinding(modifiers, Qt::RightButton, mh, TRANSLATE);
 
     setMouseBinding(Qt::Key_R, modifiers, Qt::LeftButton, mh, SCREEN_ROTATE);
@@ -594,7 +598,11 @@ void QGLViewer::setDefaultMouseBindings() {
   }
 
   // Z o o m   o n   r e g i o n
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
   setMouseBinding(Qt::ShiftModifier, Qt::MidButton, CAMERA, ZOOM_ON_REGION);
+#else
+  setMouseBinding(Qt::ShiftModifier, Qt::MiddleButton, CAMERA, ZOOM_ON_REGION);
+#endif
 
   // S e l e c t
   setMouseBinding(Qt::ShiftModifier, Qt::LeftButton, SELECT);
@@ -602,7 +610,11 @@ void QGLViewer::setDefaultMouseBindings() {
   setMouseBinding(Qt::ShiftModifier, Qt::RightButton, RAP_FROM_PIXEL);
   // D o u b l e   c l i c k
   setMouseBinding(Qt::NoModifier, Qt::LeftButton, ALIGN_CAMERA, true);
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
   setMouseBinding(Qt::NoModifier, Qt::MidButton, SHOW_ENTIRE_SCENE, true);
+#else
+  setMouseBinding(Qt::NoModifier, Qt::MiddleButton, SHOW_ENTIRE_SCENE, true);
+#endif
   setMouseBinding(Qt::NoModifier, Qt::RightButton, CENTER_SCENE, true);
 
   setMouseBinding(frameKeyboardModifiers, Qt::LeftButton, ALIGN_FRAME, true);
@@ -1228,7 +1240,11 @@ static QString mouseButtonsString(Qt::MouseButtons b) {
     result += QGLViewer::tr("Left", "left mouse button");
     addAmpersand = true;
   }
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
   if (b & Qt::MidButton) {
+#else
+  if (b & Qt::MiddleButton) {
+#endif
     if (addAmpersand)
       result += " & ";
     result += QGLViewer::tr("Middle", "middle mouse button");
@@ -3336,27 +3352,43 @@ void QGLViewer::toggleCameraMode() {
     camera()->frame()->stopSpinning();
 
     setMouseBinding(modifiers, Qt::LeftButton, CAMERA, MOVE_FORWARD);
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     setMouseBinding(modifiers, Qt::MidButton, CAMERA, LOOK_AROUND);
+#else
+    setMouseBinding(modifiers, Qt::MiddleButton, CAMERA, LOOK_AROUND);
+#endif
     setMouseBinding(modifiers, Qt::RightButton, CAMERA, MOVE_BACKWARD);
 
     setMouseBinding(Qt::Key_R, modifiers, Qt::LeftButton, CAMERA, ROLL);
 
     setMouseBinding(Qt::NoModifier, Qt::LeftButton, NO_CLICK_ACTION, true);
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     setMouseBinding(Qt::NoModifier, Qt::MidButton, NO_CLICK_ACTION, true);
+#else
+    setMouseBinding(Qt::NoModifier, Qt::MiddleButton, NO_CLICK_ACTION, true);
+#endif
     setMouseBinding(Qt::NoModifier, Qt::RightButton, NO_CLICK_ACTION, true);
 
     setWheelBinding(modifiers, CAMERA, MOVE_FORWARD);
   } else {
     // Should stop flyTimer. But unlikely and not easy.
     setMouseBinding(modifiers, Qt::LeftButton, CAMERA, ROTATE);
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     setMouseBinding(modifiers, Qt::MidButton, CAMERA, ZOOM);
+#else
+    setMouseBinding(modifiers, Qt::MiddleButton, CAMERA, ZOOM);
+#endif
     setMouseBinding(modifiers, Qt::RightButton, CAMERA, TRANSLATE);
 
     setMouseBinding(Qt::Key_R, modifiers, Qt::LeftButton, CAMERA,
                     SCREEN_ROTATE);
 
     setMouseBinding(Qt::NoModifier, Qt::LeftButton, ALIGN_CAMERA, true);
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     setMouseBinding(Qt::NoModifier, Qt::MidButton, SHOW_ENTIRE_SCENE, true);
+#else
+      setMouseBinding(Qt::NoModifier, Qt::MiddleButton, SHOW_ENTIRE_SCENE, true);
+#endif
     setMouseBinding(Qt::NoModifier, Qt::RightButton, CENTER_SCENE, true);
 
     setWheelBinding(modifiers, CAMERA, ZOOM);

@@ -52,7 +52,7 @@ Then calls setSnapshotFormat() with the selected one (unless the user cancels).
 Returns \c false if the user presses the Cancel button and \c true otherwise. */
 bool QGLViewer::openSnapshotFormatDialog() {
   bool ok = false;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
   QStringList list = formats.split(";;", QString::SkipEmptyParts);
 #else
   QStringList list = formats.split(";;", Qt::SkipEmptyParts);
@@ -543,7 +543,7 @@ void QGLViewer::saveSnapshot(bool automatic, bool overwrite) {
         this, "Choose a file name to save under", snapshotFileName(), formats,
         &selectedFormat,
         overwrite ? QFileDialog::DontConfirmOverwrite
-                  : QFlags<QFileDialog::Option>(0));
+                  : QFlags<QFileDialog::Option>());
     setSnapshotFormat(Qtformat[selectedFormat]);
 
     if (checkFileName(fileName, this, snapshotFormat()))

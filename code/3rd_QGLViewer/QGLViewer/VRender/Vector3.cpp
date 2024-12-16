@@ -4,10 +4,6 @@
 #include <math.h>
 #include <algorithm>
 
-#ifdef WIN32
-# include <windows.h>
-#endif
-
 using namespace vrender;
 using namespace std;
 

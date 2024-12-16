@@ -1,9 +1,5 @@
-if(POLICY CMP0048)
-  cmake_policy(SET CMP0048 NEW)
-endif()
-
-project(libQGLViewer LANGUAGES CXX VERSION 2.9.1)
-cmake_minimum_required(VERSION 3.16)
+get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+project(${PROJECT_NAME})
 
 include(../cmake/UseQt.cmake)
 
@@ -37,6 +33,14 @@ set(QGLViewer_SRC
     "${PROJECT_SOURCE_DIR}/QGLViewer/quaternion.cpp"
     "${PROJECT_SOURCE_DIR}/QGLViewer/saveSnapshot.cpp"
     "${PROJECT_SOURCE_DIR}/QGLViewer/vec.cpp")
-add_library(3rd_QGLViewer SHARED ${QGLViewer_SRC})
-target_include_directories(3rd_QGLViewer INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(3rd_QGLViewer PUBLIC ${QtLibs} OpenGL::GL OpenGL::GLU)
+
+add_library(${PROJECT_NAME} STATIC ${QGLViewer_SRC})
+target_include_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(${PROJECT_NAME} PUBLIC ${QtLibs} OpenGL::GL OpenGL::GLU)
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC QGLVIEWER_STATIC)
+
+# get a clean windows
+if (WIN32 OR MSVC)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC NOMINMAX)
+endif()

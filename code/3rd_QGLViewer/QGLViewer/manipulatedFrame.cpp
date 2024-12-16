@@ -263,7 +263,7 @@ qreal ManipulatedFrame::deltaWithPrevPos(QMouseEvent *const event,
 
 qreal ManipulatedFrame::wheelDelta(const QWheelEvent *event) const {
   static const qreal WHEEL_SENSITIVITY_COEF = 8E-4;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
   return event->delta() * wheelSensitivity() * WHEEL_SENSITIVITY_COEF;
 #else
   return event->angleDelta().y() * wheelSensitivity() * WHEEL_SENSITIVITY_COEF;
