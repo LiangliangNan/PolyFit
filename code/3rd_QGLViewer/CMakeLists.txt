@@ -35,6 +35,8 @@ set(QGLViewer_SRC
     "${PROJECT_SOURCE_DIR}/QGLViewer/vec.cpp")
 
 add_library(${PROJECT_NAME} STATIC ${QGLViewer_SRC})
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "3rd_party")
+
 target_include_directories(${PROJECT_NAME} INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(${PROJECT_NAME} PUBLIC ${QtLibs} OpenGL::GL OpenGL::GLU)
 
