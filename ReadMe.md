@@ -87,7 +87,11 @@ More information about the data (e.g., data format) is described [here](./data/R
 
 **Plane extraction**. Incorporating plane extraction adds an unnecessary dependency to more third-party libraries (e.g., [RANSAC](http://cg.cs.uni-bonn.de/en/publications/paper-details/schnabel-2007-efficient/)). Besides, it has some randomness (due to the nature of RANSAC) and the data quality can vary a lot (it should be fine if some regions of the planes are missing). So I isolated this part from this demo version and you're expected to provide the planar segments as input. 
 
-You can use my [Mapple](https://3d.bk.tudelft.nl/liangliang/software.html) to extract planes from point clouds. After you load the point cloud, go to the menu *Partition* -> *Extract Primitives*. To visualize the planes, change the renderer from 'Plain' to 'Group' in the Rendering panel (on the left side of Mapple). You can save the planes in bvg (**B**inary **V**ertex **G**roup) format. The ASCII format vg also works but is slow. Please note, **PolyFit assumes that the model is closed and all necessary planes are provided**. 
+You can use [Easy3D's Mapple](https://github.com/LiangliangNan/Easy3D/releases) to extract planes from point clouds. 
+After you load the point cloud to Mapple, go to the menu 'Point Cloud' -> "RANSAC primitive extraction', select "Plane" as the target primitive type, 
+tune the parameters (if needed), and then click the "Extract" button. Then the extracted planar primitives will be visualized with each primitive randomly colored. 
+You can save the extracted planes into a file in 'bvg' (**B**inary **V**ertex **G**roup) format. The ASCII 'vg' format also works but is slower. 
+Please note, **PolyFit assumes that the model is closed and all necessary planes are provided**. 
 
 ---
 
