@@ -91,7 +91,7 @@ You can use [Easy3D's Mapple](https://github.com/LiangliangNan/Easy3D/releases) 
 After you load the point cloud to Mapple, go to the menu 'Point Cloud' -> "RANSAC primitive extraction', select "Plane" as the target primitive type, 
 tune the parameters (if needed), and then click the "Extract" button. Then the extracted planar primitives will be visualized with each primitive randomly colored. 
 You can save the extracted planes into a file in 'bvg' (**B**inary **V**ertex **G**roup) format. The ASCII 'vg' format also works but is slower. 
-Please note, **PolyFit assumes that the model is closed and all necessary planes are provided**. 
+Please note, PolyFit assumes that the model is closed and all necessary planes are provided. 
 
 ---
 
