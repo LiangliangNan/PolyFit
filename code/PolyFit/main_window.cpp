@@ -231,10 +231,9 @@ void MainWindow::createRenderingPanel() {
 
 
 void MainWindow::updateWeights() {
-	if (panelManual_->isEnabled()) {
+    panelClick_->updateUI();
+	if (panelManual_)
 		panelManual_->updateWeights();
-		panelClick_->updateUI();
-	}
 }
 
 
