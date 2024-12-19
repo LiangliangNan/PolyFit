@@ -222,13 +222,8 @@ void MainWindow::createRenderingPanel() {
 	default_complexity_ = truncate_digits(Method::lambda_model_complexity, 3);
 
 	panelClick_ = new WeightPanelClick(this);
-	panelManual_ = new WeightPanelManual(this);
-
-	verticalLayoutWeights->addWidget(panelClick_);
-	verticalLayoutWeights->addWidget(panelManual_);
-	panelManual_->setVisible(false);
-
-	connect(panelClick_, SIGNAL(weights_changed()), panelManual_, SLOT(updateUI()));
+    verticalLayoutWeights->addWidget(panelClick_);
+	panelManual_ = nullptr;
 
 	connect(pushButtonDefaultWeight, SIGNAL(pressed()), this, SLOT(resetWeights()));
 	connect(checkBoxManualInputWeights, SIGNAL(toggled(bool)), this, SLOT(setManualInputWeights(bool)));
@@ -272,13 +267,19 @@ void MainWindow::resetWeights() {
 
 
 void MainWindow::setManualInputWeights(bool b) {
+    if (!panelManual_) {
+        panelManual_ = new WeightPanelManual(this);
+        verticalLayoutWeights->addWidget(panelManual_);
+        connect(panelClick_, SIGNAL(weights_changed()), panelManual_, SLOT(updateUI()));
+    }
+
 	if (b) {
-		panelClick_->setVisible(false);
-		panelManual_->setVisible(true);
+		panelClick_->hide();
+		panelManual_->show();
 	}
 	else {
-		panelClick_->setVisible(true);
-		panelManual_->setVisible(false);
+		panelClick_->show();
+		panelManual_->hide();
 	}
 }
 
@@ -411,8 +412,7 @@ void MainWindow::about()
 
 		"<p>Extract planes? You can use my <a href=\"https://3d.bk.tudelft.nl/liangliang/software.html\">Mapple</a> program for plane extraction. Please refer to the ReadMe files for more details.</p>"
 
-		"<p>For comments, suggestions, or any issues, please contact me at<br>"
-		"<a href=\"mailto:liangliang.nan@gmail.com\">liangliang.nan@gmail.com</a>.</p>"
+		"<p>For comments, suggestions, or any issues, please contact me at <a href=\"mailto:liangliang.nan@gmail.com\">liangliang.nan@gmail.com</a>.</p>"
 		"<p>Liangliang Nan<br>"
 		"<a href=\"https://3d.bk.tudelft.nl/liangliang/\">https://3d.bk.tudelft.nl/liangliang/</a><br>"
 		"@July.18, 2017</p>"
