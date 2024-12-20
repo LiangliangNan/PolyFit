@@ -211,11 +211,7 @@ void PaintCanvas::draw() {
 		return;
 	}
 
-	if (show_coord_sys_)
-		drawCornerAxis();
-
 	bool interacting = camera()->frame()->isManipulated();
-
     if (point_set_ && show_input_ && point_set_render_)
         point_set_render_->draw(point_set_);
 
@@ -233,7 +229,14 @@ void PaintCanvas::draw() {
 		mesh_render_->draw(optimized_mesh_, interacting);
 	}
 
-	const static QFont font("Times", 12/*, QFont::Bold*/); // "Times", "Helvetica", "Bradley Hand ITC"
+    if (show_coord_sys_)
+        drawCornerAxis();
+
+    // Liangliang: Qt's renderText() changes some OpenGL states.
+    // Save OpenGL state
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+
+    const static QFont font("Times", 12/*, QFont::Bold*/); // "Times", "Helvetica", "Bradley Hand ITC"
 	if (show_hint_text_) {
 		if (!hint_text_.isEmpty()) {
 			glColor3f(0, 0, 0.7f);
@@ -254,10 +257,8 @@ void PaintCanvas::draw() {
 		drawText(30, 190, "  - Zoom:  wheel", font);
     }
 
-	// Liangliang: It seems the renderText() func disables multi-sample and depth test
-	// Is this a bug in Qt ?
-	glEnable(GL_MULTISAMPLE);
-	glEnable(GL_DEPTH_TEST);
+    // Restore GL state
+    glPopAttrib();
 }
 
 
