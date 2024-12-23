@@ -75,7 +75,7 @@ int main(int argc, char **argv)
     FaceSelection selector(pset, mesh);
     selector.optimize(adjacency, LinearProgramSolver::SCIP);
     if (mesh->size_of_facets() == 0) {
-        std::cerr << "optimization failed: model has on faces" << std::endl;
+        std::cerr << "optimization failed: model has no face" << std::endl;
         return EXIT_FAILURE;
     }
     // now we don't need the point cloud anymore, and it can be deleted
