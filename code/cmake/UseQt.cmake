@@ -26,9 +26,9 @@
 
 
 # ------------------------------------------------------------------------------
-# This file sets up Qt for CMake. When Qt6 was setup successfully, Qt6_FOUND
+# This file sets up Qt for CMake. When Qt6 was setup successfully, 'Qt6_FOUND'
 # will be set. If Qt6 is not found, it will try to find Qt5. If Qt5 is found,
-# Qt5_FOUND will be set. If both Qt6 and Qt5 are not found, it will stop the
+# 'Qt5_FOUND' will be set. If both Qt6 and Qt5 are not found, it will stop the
 # configuration and show an error message.
 # If either Qt6 or Qt5 is found, it will set QtLibs to the corresponding Qt
 # libraries, e.g., Qt5Core, Qt5Gui, Qt5Widgets, Qt5OpenGL, Qt5Xml, etc.
@@ -63,11 +63,13 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 COMPONENTS Core Widgets OpenGL OpenGLWidgets Xml QUIET)
 if (Qt6_FOUND)
     message(STATUS "Found Qt6 version: ${Qt6Core_VERSION}")
+    message(STATUS "Qt6 directory: ${Qt6_DIR}")
     set(QtLibs Qt::Core Qt::Widgets Qt::OpenGL Qt::OpenGLWidgets Qt::Xml)
 else()
     find_package(Qt5 COMPONENTS Core Widgets OpenGL Xml QUIET)
     if (Qt5_FOUND)
         message(STATUS "Found Qt5 version: ${Qt5Core_VERSION}")
+        message(STATUS "Qt5 directory: ${Qt5_DIR}")
         set(QtLibs Qt5::Core Qt5::Widgets Qt5::OpenGL Qt5::Xml)
     else()
         message(FATAL_ERROR "Qt is required, either Qt6 or Qt5, but both cannot be found")
