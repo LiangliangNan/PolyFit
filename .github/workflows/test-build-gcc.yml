@@ -42,8 +42,8 @@ jobs:
       - name: Install Dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Install Boost using Chocolatey (for MSVC 14.3, Visual Studio 2022)
-          choco install boost-msvc-14.3 -y
+          # Install Boost using Chocolatey (for MSVC 14.2, Visual Studio 2019)
+          choco install boost-msvc-14.2 -y
 
           # Install GMP and MPFR using vcpkg
           git clone https://github.com/microsoft/vcpkg.git
@@ -59,7 +59,7 @@ jobs:
           mkdir C:/CGAL/build
           cd C:/CGAL/build
           cmake -DCMAKE_INSTALL_PREFIX=C:/CGAL/install ^
-                -DBOOST_ROOT="C:/ProgramData/chocolatey/lib/boost-msvc-14.3" ^
+                -DBOOST_ROOT="C:/ProgramData/chocolatey/lib/boost-msvc-14.2" ^
                 -DGMP_INCLUDE_DIR="C:/vcpkg/installed/x64-windows/include" ^
                 -DGMP_LIBRARIES="C:/vcpkg/installed/x64-windows/lib" ^
                 -DMPFR_INCLUDE_DIR="C:/vcpkg/installed/x64-windows/include" ^
@@ -76,7 +76,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: cmd
         run: |
-          cmake -S . -B build\${{ matrix.build_type }} -G "Visual Studio 17 2022" -A x64 ^
+          cmake -S . -B build\${{ matrix.build_type }} -G "Visual Studio 16 2019" -A x64 ^
                 -DCMAKE_PREFIX_PATH="C:/Qt/6.5.2/msvc2019_64;C:/CGAL/install"
 
       # Build the project
