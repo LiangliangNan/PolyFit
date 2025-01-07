@@ -1,43 +1,68 @@
 ##############################################################################
-# GitHub Actions Workflow to test building PolyFit with GCC
+# GitHub Actions Workflow to test building PolyFit on Windows, Ubuntu, and macOS.
 #
 # Copyright (C) 2022 Liangliang Nan <liangliang.nan@gmail.com>
 #
 # Licensed under GNU LGPL.3, see LICENCE file
 ##############################################################################
-name: test-build-gcc
+name: Test Build PolyFit
 
 on: [push, pull_request]
 
 jobs:
   build:
-    name: ${{ matrix.compilers }}
+    name: "Build on ${{ matrix.platform }} - ${{ matrix.build_type }}"
     strategy:
       fail-fast: false
       matrix:
-        compilers: [g++-7, g++-8, g++-9, g++-10, g++-11]
-    runs-on: ubuntu-20.04
+        platform: [windows-latest, ubuntu-latest, macos-latest]
+        build_type: [Debug, Release]
+    runs-on: ${{ matrix.platform }}
+
     steps:
-      - uses: actions/checkout@v1
-      - name: Install GCC
+      # Checkout the code
+      - uses: actions/checkout@v3
+
+      # Install dependencies for each platform
+      - name: Install Dependencies (Ubuntu)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update || true
-          if [ "${{ matrix.compilers }}" == "g++-11" ]; then
-            sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-            sudo apt-get update
-          fi
-          sudo apt-get install ${{ matrix.compilers }}
-      - name: Install Dependencies
+          sudo apt-get install -y cmake build-essential libgl1-mesa-dev \
+              mesa-common-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
+              libcgal-dev qt6-base-dev
+
+      - name: Install Dependencies (macOS)
+        if: runner.os == 'macOS'
         run: |
-          sudo apt-get install build-essential libglu1-mesa-dev mesa-common-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libboost-all-dev libcgal-dev qt5-default
-      - name: Build Project
+          brew update || true
+          brew install cmake cgal qt@6
+
+      - name: Install Dependencies (Windows)
+        if: runner.os == 'Windows'
         run: |
-          rm -rf Release
-          mkdir Release
-          cd Release
-          if [ "${{ matrix.compilers }}" == "g++-11" ]; then
-            cmake -DCMAKE_CXX_COMPILER=/usr/bin/g++-11 -DCMAKE_BUILD_TYPE=Release ..
-          else
-            cmake -DCMAKE_CXX_COMPILER=${{ matrix.compilers }} -DCMAKE_BUILD_TYPE=Release ..
-          fi
-          make
+          choco install cmake --installargs '"ADD_CMAKE_TO_PATH=System"'
+          choco install cgal --version=5.6
+          choco install qt --version=6.0
+
+      # Configure the project
+      - name: Configure (Linux & macOS)
+        if: runner.os != 'Windows'
+        run: |
+          cmake -S . -B build/${{ matrix.build_type }} -G "Unix Makefiles" 
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          cmake -S . -B build\${{ matrix.build_type }} -G "Visual Studio 17 2022" -A x64
+
+      # Build the project
+      - name: Build (Linux & macOS)
+        if: runner.os != 'Windows'
+        run: cmake --build build/${{ matrix.build_type }}
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: cmake --build build\${{ matrix.build_type }} --config ${{ matrix.build_type }}
