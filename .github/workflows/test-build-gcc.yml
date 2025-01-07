@@ -43,7 +43,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           # Install Boost using Chocolatey (for MSVC 14.2, Visual Studio 2019)
-          choco install boost-msvc-14.2 -y
+          choco install boost-msvc-14.2
 
           # Install GMP and MPFR using vcpkg
           git clone https://github.com/microsoft/vcpkg.git
