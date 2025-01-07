@@ -43,7 +43,7 @@ jobs:
         run: |
           git clone https://github.com/microsoft/vcpkg.git
           .\vcpkg\bootstrap-vcpkg.bat
-          .\vcpkg\vcpkg update
+          #.\vcpkg\vcpkg update
           .\vcpkg\vcpkg install cgal qtbase --triplet x64-windows
 
       # Configure the project
