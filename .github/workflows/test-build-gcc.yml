@@ -41,9 +41,14 @@ jobs:
 
       - name: Install Dependencies (Windows)
         if: runner.os == 'Windows'
+        shell: cmd
         run: |
-          # Install Boost using Chocolatey (for MSVC 14.2, Visual Studio 2019)
-          choco install boost-msvc-14.2 -y --ignore-checksums
+          # Install Boost manually
+          echo "Downloading Boost..."
+          curl -L -o boost_installer.exe https://sourceforge.net/projects/boost/files/boost-binaries/1.87.0/boost_1_87_0-msvc-14.2-64.exe
+          echo "Installing Boost..."
+          start /wait boost_installer.exe /quiet
+          echo "Boost installed."
 
           # Install GMP and MPFR using vcpkg
           git clone https://github.com/microsoft/vcpkg.git
@@ -59,7 +64,7 @@ jobs:
           mkdir C:/CGAL/build
           cd C:/CGAL/build
           cmake -DCMAKE_INSTALL_PREFIX=C:/CGAL/install ^
-                -DBOOST_ROOT="C:/ProgramData/chocolatey/lib/boost-msvc-14.2" ^
+                -DBOOST_ROOT="C:/local/boost_1_87_0" ^
                 -DGMP_INCLUDE_DIR="C:/vcpkg/installed/x64-windows/include" ^
                 -DGMP_LIBRARIES="C:/vcpkg/installed/x64-windows/lib" ^
                 -DMPFR_INCLUDE_DIR="C:/vcpkg/installed/x64-windows/include" ^
@@ -77,7 +82,8 @@ jobs:
         shell: cmd
         run: |
           cmake -S . -B build\${{ matrix.build_type }} -G "Visual Studio 16 2019" -A x64 ^
-                -DCMAKE_PREFIX_PATH="C:/Qt/6.5.2/msvc2019_64;C:/CGAL/install"
+                -DCMAKE_PREFIX_PATH="C:/Qt/6.5.2/msvc2019_64;C:/CGAL/install" ^
+                -DBOOST_ROOT="C:/local/boost_1_87_0"
 
       # Build the project
       - name: Build (Linux & macOS)
