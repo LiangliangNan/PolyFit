@@ -5,6 +5,7 @@
 #
 # Licensed under GNU LGPL.3, see LICENCE file
 ##############################################################################
+
 name: Test Build PolyFit
 
 on: [push, pull_request]
@@ -38,19 +39,37 @@ jobs:
           brew update || true
           brew install cmake cgal qt@6
 
-      - name: Install Dependencies (Windows - vcpkg)
+      - name: Install Dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Install Python and aqtinstall
-          pip install aqtinstall
-          
-          # Install Qt6 using aqtinstall
-          python -m aqt install-qt windows desktop 6.5.2 win64_msvc2019_64 --outputdir C:/Qt
+          # Install Chocolatey
+          powershell -NoProfile -ExecutionPolicy Bypass -Command \
+            "Set-ExecutionPolicy Bypass -Scope Process; [System.Net.ServicePointManager]::SecurityProtocol = 'Tls12'; \
+             iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
 
-          # Install vcpkg for CGAL and other dependencies
+          # Install Boost using Chocolatey (for MSVC 14.3, Visual Studio 2022)
+          choco install boost-msvc-14.3 -y
+
+          # Install GMP and MPFR using vcpkg
           git clone https://github.com/microsoft/vcpkg.git
           .\vcpkg\bootstrap-vcpkg.bat
-          .\vcpkg\vcpkg install cgal --triplet x64-windows
+          .\vcpkg\vcpkg install gmp:x64-windows mpfr:x64-windows
+
+          # Install Qt6 using aqtinstall
+          pip install aqtinstall
+          python -m aqt install-qt windows desktop 6.5.2 win64_msvc2019_64 --outputdir C:/Qt
+
+          # Clone and build CGAL from source
+          git clone https://github.com/CGAL/cgal.git --branch releases/CGAL-5.6 --depth 1 C:/CGAL
+          mkdir C:/CGAL/build
+          cd C:/CGAL/build
+          cmake -DCMAKE_INSTALL_PREFIX=C:/CGAL/install ^
+                -DBOOST_ROOT="C:/ProgramData/chocolatey/lib/boost-msvc-14.3" ^
+                -DGMP_INCLUDE_DIR="C:/vcpkg/installed/x64-windows/include" ^
+                -DGMP_LIBRARIES="C:/vcpkg/installed/x64-windows/lib" ^
+                -DMPFR_INCLUDE_DIR="C:/vcpkg/installed/x64-windows/include" ^
+                -DMPFR_LIBRARIES="C:/vcpkg/installed/x64-windows/lib" ..
+          cmake --build . --config Release --target install
 
       # Configure the project
       - name: Configure (Linux & macOS)
@@ -63,7 +82,7 @@ jobs:
         shell: cmd
         run: |
           cmake -S . -B build\${{ matrix.build_type }} -G "Visual Studio 17 2022" -A x64 ^
-                -DCMAKE_PREFIX_PATH="C:/Qt/6.5.2/msvc2019_64;C:/vcpkg/installed/x64-windows"
+                -DCMAKE_PREFIX_PATH="C:/Qt/6.5.2/msvc2019_64;C:/CGAL/install"
 
       # Build the project
       - name: Build (Linux & macOS)
