@@ -53,6 +53,9 @@ Error : libQGLViewer requires a minimum Qt version of 5.4 Error
 #ifdef Q_OS_MAC
 # include <OpenGL/glu.h>
 #else
+#ifdef WIN32
+#include <windows.h>
+#endif
 # include <GL/glu.h>
 #endif
 

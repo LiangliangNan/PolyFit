@@ -24,6 +24,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #if defined(__APPLE__) && defined(__MACH__)
 #   include <OpenGL/glu.h>
 #else
+#ifdef WIN32
+#    include <windows.h>
+#endif
 #    include <GL/glu.h>
 #endif
 
