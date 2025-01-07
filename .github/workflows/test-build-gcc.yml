@@ -42,11 +42,6 @@ jobs:
       - name: Install Dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          # Install Chocolatey
-          powershell -NoProfile -ExecutionPolicy Bypass -Command \
-            "Set-ExecutionPolicy Bypass -Scope Process; [System.Net.ServicePointManager]::SecurityProtocol = 'Tls12'; \
-             iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
-
           # Install Boost using Chocolatey (for MSVC 14.3, Visual Studio 2022)
           choco install boost-msvc-14.3 -y
 
