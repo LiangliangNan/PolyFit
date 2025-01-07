@@ -41,10 +41,16 @@ jobs:
       - name: Install Dependencies (Windows - vcpkg)
         if: runner.os == 'Windows'
         run: |
+          # Install Python and aqtinstall
+          pip install aqtinstall
+          
+          # Install Qt6 using aqtinstall
+          python -m aqt install-qt windows desktop 6.5.2 win64_msvc2019_64 --outputdir C:/Qt
+
+          # Install vcpkg for CGAL and other dependencies
           git clone https://github.com/microsoft/vcpkg.git
           .\vcpkg\bootstrap-vcpkg.bat
-          #.\vcpkg\vcpkg update
-          .\vcpkg\vcpkg install cgal qtbase --triplet x64-windows
+          .\vcpkg\vcpkg install cgal --triplet x64-windows
 
       # Configure the project
       - name: Configure (Linux & macOS)
@@ -56,8 +62,8 @@ jobs:
         if: runner.os == 'Windows'
         shell: cmd
         run: |
-          cmake -S . -B build\${{ matrix.build_type }} -G "Visual Studio 17 2022" -A x64 \
-                -DCMAKE_TOOLCHAIN_FILE=.\vcpkg\scripts\buildsystems\vcpkg.cmake
+          cmake -S . -B build\${{ matrix.build_type }} -G "Visual Studio 17 2022" -A x64 ^
+                -DCMAKE_PREFIX_PATH="C:/Qt/6.5.2/msvc2019_64;C:/vcpkg/installed/x64-windows"
 
       # Build the project
       - name: Build (Linux & macOS)
