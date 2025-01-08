@@ -44,7 +44,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           architecture: x64
-          activate-environment: Easy3DDev
+          activate-environment: PolyFitDev
           auto-activate-base: false
           channels: conda-forge,defaults
 
@@ -70,7 +70,8 @@ jobs:
         run: |
           cmake -S . -B build/${{ matrix.build_type }} \
                 -G "Visual Studio 17 2022" \
-                -A x64
+                -A x64 \
+                -DCMAKE_PREFIX_PATH="$CONDA_PREFIX/Library"
 
       # Build the project
       - name: Build (Linux & macOS)
@@ -79,5 +80,5 @@ jobs:
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        shell: cmd
-        run: cmake --build build\${{ matrix.build_type }} --config ${{ matrix.build_type }}
+        shell: bash -l {0}
+        run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }}
