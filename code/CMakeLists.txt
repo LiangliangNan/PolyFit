@@ -40,8 +40,6 @@ set(POLYFIT_ROOT         ${CMAKE_CURRENT_LIST_DIR})
 set(POLYFIT_INCLUDE_DIR  ${POLYFIT_ROOT}  ${CMAKE_CURRENT_BINARY_DIR})
 set(POLYFIT_SOURCE_DIR   ${POLYFIT_ROOT})
 
-set(POLYFIT_glpk_DIR                ${POLYFIT_ROOT}/3rd_glpk)
-set(POLYFIT_lpsolve_DIR             ${POLYFIT_ROOT}/3rd_lpsolve)
 set(POLYFIT_qglviewer_DIR           ${POLYFIT_ROOT}/3rd_QGLViewer)
 set(POLYFIT_scip_DIR                ${POLYFIT_ROOT}/3rd_scip)
 set(POLYFIT_soplex_DIR              ${POLYFIT_ROOT}/3rd_soplex)
@@ -66,8 +64,6 @@ SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY
 
 ################################################################################
 
-add_subdirectory(3rd_glpk)
-add_subdirectory(3rd_lpsolve)
 add_subdirectory(3rd_QGLViewer)
 add_subdirectory(3rd_scip)
 add_subdirectory(3rd_soplex)

@@ -61,10 +61,10 @@ bool LinearProgramSolver::solve(const LinearProgram* program, SolverName solver)
 	case GUROBI:
         return _solve_GUROBI(program);
 #endif
-	case GLPK:
-        return _solve_GLPK(program);
-	case LPSOLVE:
-        return _solve_LPSOLVE(program);
+//	case GLPK:
+//        return _solve_GLPK(program);
+//	case LPSOLVE:
+//        return _solve_LPSOLVE(program);
 	case SCIP:
         return _solve_SCIP(program);
 	}
