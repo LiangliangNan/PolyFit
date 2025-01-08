@@ -38,12 +38,25 @@ jobs:
           brew update || true
           brew install cmake cgal qt
 
-      - name: Install Dependencies (Windows)
+      # Set up Conda on Windows
+      - name: Set up Conda (Windows)
         if: runner.os == 'Windows'
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          architecture: x64
+          activate-environment: Easy3DDev
+          auto-activate-base: false
+          channels: conda-forge,defaults
+
+      # Install Conda packages on Windows
+      - name: Install Dependencies via Conda (Windows)
+        if: runner.os == 'Windows'
+        shell: bash -l {0}
         run: |
-          git clone https://github.com/microsoft/vcpkg.git
-          .\vcpkg\bootstrap-vcpkg.bat
-          .\vcpkg\vcpkg install cgal qtbase --triplet x64-windows
+          conda install -y \
+            ninja \
+            conda-forge::qt6-main \
+            conda-forge::cgal || exit 1
 
       # Configure the project
       - name: Configure (Linux & macOS)
@@ -53,12 +66,11 @@ jobs:
 
       - name: Configure (Windows)
         if: runner.os == 'Windows'
-        shell: cmd
+        shell: bash -l {0}
         run: |
-          cmake -S . -B build\${{ matrix.build_type }} ^
-                -G "Visual Studio 17 2022" ^
-                -A x64 ^
-                -DCMAKE_TOOLCHAIN_FILE="%cd%\vcpkg\scripts\buildsystems\vcpkg.cmake"
+          cmake -S . -B build/${{ matrix.build_type }} \
+                -G "Visual Studio 17 2022" \
+                -A x64
 
       # Build the project
       - name: Build (Linux & macOS)
