@@ -27,8 +27,8 @@ set(math_SOURCES
         linear_program.cpp
         linear_program_io.cpp
         linear_program_solver.cpp
-        linear_program_solver_GLPK.cpp
-        linear_program_solver_LPSOLVE.cpp
+#        linear_program_solver_GLPK.cpp
+#        linear_program_solver_LPSOLVE.cpp
         linear_program_solver_SCIP.cpp
         linear_program_solver_GUROBI.cpp
         )
@@ -67,4 +67,11 @@ if (GUROBI_FOUND)
 endif ()
 
 
-target_link_libraries(${PROJECT_NAME} PRIVATE basic 3rd_scip 3rd_lpsolve 3rd_glpk 3rd_soplex ${CMAKE_DL_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE
+        basic
+        3rd_scip
+#        3rd_lpsolve
+#        3rd_glpk
+        3rd_soplex
+        ${CMAKE_DL_LIBS}
+        )

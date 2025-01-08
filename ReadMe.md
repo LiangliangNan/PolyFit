@@ -96,14 +96,14 @@ Please note, PolyFit assumes that the model is closed and all necessary planes a
 ---
 
 ### About the solvers
-Four solvers, namely Gurobi, SCIP, GLPK, and lp_solve, are provided (with source code) in PolyFit. 
+Two solvers, namely Gurobi and SCIP (with source code), are provided in PolyFit. 
 The Gurobi solver is more efficient and reliable and should always be your first choice.
 To use Gurobi, you need to install it and also obtain a license (free for academic use) from 
 [here](https://www.gurobi.com/downloads/end-user-license-agreement-academic/). You may also need to modify the path(s) 
 to Gurobi in [FindGUROBI.cmake](./code/cmake/FindGUROBI.cmake), for CMake to find Gurobi.
 In case you want a fast but open-source solver, please try SCIP, which is slower than Gurobi but acceptable. 
-The GLPK and lp_solve solvers only manage to solve small problems. They are too slow (and thus may not guarantee to succeed). 
-For example the data "Fig1", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. 
+The GLPK and lp_solve solvers (only available in previous PolyFit distributions) can only manage to solve small problems. 
+They are too slow (and thus may not guarantee to succeed). For example the data "Fig1", Gurobi takes only 0.02 seconds, while lp_solve 15 minutes. 
 
 **Note for Linux users:** You may have to build the Gurobi library (`libgurobi_c++.a`) because the prebuilt one in the original package might NOT be compatible with your compiler. To do so, go to `src/build` and run `make`. Then replace the original `libgurobi_c++.a` (in the `lib` directory) with your generated file.
       

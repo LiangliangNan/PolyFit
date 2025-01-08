@@ -73,7 +73,13 @@ int main(int argc, char **argv)
     std::cout << "optimization..." << std::endl;
     const auto& adjacency = hypothesis.extract_adjacency(mesh);
     FaceSelection selector(pset, mesh);
+
+#ifdef HAS_GUROBI
+    selector.optimize(adjacency, LinearProgramSolver::GUROBI);
+#else
     selector.optimize(adjacency, LinearProgramSolver::SCIP);
+#endif
+
     if (mesh->size_of_facets() == 0) {
         std::cerr << "optimization failed: model has no face" << std::endl;
         return EXIT_FAILURE;

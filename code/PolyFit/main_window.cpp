@@ -598,14 +598,15 @@ void MainWindow::snapshotScreen() {
 LinearProgramSolver::SolverName MainWindow::active_solver() const {
 	const QString& solverString = solverBox_->currentText();
 
-	if (solverString == "GLPK")
-		return LinearProgramSolver::GLPK;
+	//if (solverString == "GLPK")
+	//	return LinearProgramSolver::GLPK;
 #ifdef HAS_GUROBI
-	else if (solverString == "GUROBI")
+	if (solverString == "GUROBI")
 		return LinearProgramSolver::GUROBI;
 #endif
-	else if (solverString == "LPSOLVE")
-		return LinearProgramSolver::LPSOLVE;
-    else // default to SCIP
-		return LinearProgramSolver::SCIP;
+	//else if (solverString == "LPSOLVE")
+	//	return LinearProgramSolver::LPSOLVE;
+	
+    // default to SCIP
+	return LinearProgramSolver::SCIP;
 }
