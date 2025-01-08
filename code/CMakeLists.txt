@@ -22,6 +22,14 @@ endif()
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(MSVC)
+        # The /MP flag is available and works as intended with the MSVC compiler
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
+elseif(CMAKE_BUILD_PARALLEL_LEVEL)
+        # Use build system parallelism (e.g., `make -j` or `ninja`)
+        set(CMAKE_BUILD_PARALLEL_LEVEL 4) # Example: Use 4 threads
+endif()
+
 ################################################################################
 
 # Detects whether this is a top-level project
