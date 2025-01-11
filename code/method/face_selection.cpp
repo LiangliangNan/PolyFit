@@ -25,6 +25,7 @@
 #include "../method/hypothesis_generator.h"
 
 #include <algorithm>
+#include <limits>
 
 
 FaceSelection::FaceSelection(PointSet* pset, Map* model)
