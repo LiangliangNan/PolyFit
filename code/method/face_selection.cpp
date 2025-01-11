@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../model/map_geometry.h"
 #include "../basic/logger.h"
 #include "../model/map_editor.h"
+#include "../method/hypothesis_generator.h"
 
 #include <algorithm>
 
@@ -36,7 +37,7 @@ FaceSelection::FaceSelection(PointSet* pset, Map* model)
 }
 
 
-void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, LinearProgramSolver::SolverName solver_name) {
+void FaceSelection::optimize(HypothesisGenerator* generator, LinearProgramSolver::SolverName solver_name) {
     if (pset_ == nullptr || model_ == nullptr)
 		return;
 
@@ -60,6 +61,8 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 		Logger::err("-") << "attribute " << Method::facet_attrib_covered_area << " doesn't exist" << std::endl;
 		return;
 	}
+
+    auto adjacency = generator->extract_adjacency(model_);
 
 	edge_source_planes_.bind_if_defined(model_, "EdgeSourcePlanes");
 	vertex_source_planes_.bind_if_defined(model_, "VertexSourcePlanes");
@@ -315,6 +318,9 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
         Logger::out("-") << "solving the binary program failed. " << w.elapsed() << " sec." << std::endl;
 	}
 
+    // to have consistent orientation for the final model
+    re_orient(generator, solver_name);
+
 	facet_attrib_supporting_vertex_group_.unbind();
 	facet_attrib_supporting_point_num_.unbind();
 	facet_attrib_facet_area_.unbind();
@@ -327,9 +333,11 @@ void FaceSelection::optimize(const HypothesisGenerator::Adjacency& adjacency, Li
 
 
 
-void FaceSelection::re_orient(const HypothesisGenerator::Adjacency &adjacency, LinearProgramSolver::SolverName solver_name) {
+void FaceSelection::re_orient(HypothesisGenerator* generator, LinearProgramSolver::SolverName solver_name) {
     if (model_ == nullptr)
         return;
+
+    auto adjacency = generator->extract_adjacency(model_);
 
 #if 1
     // check if input is legal
@@ -448,6 +456,18 @@ void FaceSelection::re_orient(const HypothesisGenerator::Adjacency &adjacency, L
             }
         }
         model_->compute_facet_normals();
+
+        // try to make sure all normals pointing outward
+        vec3 normal;
+        float max_z = -std::numeric_limits<float>::max();
+        FOR_EACH_VERTEX_CONST(Map, model_, it) {
+            if (it->point().z > max_z) {
+                max_z = it->point().z;
+                normal = Geom::vertex_normal(it);
+            }
+        }
+        if (normal.z < 0) // reorient the entire model
+            editor.inside_out(true);
     }
     else {
         Logger::out("-") << "solving the binary program failed. " << w.elapsed() << " sec." << std::endl;

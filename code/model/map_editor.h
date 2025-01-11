@@ -78,6 +78,11 @@ public:
     void reorient_facet(Halfedge* h);
 
     /**
+    * inverts the orientation of all the facets.
+    */
+    void inside_out(bool reorient_normal = true);
+
+    /**
     * Checks wether the two specified half-edges can be glued,
     * from a topological point of view. h0 and h1 should point
     * in reverse direction, and should be on the border.

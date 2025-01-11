@@ -606,13 +606,8 @@ void PaintCanvas::optimization() {
 	main_window_->disableActions(true);
 	Map* mesh = Geom::duplicate(hypothesis_mesh_);
 
-	HypothesisGenerator::Adjacency adjacency = hypothesis_->extract_adjacency(mesh);
 	FaceSelection selector(point_set_, mesh);
-	selector.optimize(adjacency, main_window_->active_solver());
-
-    // to have consistent orientation for the final model
-    adjacency = hypothesis_->extract_adjacency(mesh);
-    selector.re_orient(adjacency, main_window_->active_solver());
+	selector.optimize(hypothesis_, main_window_->active_solver());
 
 #if 0 // not stable!!!
     { // to stitch the coincident edges and related vertices

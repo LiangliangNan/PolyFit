@@ -71,13 +71,12 @@ int main(int argc, char **argv)
 
     // step 3: face selection
     std::cout << "optimization..." << std::endl;
-    const auto& adjacency = hypothesis.extract_adjacency(mesh);
     FaceSelection selector(pset, mesh);
 
 #ifdef HAS_GUROBI
-    selector.optimize(adjacency, LinearProgramSolver::GUROBI);
+    selector.optimize(&hypothesis, LinearProgramSolver::GUROBI);
 #else
-    selector.optimize(adjacency, LinearProgramSolver::SCIP);
+    selector.optimize(&hypothesis, LinearProgramSolver::SCIP);
 #endif
 
     if (mesh->size_of_facets() == 0) {

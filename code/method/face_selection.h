@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define _FACE_SELECTION_H_
 
 #include "method_common.h"
-#include "hypothesis_generator.h"
 #include "../math/math_types.h"
 #include "../math/linear_program.h"
 #include "../math/linear_program_solver.h"
@@ -36,6 +35,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 class Map;
 class PointSet;
 class VertexGroup;
+class HypothesisGenerator;
 
 namespace MapTypes {
 	class Vertex;
@@ -51,10 +51,11 @@ public:
 	FaceSelection(PointSet* pset, Map* model);
 	~FaceSelection() {}
 
-	virtual void optimize(const HypothesisGenerator::Adjacency& adjacency, LinearProgramSolver::SolverName solver_name);
+	void optimize(HypothesisGenerator* generator, LinearProgramSolver::SolverName solver_name);
 
+protected:
     // NOTE: the adjacency is the one extracted after the face optimization step
-    virtual void re_orient(const HypothesisGenerator::Adjacency& adjacency, LinearProgramSolver::SolverName solver_name);
+    void re_orient(HypothesisGenerator* generator, LinearProgramSolver::SolverName solver_name);
 
 private:
 	PointSet* pset_;
