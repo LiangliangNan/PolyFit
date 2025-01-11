@@ -214,9 +214,9 @@ void MainWindow::createActions() {
 
 
 void MainWindow::createRenderingPanel() {
-	default_fitting_ = truncate_digits(Method::lambda_data_fitting, 3);
-	default_coverage_ = truncate_digits(Method::lambda_model_coverage, 3);
-	default_complexity_ = truncate_digits(Method::lambda_model_complexity, 3);
+	default_fitting_ = truncate_digits(Method::weight_data_fitting, 3);
+	default_coverage_ = truncate_digits(Method::weight_model_coverage, 3);
+	default_complexity_ = truncate_digits(Method::weight_model_complexity, 3);
 
 	panelClick_ = new WeightPanelClick(this);
     verticalLayoutWeights->addWidget(panelClick_);
@@ -253,9 +253,9 @@ void MainWindow::defaultRenderingForResult() {
 
 
 void MainWindow::resetWeights() {
-	Method::lambda_data_fitting = default_fitting_;
-	Method::lambda_model_coverage = default_coverage_;
-	Method::lambda_model_complexity = default_complexity_;
+	Method::weight_data_fitting = default_fitting_;
+	Method::weight_model_coverage = default_coverage_;
+	Method::weight_model_complexity = default_complexity_;
 
 	panelClick_->updateUI();
 	panelManual_->updateUI();

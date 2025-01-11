@@ -32,14 +32,6 @@ Map* reconstruct(
         float model_complexity                  // weight for model complexity term
 )
 {
-    // initialize the logger (this is not optional)
-    Logger::initialize();
-
-    // set the parameters
-    Method::lambda_data_fitting = data_fitting;
-    Method::lambda_model_coverage = model_coverage;
-    Method::lambda_model_complexity = model_complexity;
-
     // step 1: refine planes
     const std::vector<VertexGroup::Ptr>& groups = point_cloud->groups();
     if (groups.empty()) {
@@ -59,7 +51,7 @@ Map* reconstruct(
 
     // step 3: face selection
     FaceSelection selector(point_cloud, mesh);
-    selector.optimize(&hypothesis, solver);
+    selector.optimize(&hypothesis, solver, data_fitting, model_coverage, model_complexity);
 
     if (mesh->size_of_facets() == 0) {
         std::cerr << "optimization failed: result has no face" << std::endl;

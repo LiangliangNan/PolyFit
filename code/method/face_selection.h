@@ -48,7 +48,12 @@ public:
 	FaceSelection(PointSet* pset, Map* model);
 	~FaceSelection() {}
 
-	void optimize(HypothesisGenerator* generator, LinearProgramSolver::SolverName solver_name);
+    void optimize(HypothesisGenerator *generator,
+                  LinearProgramSolver::SolverName solver_name,  // solver name
+                  double data_fitting,       // weight for data fitting term
+                  double model_coverage,     // weight for model coverage term
+                  double model_complexity    // weight for model complexity term)
+    );
 
 protected:
     // NOTE: the adjacency is the one extracted after the face optimization step

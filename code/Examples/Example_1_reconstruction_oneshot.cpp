@@ -53,10 +53,13 @@ int main(int argc, char **argv)
         std::cerr << "Reconstruction failed" << std::endl;
         return EXIT_FAILURE;
     }
+    // now we don't need the point cloud anymore, and it can be deleted
+    delete point_cloud;
 
     std::cout << "Reconstructed mesh has " << mesh->size_of_facets() << " faces" << std::endl;
     if (MapIO::save(output_file, mesh)) {
         std::cout << "Reconstructed model saved to file: " << output_file << std::endl;
+        delete mesh;
         return EXIT_SUCCESS;
     }
     else {

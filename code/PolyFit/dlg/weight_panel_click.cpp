@@ -58,11 +58,11 @@ WeightPanelClick::WeightPanelClick(QWidget *parent)
 	triangle_[1] = pos_coverage_;
 	triangle_[2] = pos_complexity_;
 
-	pos_ = pointFromWeights(pos_fitting_, pos_coverage_, pos_complexity_, Method::lambda_data_fitting, Method::lambda_model_coverage, Method::lambda_model_complexity);
+	pos_ = pointFromWeights(pos_fitting_, pos_coverage_, pos_complexity_, Method::weight_data_fitting, Method::weight_model_coverage, Method::weight_model_complexity);
 
-	fitting_ = truncate_digits(Method::lambda_data_fitting, 3);
-	coverage_ = truncate_digits(Method::lambda_model_coverage, 3);
-	complexity_ = truncate_digits(Method::lambda_model_complexity, 3);
+	fitting_ = truncate_digits(Method::weight_data_fitting, 3);
+	coverage_ = truncate_digits(Method::weight_model_coverage, 3);
+	complexity_ = truncate_digits(Method::weight_model_complexity, 3);
 
 	setMouseTracking(true);
 }
@@ -160,13 +160,13 @@ void WeightPanelClick::computeWeight() {
 	float area_model_coverage = area_of_triangle(pos_complexity_, pos_fitting_, pos_);
 	float area_model_complexity = area_of_triangle(pos_fitting_, pos_coverage_, pos_);
 
-	Method::lambda_data_fitting = area_data_fitting / area_sum;
-	Method::lambda_model_coverage = area_model_coverage / area_sum;
-	Method::lambda_model_complexity = area_model_complexity / area_sum;
+	Method::weight_data_fitting = area_data_fitting / area_sum;
+	Method::weight_model_coverage = area_model_coverage / area_sum;
+	Method::weight_model_complexity = area_model_complexity / area_sum;
 
-	fitting_ = truncate_digits(Method::lambda_data_fitting, 3);
-	coverage_ = truncate_digits(Method::lambda_model_coverage, 3);
-	complexity_ = truncate_digits(Method::lambda_model_complexity, 3);
+	fitting_ = truncate_digits(Method::weight_data_fitting, 3);
+	coverage_ = truncate_digits(Method::weight_model_coverage, 3);
+	complexity_ = truncate_digits(Method::weight_model_complexity, 3);
 
 	emit weights_changed();
 
@@ -175,11 +175,11 @@ void WeightPanelClick::computeWeight() {
 
 
 void WeightPanelClick::updateUI() {
-	float sum = Method::lambda_data_fitting + Method::lambda_model_coverage + Method::lambda_model_complexity;
-	fitting_ = truncate_digits(Method::lambda_data_fitting / sum, 3);
-	coverage_ = truncate_digits(Method::lambda_model_coverage / sum, 3);
-	complexity_ = truncate_digits(Method::lambda_model_complexity / sum, 3);
+	float sum = Method::weight_data_fitting + Method::weight_model_coverage + Method::weight_model_complexity;
+	fitting_ = truncate_digits(Method::weight_data_fitting / sum, 3);
+	coverage_ = truncate_digits(Method::weight_model_coverage / sum, 3);
+	complexity_ = truncate_digits(Method::weight_model_complexity / sum, 3);
 
-	pos_ = pointFromWeights(pos_fitting_, pos_coverage_, pos_complexity_, Method::lambda_data_fitting, Method::lambda_model_coverage, Method::lambda_model_complexity);
+	pos_ = pointFromWeights(pos_fitting_, pos_coverage_, pos_complexity_, Method::weight_data_fitting, Method::weight_model_coverage, Method::weight_model_complexity);
 	update();
 }

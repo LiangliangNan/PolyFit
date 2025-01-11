@@ -35,26 +35,21 @@ int main(int argc, char **argv)
     // output mesh file name
     const std::string output_file = (argc > 2) ? argv[2] : std::string(POLYFIT_CODE_DIR) + "/../data/toy_data-result.obj";
 
-    // below are the default parameters (change these when necessary)
-    Method::lambda_data_fitting = 0.43;
-    Method::lambda_model_coverage = 0.27;
-    Method::lambda_model_complexity = 0.3;
-
     // load point cloud from file
-    PointSet* pset = PointSetIO::read(input_file);
-    if (!pset) {
+    PointSet* point_cloud = PointSetIO::read(input_file);
+    if (!point_cloud) {
         std::cerr << "failed loading point cloud from file: " << input_file << std::endl;
         return EXIT_FAILURE;
     }
 
     // step 1: refine planes
     std::cout << "refining planes..." << std::endl;
-    const std::vector<VertexGroup::Ptr>& groups = pset->groups();
+    const std::vector<VertexGroup::Ptr>& groups = point_cloud->groups();
     if (groups.empty()) {
         std::cerr << "planar segments do not exist" << std::endl;
         return EXIT_FAILURE;
     }
-    HypothesisGenerator hypothesis(pset);
+    HypothesisGenerator hypothesis(point_cloud);
     hypothesis.refine_planes();
 
     // step 2: generate face hypothesis
@@ -68,12 +63,12 @@ int main(int argc, char **argv)
 
     // step 3: face selection
     std::cout << "optimization..." << std::endl;
-    FaceSelection selector(pset, mesh);
+    FaceSelection selector(point_cloud, mesh);
 
 #ifdef HAS_GUROBI
-    selector.optimize(&hypothesis, LinearProgramSolver::GUROBI);
+    selector.optimize(&hypothesis, LinearProgramSolver::GUROBI, 0.43, 0.27, 0.3);           // <--- tune if necessary
 #else
-    selector.optimize(&hypothesis, LinearProgramSolver::SCIP);
+    selector.optimize(&hypothesis, LinearProgramSolver::SCIP, 0.43, 0.27, 0.3);             // <--- tune if necessary
 #endif
 
     if (mesh->size_of_facets() == 0) {
@@ -81,17 +76,18 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
     // now we don't need the point cloud anymore, and it can be deleted
-    delete pset;
+    delete point_cloud;
 
     // step 4: save result to file
-    if (MapIO::save(output_file, mesh))
+    if (MapIO::save(output_file, mesh)) {
         std::cout << "reconstructed model saved to file: " << output_file << std::endl;
+        delete mesh;
+        return EXIT_SUCCESS;
+    }
     else {
         std::cerr << "failed saving reconstructed model to file: " << output_file << std::endl;
         return EXIT_FAILURE;
     }
-
-    return EXIT_SUCCESS;
 }
 
 

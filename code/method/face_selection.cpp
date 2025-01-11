@@ -34,7 +34,12 @@ FaceSelection::FaceSelection(PointSet* pset, Map* model)
 }
 
 
-void FaceSelection::optimize(HypothesisGenerator* generator, LinearProgramSolver::SolverName solver_name) {
+void FaceSelection::optimize(HypothesisGenerator* generator,
+                             LinearProgramSolver::SolverName solver_name,
+                             double data_fitting,
+                             double model_coverage,
+                             double model_complexity)
+ {
     if (pset_ == nullptr || model_ == nullptr)
 		return;
 
@@ -105,13 +110,13 @@ void FaceSelection::optimize(HypothesisGenerator* generator, LinearProgramSolver
 		}
 	}
 
-	//double coeff_data_fitting = Method::lambda_data_fitting / total_points;
-	//double coeff_coverage = Method::lambda_model_coverage / model_->bbox().area();
-	//double coeff_complexity = Method::lambda_model_complexity / double(fans.size());
+	//double coeff_data_fitting = data_fitting / total_points;
+	//double coeff_coverage = model_coverage / model_->bbox().area();
+	//double coeff_complexity = model_complexity / double(fans.size());
 	// choose a better scale
-	double coeff_data_fitting = Method::lambda_data_fitting;
-	double coeff_coverage = total_points * Method::lambda_model_coverage / model_->bbox().area();
-	double coeff_complexity = total_points * Method::lambda_model_complexity / double(adjacency.size());
+	double coeff_data_fitting = data_fitting;
+	double coeff_coverage = total_points * model_coverage / model_->bbox().area();
+	double coeff_complexity = total_points * model_complexity / double(adjacency.size());
 
 	program_.clear();
 	LinearObjective* objective = program_.create_objective(LinearObjective::MINIMIZE);

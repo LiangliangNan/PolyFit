@@ -3,9 +3,9 @@
 
 namespace Method {
 
-	double lambda_data_fitting = 0.43;
-	double lambda_model_coverage = 0.27;
-	double lambda_model_complexity = 0.30;
+	double weight_data_fitting = 0.43;
+	double weight_model_coverage = 0.27;
+	double weight_model_complexity = 0.30;
 
 	double snap_sqr_distance_threshold = 1e-14;
 

@@ -72,13 +72,11 @@ void bind_point_set(py::module &m) {
             .def("points", py::overload_cast<>(&PointSet::points), "Get the list of points")
             .def("colors", py::overload_cast<>(&PointSet::colors), "Get the list of colors")
             .def("normals", py::overload_cast<>(&PointSet::normals), "Get the list of normals")
-            .def("planar_qualities", py::overload_cast<>(&PointSet::planar_qualities),
-                 "Get the list of planar qualities")
+            .def("planar_qualities", py::overload_cast<>(&PointSet::planar_qualities), "Get the list of planar qualities")
             .def("has_normals", &PointSet::has_normals, "Check if normals are available")
             .def("has_colors", &PointSet::has_colors, "Check if colors are available")
             .def("has_planar_qualities", &PointSet::has_planar_qualities, "Check if planar qualities are available")
-            .def("groups", py::overload_cast<>(&PointSet::groups), "Get the list of vertex groups")
-            .def("fit_plane", &PointSet::fit_plane, "Fit a plane for a vertex group");
+            .def("groups", py::overload_cast<>(&PointSet::groups), "Get the list of vertex groups");
 }
 
 
@@ -89,24 +87,7 @@ void bind_map(py::module &m) {
             .def(py::init<>())
             .def("size_of_vertices", &Map::size_of_vertices, "Get the number of vertices")
             .def("size_of_halfedges", &Map::size_of_halfedges, "Get the number of halfedges")
-            .def("size_of_facets", &Map::size_of_facets, "Get the number of facets")
-            .def("is_triangulated", &Map::is_triangulated, "Check if the map is triangulated");
-}
-
-
-// Define Python bindings for the global variables and constants
-void bind_method_global(py::module &m) {
-    // Expose global variables
-    m.attr("lambda_data_fitting") = &Method::lambda_data_fitting;
-    m.attr("lambda_model_coverage") = &Method::lambda_model_coverage;
-    m.attr("lambda_model_complexity") = &Method::lambda_model_complexity;
-    m.attr("snap_sqr_distance_threshold") = &Method::snap_sqr_distance_threshold;
-
-    // Expose global constants
-    m.attr("facet_attrib_supporting_vertex_group") = Method::facet_attrib_supporting_vertex_group;
-    m.attr("facet_attrib_supporting_point_num") = Method::facet_attrib_supporting_point_num;
-    m.attr("facet_attrib_facet_area") = Method::facet_attrib_facet_area;
-    m.attr("facet_attrib_covered_area") = Method::facet_attrib_covered_area;
+            .def("size_of_facets", &Map::size_of_facets, "Get the number of facets");
 }
 
 
@@ -121,10 +102,7 @@ void bind_hypothesis_generator(py::module &m) {
             .def("refine_planes", &HypothesisGenerator::refine_planes, "Refine planes")
             .def("generate", &HypothesisGenerator::generate, "Generate candidate faces")
             .def("compute_confidences", &HypothesisGenerator::compute_confidences,
-                 py::arg("mesh"), py::arg("use_conficence") = false, "Compute confidences")
-            .def("extract_adjacency", &HypothesisGenerator::extract_adjacency, "Extract adjacency information")
-            .def("ready_for_optimization", &HypothesisGenerator::ready_for_optimization,
-                 "Check if ready for optimization");
+                 py::arg("mesh"), py::arg("use_conficence") = false, "Compute confidences");
 }
 
 
@@ -137,11 +115,14 @@ void bind_face_selection(py::module &m) {
 
     // Bind the FaceSelection class
     py::class_<FaceSelection>(m, "FaceSelection")
-            .def(py::init<PointSet *, Map *>(), py::arg("pset"), py::arg("model"))
+            .def(py::init<PointSet *, Map *>(), py::arg("point_cloud"), py::arg("mesh"))
             .def("optimize", &FaceSelection::optimize,
                  py::arg("generator"),
                  py::arg("solver_name") = LinearProgramSolver::SCIP,
-                 "Optimize face selection"
+                 py::arg("data_fitting") = 0.43f,
+                 py::arg("model_coverage") = 0.27f,
+                 py::arg("model_complexity") = 0.3f,
+                 "Optimization (i.e., face selection)"
             );
 }
 
@@ -179,7 +160,6 @@ PYBIND11_MODULE(PyPolyFit_NAME, m) {
     bind_point_set(m);
     bind_map(m);
     bind_hypothesis_generator(m);
-    bind_method_global(m);
     bind_face_selection(m);
     bind_reconstruction(m);
 

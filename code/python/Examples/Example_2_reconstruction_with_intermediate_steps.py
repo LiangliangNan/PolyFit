@@ -27,11 +27,6 @@ def main():
     # Initialize PolyFit
     polyfit.initialize()
 
-    # Default parameters
-    polyfit.lambda_data_fitting = 0.43                  # <--- tune this parameter if needed
-    polyfit.lambda_model_coverage = 0.27                # <--- tune this parameter if needed
-    polyfit.lambda_model_complexity = 0.3               # <--- tune this parameter if needed
-
     input_file  = "../../../data/toy_data.bvg"          # <--- Update this path to your point cloud
     output_file = "../../../data/toy_data-result.obj"   # <--- Update this path to where your want to save the result
 
@@ -66,7 +61,11 @@ def main():
     print("Optimization...")
     # Create an instance of FaceSelection
     selector = polyfit.FaceSelection(point_cloud, mesh)
-    selector.optimize(hypothesis)    # optimization (face selection)
+    selector.optimize(hypothesis,
+                      polyfit.SCIP, # solver name (GUROBI requires a license, free for research and eduction)
+                      0.43,         # Weight of data_fitting         <--- tune if needed.
+                      0.27,         # Weight of model_coverage       <--- tune if needed.
+                      0.3)          # Weight of model_complexity     <--- tune if needed.
 
     if mesh.size_of_facets() == 0:
         print("Optimization failed: model has no face", file=sys.stderr)

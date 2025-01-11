@@ -9,9 +9,9 @@
 
 namespace Method {
 
-	extern METHOD_API double lambda_data_fitting;
-	extern METHOD_API double lambda_model_coverage;
-	extern METHOD_API double lambda_model_complexity;
+	extern METHOD_API double weight_data_fitting;
+	extern METHOD_API double weight_model_coverage;
+	extern METHOD_API double weight_model_complexity;
 
 	extern METHOD_API double snap_sqr_distance_threshold;
 

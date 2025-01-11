@@ -31,6 +31,7 @@
 #include "../renderer/point_set_render.h"
 #include "../method/hypothesis_generator.h"
 #include "../method/face_selection.h"
+#include "../method/method_global.h"
 
 #include "main_window.h"
 
@@ -604,7 +605,11 @@ void PaintCanvas::optimization() {
 	Map* mesh = Geom::duplicate(hypothesis_mesh_);
 
 	FaceSelection selector(point_set_, mesh);
-	selector.optimize(hypothesis_, main_window_->active_solver());
+    selector.optimize(hypothesis_,
+                      main_window_->active_solver(),
+                      Method::weight_data_fitting,
+                      Method::weight_model_coverage,
+                      Method::weight_model_complexity);
 
 #if 0 // not stable!!!
     { // to stitch the coincident edges and related vertices

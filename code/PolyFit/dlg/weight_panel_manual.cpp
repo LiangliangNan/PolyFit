@@ -35,9 +35,9 @@ WeightPanelManual::WeightPanelManual(QWidget *parent)
 
 
 void WeightPanelManual::updateUI() {
-	float fitting = truncate_digits(Method::lambda_data_fitting, 3);
-	float coverage = truncate_digits(Method::lambda_model_coverage, 3);
-	float complexity = truncate_digits(Method::lambda_model_complexity, 3);
+	float fitting = truncate_digits(Method::weight_data_fitting, 3);
+	float coverage = truncate_digits(Method::weight_model_coverage, 3);
+	float complexity = truncate_digits(Method::weight_model_complexity, 3);
 
 	QString text_fitting = QString("%1").arg(fitting);
 	QString text_coverage = QString("%1").arg(coverage);
@@ -50,7 +50,7 @@ void WeightPanelManual::updateUI() {
 
 
 void WeightPanelManual::updateWeights() {
-	Method::lambda_data_fitting = lineEditFitting->text().toFloat();
-	Method::lambda_model_coverage = lineEditCoverage->text().toFloat();
-	Method::lambda_model_complexity = lineEditComplexity->text().toFloat();
+	Method::weight_data_fitting = lineEditFitting->text().toFloat();
+	Method::weight_model_coverage = lineEditCoverage->text().toFloat();
+	Method::weight_model_complexity = lineEditComplexity->text().toFloat();
 }
