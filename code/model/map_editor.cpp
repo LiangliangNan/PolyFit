@@ -545,6 +545,44 @@ void MapEditor::reorient_facet(Map::Halfedge* first) {
 
 
 
+void MapEditor::inside_out(bool reorient_normal) {
+
+    { FOR_EACH_FACET(Map, target(), it) {
+            reorient_facet(it->halfedge());
+        } }
+
+    // Note: A border edge is now parallel to its opposite edge.
+    // We scan all border edges for this property. If it holds, we
+    // reorient the associated hole and search again until no border
+    // edge with that property exists any longer. Then, all holes are
+    // reoriented.
+
+    {
+        FOR_EACH_HALFEDGE(Map, target(), it) {
+            if (
+                    it->is_border() &&
+                    it->vertex() == it->opposite()->vertex()
+                    ) {
+                reorient_facet(it);
+            }
+        }
+    }
+
+    if (reorient_normal) {
+        if (MapVertexNormal::is_defined(target())) {
+            MapVertexNormal vertex_normal(target());
+            FOR_EACH_VERTEX(Map, target(), it)
+                vertex_normal[it] = -vertex_normal[it];
+        }
+        if (MapFacetNormal::is_defined(target())) {
+            MapFacetNormal facet_normal(target());
+            FOR_EACH_FACET(Map, target(), it)
+                facet_normal[it] = -facet_normal[it];
+        }
+    }
+}
+
+
 bool MapEditor::glue(
     Halfedge* h0, Halfedge* h1
     )

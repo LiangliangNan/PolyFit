@@ -1,0 +1,11 @@
+set(PROJECT_NAME Example_1_reconstruction_oneshot)
+add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "Examples")
+target_link_libraries(${PROJECT_NAME} basic math model method)
+target_compile_definitions(${PROJECT_NAME} PRIVATE "POLYFIT_CODE_DIR=\"${POLYFIT_ROOT}\"")
+
+set(PROJECT_NAME Example_2_reconstruction_with_intermediate_steps)
+add_executable(${PROJECT_NAME} ${PROJECT_NAME}.cpp)
+set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "Examples")
+target_link_libraries(${PROJECT_NAME} basic math model method)
+target_compile_definitions(${PROJECT_NAME} PRIVATE "POLYFIT_CODE_DIR=\"${POLYFIT_ROOT}\"")

@@ -1,21 +1,18 @@
-/*
-Copyright (C) 2017  Liangliang Nan
-https://3d.bk.tudelft.nl/liangliang/ - liangliang.nan@gmail.com
-
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+/* ---------------------------------------------------------------------------
+ * Copyright (C) 2017 Liangliang Nan <liangliang.nan@gmail.com>
+ * https://3d.bk.tudelft.nl/liangliang/
+ *
+ * This file is part of PolyFit. If it is useful in your research/work,
+ * I would be grateful if you show your appreciation by citing it:
+ *
+ *     Liangliang Nan and Peter Wonka.
+ *     PolyFit: Polygonal Surface Reconstruction from Point Clouds.
+ *     ICCV 2017.
+ *
+ *  For more information:
+ *  https://3d.bk.tudelft.nl/liangliang/publications/2017/polyfit/polyfit.html
+ * ---------------------------------------------------------------------------
+ */
 
 #include "paint_canvas.h"
 
@@ -606,13 +603,8 @@ void PaintCanvas::optimization() {
 	main_window_->disableActions(true);
 	Map* mesh = Geom::duplicate(hypothesis_mesh_);
 
-	HypothesisGenerator::Adjacency adjacency = hypothesis_->extract_adjacency(mesh);
 	FaceSelection selector(point_set_, mesh);
-	selector.optimize(adjacency, main_window_->active_solver());
-
-    // to have consistent orientation for the final model
-    adjacency = hypothesis_->extract_adjacency(mesh);
-    selector.re_orient(adjacency, main_window_->active_solver());
+	selector.optimize(hypothesis_, main_window_->active_solver());
 
 #if 0 // not stable!!!
     { // to stitch the coincident edges and related vertices

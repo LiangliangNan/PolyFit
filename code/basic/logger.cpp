@@ -160,8 +160,10 @@ void FileLogger::status_message(const std::string& value, int timeout){
 Logger* Logger::instance_ = nil ;
 
 void Logger::initialize() {
-	instance_ = new Logger() ;
-	Logger::out("Logger") << "initialized" << std::endl ;
+    if (instance_ == nil) {
+        instance_ = new Logger();
+        Logger::out("Logger") << "initialized" << std::endl;
+    }
 }
 
 void Logger::terminate() {

@@ -4,7 +4,7 @@
 </p>
 
 
-# Polygonal surface reconstruction from point clouds
+# Polygonal surface reconstruction from point clouds (C++ & Python)
 
 
 
@@ -69,9 +69,10 @@ You can also build PolyFit from the source code:
 ---
 
 ### Run PolyFit
-This repository includes a [command-line example](./code/Example) and a [GUI demo](./code/PolyFit).
-- For the [commandline example](./code/Example), you can simply build and run it (the path to the input file is hard-coded in the [code](./code/Example/main.cpp)).
-- The [GUI demo](./code/PolyFit) provides a user interface with a few buttons (with numbered icons) and screen hints corresponding to these steps. Just click the buttons following the hints.
+This repository includes the following executable programs:
+- two [command-line examples in C++](./code/Examples);
+- two [examples in Python](./code/python/Examples);
+- a [GUI demo](./code/PolyFit), which provides a user interface with a few buttons and screen hints. 
 
 <p align="center"> 
      <img src="./images/gui.png" width="600"> 
