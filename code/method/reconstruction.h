@@ -39,7 +39,7 @@ class PointSet;
  * @param model_coverage weight for model coverage term
  * @param model_complexity weight for model complexity term
  */
-Map* METHOD_API reconstruct(
+METHOD_API Map* reconstruct(
         PointSet *point_cloud,                  // input point cloud
         LinearProgramSolver::SolverName solver, // solver name
         float data_fitting = 0.43,              // weight for data fitting term
