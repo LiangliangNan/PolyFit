@@ -4,7 +4,8 @@
 </p>
 
 
-# Polygonal surface reconstruction from point clouds (C++ & Python)
+# Polygonal surface reconstruction from point clouds 
+(C++ & Python)
 
 
 
