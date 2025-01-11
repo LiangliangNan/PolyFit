@@ -71,9 +71,9 @@ You can also build PolyFit from the source code:
 
 ### Run PolyFit
 This repository includes the following executable programs:
-- two [command-line examples in C++](./code/Examples);
-- two [examples in Python](./code/python/Examples);
-- a [GUI demo](./code/PolyFit), which provides a user interface with a few buttons and screen hints. 
+- [two command-line examples in C++](./code/Examples);
+- [two examples in Python](./code/python/Examples);
+- [a GUI demo](./code/PolyFit), which provides a user interface with a few buttons and screen hints. 
 
 <p align="center"> 
      <img src="./images/gui.png" width="600"> 
