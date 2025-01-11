@@ -42,6 +42,10 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 ################################################################################
+### Where to put the libraries
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 ### Configuration
 set(POLYFIT_ROOT         ${CMAKE_CURRENT_LIST_DIR})
@@ -87,4 +91,6 @@ add_subdirectory(renderer)
 add_subdirectory(Example)
 add_subdirectory(PolyFit)
 
+# Python bindings and examples
+add_subdirectory(python)
 
