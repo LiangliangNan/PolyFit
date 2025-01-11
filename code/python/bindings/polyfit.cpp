@@ -110,33 +110,22 @@ void bind_method_global(py::module &m) {
 }
 
 
-//// Define Python bindings for the HypothesisGenerator class
-//void bind_hypothesis_generator(py::module &m) {
-//    // Bind the SuperEdge structure
-//    py::class_<HypothesisGenerator::SuperEdge>(m, "SuperEdge")
-//            .def(py::init<>())
-//            .def_readwrite("s", &HypothesisGenerator::SuperEdge::s)
-//            .def_readwrite("t", &HypothesisGenerator::SuperEdge::t)
-//            .def("__len__", &HypothesisGenerator::SuperEdge::size)
-//            .def("__getitem__", [](const HypothesisGenerator::SuperEdge &self, size_t i) {
-//                if (i >= self.size()) throw py::index_error();
-//                return self[i];
-//            }, py::return_value_policy::reference_internal);
-//
-//    // Bind the Adjacency type
-//    py::bind_vector<HypothesisGenerator::Adjacency>(m, "Adjacency");
-//
-//    // Bind the HypothesisGenerator class
-//    py::class_<HypothesisGenerator>(m, "HypothesisGenerator")
-//            .def(py::init<PointSet *>(), py::arg("pset"))
-//            .def("refine_planes", &HypothesisGenerator::refine_planes, "Refine planes")
-//            .def("generate", &HypothesisGenerator::generate, "Generate candidate faces")
-//            .def("compute_confidences", &HypothesisGenerator::compute_confidences,
-//                 py::arg("mesh"), py::arg("use_conficence") = false, "Compute confidences")
-//            .def("extract_adjacency", &HypothesisGenerator::extract_adjacency, "Extract adjacency information")
-//            .def("ready_for_optimization", &HypothesisGenerator::ready_for_optimization,
-//                 "Check if ready for optimization");
-//}
+// Define Python bindings for the HypothesisGenerator class
+void bind_hypothesis_generator(py::module &m) {
+    // Bind the Adjacency type
+    py::bind_vector<HypothesisGenerator::Adjacency>(m, "Adjacency");
+
+    // Bind the HypothesisGenerator class
+    py::class_<HypothesisGenerator>(m, "HypothesisGenerator")
+            .def(py::init<PointSet *>(), py::arg("pset"))
+            .def("refine_planes", &HypothesisGenerator::refine_planes, "Refine planes")
+            .def("generate", &HypothesisGenerator::generate, "Generate candidate faces")
+            .def("compute_confidences", &HypothesisGenerator::compute_confidences,
+                 py::arg("mesh"), py::arg("use_conficence") = false, "Compute confidences")
+            .def("extract_adjacency", &HypothesisGenerator::extract_adjacency, "Extract adjacency information")
+            .def("ready_for_optimization", &HypothesisGenerator::ready_for_optimization,
+                 "Check if ready for optimization");
+}
 
 
 // Define Python bindings for the FaceSelection class
@@ -189,7 +178,7 @@ PYBIND11_MODULE(PyPolyFit_NAME, m) {
     bind_vertex_group(m);
     bind_point_set(m);
     bind_map(m);
-//    bind_hypothesis_generator(m);
+    bind_hypothesis_generator(m);
     bind_method_global(m);
     bind_face_selection(m);
     bind_reconstruction(m);
