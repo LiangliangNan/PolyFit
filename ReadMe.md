@@ -5,7 +5,7 @@
 
 
 # Polygonal surface reconstruction from point clouds 
-(C++ & Python)
+(implemented with C++ & with Python bindings)
 
 
 
