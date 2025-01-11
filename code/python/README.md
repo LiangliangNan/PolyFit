@@ -15,4 +15,4 @@ can find the Python bindings module `PyPolyFit` (`PyPolyFit.pyd` on Windows, `Py
 ### Use PolyFit bindings in Python code
 
 After building the Python bindings, you should already be able to use the Python bindings module in your Python code.
-See the [example](./polyfit_example.py).
+See the [examples](./Examples).

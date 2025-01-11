@@ -88,7 +88,7 @@ add_subdirectory(model)
 add_subdirectory(renderer)
 
 
-add_subdirectory(Example)
+add_subdirectory(Examples)
 add_subdirectory(PolyFit)
 
 # Python bindings and examples

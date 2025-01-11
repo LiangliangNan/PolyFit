@@ -10,13 +10,21 @@
 #     ICCV 2017.
 # ------------------------------------------------------------------
 
+
+# This example shows how to perform the reconstruction step by step.
+# This could be useful if you want to reuse the generated candidate faces and their confidence values,
+# but try multiple times of the final optimization step with different parameters.
+#
+# See "Example_1" for reconstruction with a single function call.
+
+
 import sys
 sys.path.append("../../../cmake-build-release/lib")     # <--- Update this to use your actual build directory.
 
 import PyPolyFit as polyfit
 
 def main():
-    # Initialize the logger (this is not optional)
+    # Initialize PolyFit
     polyfit.initialize()
 
     # Default parameters
@@ -63,6 +71,7 @@ def main():
     if mesh.size_of_facets() == 0:
         print("Optimization failed: model has no face", file=sys.stderr)
         sys.exit(1)
+    print(f"Reconstructed mesh has {mesh.size_of_facets()} faces")
 
     # Save result to file
     if polyfit.save_mesh(output_file, mesh):

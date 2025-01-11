@@ -12,6 +12,7 @@ set(method_HEADERS
         hypothesis_generator.h
         method_common.h
         method_global.h
+        reconstruction.h
         )
 
 set(method_SOURCES
@@ -19,6 +20,7 @@ set(method_SOURCES
         face_selection.cpp
         hypothesis_generator.cpp
         method_global.cpp
+        reconstruction.cpp
         )
 
 
