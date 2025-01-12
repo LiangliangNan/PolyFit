@@ -27,9 +27,7 @@ set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_LIBRARIES} basic math model 3rd_glew)
 
-
 target_compile_definitions(${PROJECT_NAME} PRIVATE RENDERER_EXPORTS)
-
 
 if (MSVC)
     target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -37,3 +35,18 @@ if (MSVC)
         _CRT_SECURE_NO_DEPRECATE
         )
 endif()
+
+# RPATH settings for macOS and Linux
+if (APPLE)
+    # For macOS, @loader_path ensures the library looks for dependencies relative to the location of the module.
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+            BUILD_RPATH "@loader_path"
+            INSTALL_RPATH "@loader_path"
+            )
+elseif (UNIX)
+    # For Linux, $ORIGIN ensures the library looks for dependencies relative to the location of the module.
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+            BUILD_RPATH "$ORIGIN"
+            INSTALL_RPATH "$ORIGIN"
+            )
+endif ()

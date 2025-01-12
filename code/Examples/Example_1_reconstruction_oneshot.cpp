@@ -29,9 +29,9 @@ int main(int argc, char **argv)
     Logger::initialize();
 
     // input point cloud file name
-    const std::string input_file = (argc > 1) ? argv[1] : std::string(POLYFIT_CODE_DIR) + "/../data/toy_data.bvg";
+    const std::string input_file = (argc > 1) ? argv[1] : std::string(POLYFIT_ROOT_DIR) + "/data/toy_data.bvg";
     // output mesh file name
-    const std::string output_file = (argc > 2) ? argv[2] : std::string(POLYFIT_CODE_DIR) + "/../data/toy_data-result.obj";
+    const std::string output_file = (argc > 2) ? argv[2] : std::string(POLYFIT_ROOT_DIR) + "/data/toy_data-result.obj";
 
     // load point cloud from file
     auto point_cloud = PointSetIO::read(input_file);

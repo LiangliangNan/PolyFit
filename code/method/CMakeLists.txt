@@ -56,3 +56,18 @@ if (MSVC)
 endif ()
 
 target_link_libraries(${PROJECT_NAME} basic math model)
+
+# RPATH settings for macOS and Linux
+if (APPLE)
+    # For macOS, @loader_path ensures the library looks for dependencies relative to the location of the module.
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+            BUILD_RPATH "@loader_path"
+            INSTALL_RPATH "@loader_path"
+            )
+elseif (UNIX)
+    # For Linux, $ORIGIN ensures the library looks for dependencies relative to the location of the module.
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+            BUILD_RPATH "$ORIGIN"
+            INSTALL_RPATH "$ORIGIN"
+            )
+endif ()

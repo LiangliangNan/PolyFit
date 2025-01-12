@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polyfit"
+version = "@CONF_POLYFIT_RELEASE_DATE@"  # Use the release date as the version number
+description = "Python bindings for the PolyFit library"
+authors = [
+    { name = "Liangliang Nan", email = "liangliang.nan@gmail.com" }
+]
+license = { text = "GPLv3" }
+urls = { Homepage = "https://github.com/LiangliangNan/PolyFit" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+]
+requires-python = ">=3.8"  # Specifies Python version requirement
+dependencies = [
+    # "numpy",   # only Python package dependencies
+]
+
+# Include all non-Python files in the distribution
+[tool.setuptools]
+include-package-data = true
+
+# Specify where to find Python packages
+[tool.setuptools.packages.find]
+where = ["."]  # Look for packages in the root directory
+include = ["polyfit*"]  # Include the `polyfit` package and its submodules
+
+# Include specific files and directories in the distribution
+[tool.setuptools.package-data]
+polyfit = [
+    "LICENSE",
+    "README.md",
+    "*.so",     # Include .so files (Linux and macOS)
+    "*.dylib",  # Include .dylib files (macOS)
+    "*.pyd",    # Include .pyd files (Windows)
+    "*.dll",    # Include .dll files (Windows)
+]
+
+# Exclude specific files (e.g., .DS_Store, runtime_dependencies.txt)
+[tool.setuptools.exclude-package-data]
+polyfit = [
+    "**/.DS_Store",
+    "**/runtime_dependencies.txt",
+]
