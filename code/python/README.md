@@ -16,3 +16,5 @@ can find the Python bindings module `PyPolyFit` (`PyPolyFit.pyd` on Windows, `Py
 
 After building the Python bindings, you should already be able to use the Python bindings module in your Python code.
 See the [examples](./Examples).
+
+**Note**: the Python version used for running the code should match the version used for building the bindings.
