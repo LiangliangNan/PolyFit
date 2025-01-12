@@ -58,7 +58,7 @@ endif()
 
 
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "PolyFit")
-
+target_include_directories(${PROJECT_NAME} PRIVATE ${POLYFIT_INCLUDE_DIR})
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
@@ -68,4 +68,4 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE QT_DEPRECATED_WARNINGS)
 
 target_link_libraries( ${PROJECT_NAME} ${QtLibs})
 
-target_link_libraries( ${PROJECT_NAME} basic math model method renderer glew QGLViewer)
+target_link_libraries( ${PROJECT_NAME} basic math model method renderer 3rd_glew 3rd_QGLViewer)

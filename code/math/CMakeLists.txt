@@ -40,8 +40,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-        ${POLYFIT_scip_DIR}
-        ${POLYFIT_scip_DIR}/scip
+        ${POLYFIT_INCLUDE_DIR}
+        ${POLYFIT_3RD_PARTY_DIR}/scip
+        ${POLYFIT_3RD_PARTY_DIR}/scip/scip
         )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE MATH_EXPORTS)
@@ -69,9 +70,9 @@ endif ()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         basic
-        scip
-#        lpsolve
-#        glpk
-        soplex
+        3rd_scip
+#        3rd_lpsolve
+#        3rd_glpk
+        3rd_soplex
         ${CMAKE_DL_LIBS}
         )

@@ -1,7 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
-
-get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-project(${PROJECT_NAME})
+set(PROJECT_NAME 3rd_scip)
 
 set(scip_HEADERS
         blockmemshell/memory.h
@@ -949,9 +946,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-        ${POLYFIT_scip_DIR}
-        ${POLYFIT_scip_DIR}/scip
-        ${POLYFIT_soplex_DIR}/src
+        ${POLYFIT_3RD_PARTY_DIR}/scip
+        ${POLYFIT_3RD_PARTY_DIR}/scip/scip
+        ${POLYFIT_3RD_PARTY_DIR}/soplex/src
         )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC SCIP_NO_SIGACTION NO_CONFIG_HEADER SCIP_NO_STRTOK_R _CRT_SECURE_NO_WARNINGS TPI_NONE NPARASCIP WITH_SCIPDEF SCIP_ROUNDING_FE)

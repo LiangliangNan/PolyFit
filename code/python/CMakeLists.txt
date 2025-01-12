@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 11)  # If you use pybind11::overload_cast<...>, then it r
 
 pybind11_add_module(${PROJECT_NAME} MODULE bindings/polyfit.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE method)
-
+target_include_directories(${PROJECT_NAME} PRIVATE ${POLYFIT_INCLUDE_DIR})
 target_compile_definitions(${PROJECT_NAME} PRIVATE PYBIND11_SIMPLE_GIL_SAFE_ABI) # to use the Python Stable ABI
 
 set(POLYFIT_MODULE_NAME "PyPolyFit") # Sets the base name of the output file

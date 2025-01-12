@@ -1,5 +1,4 @@
-get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-project(${PROJECT_NAME})
+set(PROJECT_NAME 3rd_QGLViewer)
 
 include(../../cmake/UseQt.cmake)
 
@@ -7,32 +6,32 @@ find_package(OpenGL REQUIRED)
 
 # QGLViewer target.
 set(QGLViewer_SRC
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/BackFaceCullingOptimizer.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/BSPSortMethod.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/EPSExporter.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/Exporter.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/FIGExporter.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/gpc.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/NVector3.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/ParserGL.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/Primitive.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/PrimitivePositioning.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/TopologicalSortMethod.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/Vector2.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/Vector3.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/VisibilityOptimizer.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/VRender/VRender.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/camera.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/constraint.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/frame.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/keyFrameInterpolator.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/manipulatedCameraFrame.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/manipulatedFrame.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/mouseGrabber.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/qglviewer.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/quaternion.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/saveSnapshot.cpp"
-    "${PROJECT_SOURCE_DIR}/QGLViewer/vec.cpp")
+    "QGLViewer/VRender/BackFaceCullingOptimizer.cpp"
+    "QGLViewer/VRender/BSPSortMethod.cpp"
+    "QGLViewer/VRender/EPSExporter.cpp"
+    "QGLViewer/VRender/Exporter.cpp"
+    "QGLViewer/VRender/FIGExporter.cpp"
+    "QGLViewer/VRender/gpc.cpp"
+    "QGLViewer/VRender/NVector3.cpp"
+    "QGLViewer/VRender/ParserGL.cpp"
+    "QGLViewer/VRender/Primitive.cpp"
+    "QGLViewer/VRender/PrimitivePositioning.cpp"
+    "QGLViewer/VRender/TopologicalSortMethod.cpp"
+    "QGLViewer/VRender/Vector2.cpp"
+    "QGLViewer/VRender/Vector3.cpp"
+    "QGLViewer/VRender/VisibilityOptimizer.cpp"
+    "QGLViewer/VRender/VRender.cpp"
+    "QGLViewer/camera.cpp"
+    "QGLViewer/constraint.cpp"
+    "QGLViewer/frame.cpp"
+    "QGLViewer/keyFrameInterpolator.cpp"
+    "QGLViewer/manipulatedCameraFrame.cpp"
+    "QGLViewer/manipulatedFrame.cpp"
+    "QGLViewer/mouseGrabber.cpp"
+    "QGLViewer/qglviewer.cpp"
+    "QGLViewer/quaternion.cpp"
+    "QGLViewer/saveSnapshot.cpp"
+    "QGLViewer/vec.cpp")
 
 add_library(${PROJECT_NAME} STATIC ${QGLViewer_SRC})
 set_target_properties(${PROJECT_NAME} PROPERTIES FOLDER "3rd_party")

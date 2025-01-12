@@ -28,7 +28,7 @@ add_library(${PROJECT_NAME} SHARED ${method_SOURCES} ${method_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
         FOLDER "PolyFit")
 
-
+target_include_directories(${PROJECT_NAME} PUBLIC ${POLYFIT_INCLUDE_DIR})
 find_package(CGAL REQUIRED)
 if (CGAL_FOUND)
     message(STATUS "Found CGAL ${CGAL_VERSION}")

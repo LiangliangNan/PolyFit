@@ -21,11 +21,11 @@ add_library(${PROJECT_NAME} SHARED ${renderer_SOURCES} ${renderer_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       FOLDER "PolyFit")
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${POLYFIT_glew_DIR}/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${POLYFIT_INCLUDE_DIR})
 
 set(OpenGL_GL_PREFERENCE GLVND)
 find_package(OpenGL REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_LIBRARIES} basic math model glew)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${OPENGL_LIBRARIES} basic math model 3rd_glew)
 
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE RENDERER_EXPORTS)

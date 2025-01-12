@@ -1,5 +1,4 @@
-get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-project(${PROJECT_NAME})
+set(PROJECT_NAME 3rd_glew)
 
 add_library(${PROJECT_NAME} STATIC src/glew.c)
 

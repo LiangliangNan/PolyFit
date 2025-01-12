@@ -51,7 +51,7 @@ add_library(${PROJECT_NAME} SHARED ${model_SOURCES} ${model_HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES
                       FOLDER "PolyFit")
 
-
+target_include_directories(${PROJECT_NAME} PUBLIC ${POLYFIT_INCLUDE_DIR})
 target_compile_definitions(${PROJECT_NAME} PRIVATE MODEL_EXPORTS)
 
 
