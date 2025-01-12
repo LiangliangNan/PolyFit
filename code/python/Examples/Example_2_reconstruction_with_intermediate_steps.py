@@ -21,7 +21,7 @@
 import sys
 sys.path.append("../../../cmake-build-release/lib/python")     # <--- Update this to use your actual build directory.
 
-import PyPolyFit as polyfit
+import polyfit
 
 def main():
     # Initialize PolyFit
