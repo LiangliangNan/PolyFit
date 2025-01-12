@@ -36,11 +36,11 @@
 */
 
 
-#include "map_geometry.h"
-#include "map_attributes.h"
-#include "map_copier.h"
-#include "map_builder.h"
-#include "../math/polygon2d.h"
+#include <model/map_geometry.h>
+#include <model/map_attributes.h>
+#include <model/map_copier.h>
+#include <model/map_builder.h>
+#include <math/polygon2d.h>
 
 
 namespace Geom {

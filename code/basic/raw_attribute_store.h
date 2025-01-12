@@ -39,8 +39,8 @@
 #ifndef _RAW_ATTRIBUTE_STORE__
 #define _RAW_ATTRIBUTE_STORE__
 
-#include "basic_common.h"
-#include "record_id.h"
+#include <basic/basic_common.h>
+#include <basic/record_id.h>
 
 #include <vector>
 #include <set>

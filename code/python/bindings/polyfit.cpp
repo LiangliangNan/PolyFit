@@ -18,16 +18,16 @@
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
-#include "../../basic/logger.h"
-#include "../../model/point_set.h"
-#include "../../model/map.h"
-#include "../../method/method_global.h"
-#include "../../method/hypothesis_generator.h"
-#include "../../method/face_selection.h"
-#include "../../method/reconstruction.h"
-#include "../../model/map_io.h"
-#include "../../model/point_set_io.h"
-#include "../../math/linear_program_solver.h"
+#include <basic/logger.h>
+#include <model/point_set.h>
+#include <model/map.h>
+#include <method/method_global.h>
+#include <method/hypothesis_generator.h>
+#include <method/face_selection.h>
+#include <method/reconstruction.h>
+#include <model/map_io.h>
+#include <model/point_set_io.h>
+#include <math/linear_program_solver.h>
 
 
 namespace py = pybind11;

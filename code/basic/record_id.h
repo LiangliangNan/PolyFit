@@ -39,9 +39,9 @@
 #ifndef __RECORD_ID__
 #define __RECORD_ID__
 
-#include "basic_common.h"
-#include "../basic/basic_types.h"
-#include "../basic/assertions.h"
+#include <basic/basic_common.h>
+#include <basic//basic_types.h>
+#include <basic//assertions.h>
 #include <iostream>
 
 // #define OGF_ATTRIBUTE_CHECK

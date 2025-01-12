@@ -15,9 +15,9 @@
  */
 
 
-#include "linear_program_solver.h"
-#include "../3rd_lpsolve/lp_lib.h"
-#include "../basic/logger.h"
+#include <math/linear_program_solver.h>
+#include <3rd_party/lpsolve/lp_lib.h>
+#include <basic/logger.h>
 
 #include <iostream>
 

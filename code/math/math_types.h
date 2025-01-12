@@ -39,12 +39,12 @@
 #ifndef _MATH_TYPES_H_
 #define _MATH_TYPES_H_
 
-#include "math_common.h"
-#include "vecg.h"
-#include "box.h"
-#include "line.h"
-#include "plane.h"
-#include "matrix.h"
+#include <math/math_common.h>
+#include <math/vecg.h>
+#include <math/box.h>
+#include <math/line.h>
+#include <math/plane.h>
+#include <math/matrix.h>
 
 /**
  * Gathers different base types for geometric operations. 

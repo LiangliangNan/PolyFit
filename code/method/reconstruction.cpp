@@ -15,13 +15,13 @@
  */
 
 
-#include "reconstruction.h"
-#include "face_selection.h"
-#include "hypothesis_generator.h"
-#include "method_global.h"
+#include <method/reconstruction.h>
+#include <method/face_selection.h>
+#include <method/hypothesis_generator.h>
+#include <method/method_global.h>
 
-#include "../basic/logger.h"
-#include "../model/point_set.h"
+#include <basic/logger.h>
+#include <model/point_set.h>
 
 
 Map* reconstruct(

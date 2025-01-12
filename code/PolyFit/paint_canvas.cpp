@@ -21,17 +21,17 @@
 #include <QMessageBox>
 #include <QCoreApplication>
 
-#include "../3rd_party/QGLViewer/QGLViewer/manipulatedCameraFrame.h"
-#include "../basic/file_utils.h"
-#include "../basic/stop_watch.h"
-#include "../model/map_editor.h"
-#include "../model/map_geometry.h"
-#include "../renderer/opengl_info.h"
-#include "../renderer/surface_render.h"
-#include "../renderer/point_set_render.h"
-#include "../method/hypothesis_generator.h"
-#include "../method/face_selection.h"
-#include "../method/method_global.h"
+#include <3rd_party/QGLViewer/QGLViewer/manipulatedCameraFrame.h>
+#include <basic/file_utils.h>
+#include <basic/stop_watch.h>
+#include <model/map_editor.h>
+#include <model/map_geometry.h>
+#include <renderer/opengl_info.h>
+#include <renderer/surface_render.h>
+#include <renderer/point_set_render.h>
+#include <method/hypothesis_generator.h>
+#include <method/face_selection.h>
+#include <method/method_global.h>
 
 #include "main_window.h"
 

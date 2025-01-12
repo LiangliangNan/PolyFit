@@ -31,14 +31,14 @@
 #include "dlg/weight_panel_click.h"
 #include "dlg/weight_panel_manual.h"
 
-#include "../basic/file_utils.h"
-#include "../model/map_attributes.h"
-#include "../model/map_builder.h"
-#include "../model/map_io.h"
-#include "../model/map_enumerator.h"
-#include "../model/point_set_io.h"
-#include "../method/method_global.h"
-#include "../basic/attribute_serializer.h"
+#include <basic/file_utils.h>
+#include <model/map_attributes.h>
+#include <model/map_builder.h>
+#include <model/map_io.h>
+#include <model/map_enumerator.h>
+#include <model/point_set_io.h>
+#include <method/method_global.h>
+#include <basic/attribute_serializer.h>
 
 
 MainWindow::MainWindow(QWidget *parent)

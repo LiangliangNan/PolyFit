@@ -3,7 +3,7 @@
 #define _METHOD_COMMON_H_
 
 
-#include "../basic/basic_common.h"
+#include <basic/basic_common.h>
 
 
 # ifdef METHOD_EXPORTS

@@ -20,10 +20,10 @@
 
 #include <QMainWindow>
 
-#include "../math/math_types.h"
-#include "../basic/logger.h"
-#include "../basic/progress.h"
-#include "../math/linear_program_solver.h"
+#include <math/math_types.h>
+#include <basic/logger.h>
+#include <basic/progress.h>
+#include <math/linear_program_solver.h>
 
 #include "ui_main_window.h"
 

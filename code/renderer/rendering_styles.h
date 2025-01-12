@@ -38,8 +38,8 @@
 */
 
 
-#include "renderer_common.h"
-#include "../basic/color.h"
+#include <renderer/renderer_common.h>
+#include <basic/color.h>
 
 
 

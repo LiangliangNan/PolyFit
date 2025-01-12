@@ -40,9 +40,9 @@
 #define ___ATTRIBUTE__
 
 
-#include "attribute_manager.h"
-#include "attribute_store.h"
-#include "attribute_life_cycle.h"
+#include <basic/attribute_manager.h>
+#include <basic/attribute_store.h>
+#include <basic/attribute_life_cycle.h>
 
 
 class /*BASIC_API*/ AttributeBase {

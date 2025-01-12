@@ -15,7 +15,7 @@
  */
 
 
-#include "linear_program_solver.h"
+#include <math/linear_program_solver.h>
 
 #include <iostream>
 #include <cmath>

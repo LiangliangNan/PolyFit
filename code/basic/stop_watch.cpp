@@ -14,8 +14,8 @@
  * ---------------------------------------------------------------------------
  */
 
-#include "stop_watch.h"
-#include "basic_types.h" // for "round()"
+#include <basic/stop_watch.h>
+#include <basic/basic_types.h> // for "round()"
 #include <iostream>
 
 

@@ -39,8 +39,8 @@
 #ifndef _MAP_IO_H_
 #define _MAP_IO_H_
 
-#include "model_common.h"
-#include "../basic/basic_types.h"
+#include <model/model_common.h>
+#include <basic/basic_types.h>
 
 #include <string>
 

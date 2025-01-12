@@ -38,9 +38,9 @@
 #ifndef _ATTRIBUTE_LIFE_CYCLE_H_
 #define _ATTRIBUTE_LIFE_CYCLE_H_
 
-#include "basic_common.h"
-#include "../basic/counted.h"
-#include "../basic/smart_pointer.h"
+#include <basic/basic_common.h>
+#include <basic//counted.h>
+#include <basic//smart_pointer.h>
 
 #include <string.h>
 

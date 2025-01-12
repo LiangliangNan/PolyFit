@@ -36,10 +36,10 @@
 */
 
 
-#include "map_enumerator.h"
-#include "map.h"
-#include "map_geometry.h"
-#include "../basic/assertions.h"
+#include <model/map_enumerator.h>
+#include <model/map.h>
+#include <model/map_geometry.h>
+#include <basic/assertions.h>
 
 #include <stack>
 

@@ -17,13 +17,13 @@
 #ifndef PAINTCANVAS_H
 #define PAINTCANVAS_H
 
-#include <GL/glew.h>
+#include <3rd_party/glew/include/GL/glew.h>
 
-#include "../3rd_party/QGLViewer/QGLViewer/qglviewer.h"
-#include "../basic/color.h"
-#include "../math/math_types.h"
-#include "../model/point_set.h"
-#include "../model/map.h"
+#include <3rd_party/QGLViewer/QGLViewer/qglviewer.h>
+#include <basic/color.h>
+#include <math/math_types.h>
+#include <model/point_set.h>
+#include <model/map.h>
 
 class MainWindow;
 class SurfaceRender;

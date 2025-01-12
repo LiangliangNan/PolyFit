@@ -14,12 +14,12 @@
  * ---------------------------------------------------------------------------
  */
 
-#include "point_set_io.h"
-#include "point_set_serializer_vg.h"
-#include "../model/point_set.h"
-#include "../basic/stop_watch.h"
-#include "../basic/file_utils.h"
-#include "../basic/logger.h"
+#include <model/point_set_io.h>
+#include <model/point_set_serializer_vg.h>
+#include <model/point_set.h>
+#include <basic/stop_watch.h>
+#include <basic/file_utils.h>
+#include <basic/logger.h>
 
 #include <fstream>
 #include <list>

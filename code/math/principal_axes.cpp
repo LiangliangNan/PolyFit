@@ -36,8 +36,8 @@
 */
 
 
-#include "principal_axes.h"
-#include "semi_definite_symmetric_eigen.h"
+#include <math/principal_axes.h>
+#include <math/semi_definite_symmetric_eigen.h>
 
 
 PrincipalAxes3d::PrincipalAxes3d() {

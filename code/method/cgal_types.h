@@ -5,7 +5,7 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Polygon_2.h>
 #include <CGAL/intersections.h>
-#include "../math/math_types.h"
+#include <math/math_types.h>
 
 
 

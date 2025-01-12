@@ -39,11 +39,11 @@
 #define _ATTRIBUTE_STORE_H_
 
 
-#include "basic_common.h"
-#include "raw_attribute_store.h"
-#include "attribute_life_cycle.h"
-#include "../basic/smart_pointer.h"
-#include "../basic/counted.h"
+#include <basic/basic_common.h>
+#include <basic/raw_attribute_store.h>
+#include <basic/attribute_life_cycle.h>
+#include <basic//smart_pointer.h>
+#include <basic//counted.h>
 
 #include <typeinfo>
 

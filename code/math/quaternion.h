@@ -1,8 +1,8 @@
 #ifndef _MATH_QUATERNION_H_
 #define _MATH_QUATERNION_H_
 
-#include "math_common.h"
-#include "math_types.h"
+#include <math/math_common.h>
+#include <math/math_types.h>
 
 /*The Quaternion class represents 3D rotations and orientations.
 

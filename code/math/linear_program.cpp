@@ -14,7 +14,7 @@
  * ---------------------------------------------------------------------------
  */
 
-#include "linear_program.h"
+#include <math/linear_program.h>
 
 #include <iostream>
 #include <sstream>

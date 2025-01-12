@@ -37,13 +37,13 @@
 
 
 
-#include "map_io.h"
-#include "../basic/logger.h"
-#include "../basic/file_utils.h"
-#include "../model/map.h"
-#include "../basic/stop_watch.h"
-#include "map_serializer.h"
-#include "map_serializer_obj.h"
+#include <model/map_io.h>
+#include <basic/logger.h>
+#include <basic/file_utils.h>
+#include <model/map.h>
+#include <basic/stop_watch.h>
+#include <model/map_serializer.h>
+#include <model/map_serializer_obj.h>
 
 
 Map* MapIO::read(const std::string& file_name)

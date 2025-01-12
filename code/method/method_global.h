@@ -2,7 +2,7 @@
 #define _METHOD_GLOBAL_H_
 
 
-#include "method_common.h"
+#include <method/method_common.h>
 
 #include <string>
 

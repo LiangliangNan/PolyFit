@@ -41,7 +41,7 @@
 #define _GEOM_MAP_CIRCULATORS_H_
 
 
-#include "map.h"
+#include <model/map.h>
 
 /* usage example:
 

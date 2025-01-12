@@ -38,10 +38,10 @@
 *     Qt, SuperLU, WildMagic and CGAL
 */
 
-#include "basic_common.h"
-#include "basic_types.h"
-#include "smart_pointer.h"
-#include "assertions.h"
+#include <basic/basic_common.h>
+#include <basic/basic_types.h>
+#include <basic/smart_pointer.h>
+#include <basic/assertions.h>
 
 
 

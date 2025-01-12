@@ -15,9 +15,9 @@
  */
 
 
-#include "linear_program_solver.h"
-#include "../basic/logger.h"
-#include "../3rd_glpk/glpk.h"
+#include <math/linear_program_solver.h>
+#include <basic/logger.h>
+#include <glpk/glpk.h>
 
 #include <iostream>
 

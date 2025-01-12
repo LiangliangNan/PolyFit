@@ -16,8 +16,8 @@
 
 #include "weight_panel_manual.h"
 
-#include "../math/math_types.h"
-#include "../method/method_global.h"
+#include <math/math_types.h>
+#include <method/method_global.h>
 
 #include "main_window.h"
 #include "paint_canvas.h"

@@ -36,13 +36,13 @@
 */
 
 
-#include "map_serializer_obj.h"
-#include "../basic/logger.h"
-#include "../basic/file_utils.h"
-#include "../basic/line_stream.h"
-#include "../model/map_builder.h"
-#include "../model/map_enumerator.h"
-#include "../basic/generic_attributes_io.h"
+#include <model/map_serializer_obj.h>
+#include <basic/logger.h>
+#include <basic/file_utils.h>
+#include <basic/line_stream.h>
+#include <model/map_builder.h>
+#include <model/map_enumerator.h>
+#include <basic/generic_attributes_io.h>
 
 
 MapSerializer_obj::MapSerializer_obj() {

@@ -36,8 +36,8 @@
 */
 
 
-#include "attribute_manager.h"
-#include "../basic/logger.h"
+#include <basic/attribute_manager.h>
+#include <basic//logger.h>
 #include <typeinfo>
 
 

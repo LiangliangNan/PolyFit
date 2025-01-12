@@ -15,14 +15,13 @@
  */
 
 
-#include "../basic/logger.h"
-#include "../model/point_set.h"
-#include "../model/map.h"
-#include "../method/method_global.h"
-#include "../method/hypothesis_generator.h"
-#include "../method/face_selection.h"
-#include "../model/map_io.h"
-#include "../model/point_set_io.h"
+#include <basic/logger.h>
+#include <model/point_set.h>
+#include <model/map.h>
+#include <model/point_set_io.h>
+#include <model/map_io.h>
+#include <method/hypothesis_generator.h>
+#include <method/face_selection.h>
 
 
 int main(int argc, char **argv)

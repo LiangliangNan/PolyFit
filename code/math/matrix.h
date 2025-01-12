@@ -40,7 +40,7 @@
 #ifndef __MATH_LINEAR_ALGEBRA_MATRIX__
 #define __MATH_LINEAR_ALGEBRA_MATRIX__
 
-#include "../basic/assertions.h"
+#include <basic/assertions.h>
 #include <iostream>
 
 

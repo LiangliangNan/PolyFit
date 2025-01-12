@@ -17,7 +17,7 @@
 #ifndef _ALPHA_SHAPE_H_
 #define _ALPHA_SHAPE_H_
 
-#include "cgal_types.h"
+#include <method/cgal_types.h>
 #include <CGAL/version.h>
 
 /*
@@ -28,16 +28,16 @@ are still requested by the concept Kernel but must now be marked with the
 explicit specifier.
 */
 #if CGAL_VERSION_NR >= 1041100000 
-#include "alpha_shape_CGAL4.11_and_later.h"
+#include <method/alpha_shape_CGAL4.11_and_later.h>
 #else
-#include "alpha_shape_CGAL4.10_and_earlier.h"
+#include <method/alpha_shape_CGAL4.10_and_earlier.h>
 #endif
 
 #include <CGAL/Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_hierarchy_2.h>
 
-#include "../model/point_set.h"
-#include "../model/vertex_group.h"
+#include <model/point_set.h>
+#include <model/vertex_group.h>
 
 #include <string>
 

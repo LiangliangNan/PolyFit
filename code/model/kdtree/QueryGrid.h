@@ -29,8 +29,8 @@
 #ifndef __QUERYGRID_H_
 #define __QUERYGRID_H_
 
-#include "Vector3D.h"
-#include "PriorityQueue.h"
+#include <model/kdtree/Vector3D.h>
+#include <model/kdtree/PriorityQueue.h>
 
 
 namespace kdtree  {

@@ -39,8 +39,8 @@
 #ifndef __RAT_H_
 #define __RAT_H_
 
-#include "basic_common.h" 
-#include "raw_attribute_store.h"
+#include <basic/basic_common.h>
+#include <basic/raw_attribute_store.h>
 
 /**
 * RAT (Record Allocation Table) is used internally by

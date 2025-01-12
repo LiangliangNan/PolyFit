@@ -15,14 +15,14 @@
  */
 
 
-#include "linear_program.h"
+#include <math/linear_program.h>
 
 #include <iostream>
 #include <fstream>
 #include <algorithm>
 
-#include "scip/scip.h"
-#include "scip/scipdefplugins.h"
+#include <scip/scip.h>
+#include <scip/scipdefplugins.h>
 
 
 // sort variables in an increasing order according to their indices

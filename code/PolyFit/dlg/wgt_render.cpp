@@ -19,8 +19,8 @@
 #include <QColorDialog>
 #include <QFileDialog>
 
-#include "../renderer/surface_render.h"
-#include "../renderer/point_set_render.h"
+#include <renderer/surface_render.h>
+#include <renderer/point_set_render.h>
 
 #include "main_window.h"
 #include "paint_canvas.h"

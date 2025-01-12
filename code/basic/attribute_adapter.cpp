@@ -36,7 +36,7 @@
 */
 
 
-#include "attribute_adapter.h"
+#include <basic/attribute_adapter.h>
 
 
 AttributeAdapterBase::SecondaryType AttributeAdapterBase::parse_name(std::string& name) {

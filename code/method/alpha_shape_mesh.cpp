@@ -14,14 +14,14 @@
  * ---------------------------------------------------------------------------
  */
 
-#include "alpha_shape_mesh.h"
-#include "../math/math_types.h"
-#include "../model/vertex_group.h"
-#include "../basic/stop_watch.h"
-#include "../basic/logger.h"
-#include "../model/map.h"
-#include "../model/map_builder.h"
-#include "alpha_shape.h"
+#include <method/alpha_shape_mesh.h>
+#include <math/math_types.h>
+#include <model/vertex_group.h>
+#include <basic/stop_watch.h>
+#include <basic/logger.h>
+#include <model/map.h>
+#include <model/map_builder.h>
+#include <method/alpha_shape.h>
 
 
 // return the indices of boundary points

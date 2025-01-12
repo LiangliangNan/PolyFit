@@ -20,8 +20,8 @@
 #include <QMouseEvent>
 #include <QMessageBox>
 
-#include "../math/math_types.h"
-#include "../method/method_global.h"
+#include <math/math_types.h>
+#include <method/method_global.h>
 #include "main_window.h"
 
 

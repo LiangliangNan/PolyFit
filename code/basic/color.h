@@ -38,8 +38,8 @@
 *     Qt, SuperLU, WildMagic and CGAL
 */
 
-#include "../basic/basic_types.h"
-#include "../basic/assertions.h"
+#include <basic//basic_types.h>
+#include <basic//assertions.h>
 
 #include <cassert>
 #include <iostream>

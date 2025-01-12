@@ -17,8 +17,8 @@
 #ifndef _MATH_LINEAR_PROGRAM_SOLVER_H_
 #define _MATH_LINEAR_PROGRAM_SOLVER_H_
 
-#include "math_common.h"
-#include "linear_program.h"
+#include <math/math_common.h>
+#include <math/linear_program.h>
 
 #include <vector>
 

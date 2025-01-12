@@ -36,8 +36,8 @@
 */
 
 
-#include "map_cells.h"
-#include "assert.h"
+#include <model/map_cells.h>
+#include <basic/assertions.h>
 
 
 namespace MapTypes {

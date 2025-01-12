@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "method_common.h"
-#include "../math/math_types.h"
+#include <method/method_common.h>
+#include <math/math_types.h>
 #include <string>
 #include <vector>
 

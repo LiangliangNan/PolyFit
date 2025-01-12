@@ -36,9 +36,9 @@
 */
 
 
-#include "map_builder.h"
-#include "map.h"
-#include "../basic/logger.h"
+#include <model/map_builder.h>
+#include <model/map.h>
+#include <basic/logger.h>
 
 #include <algorithm>
 

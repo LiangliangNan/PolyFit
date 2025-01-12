@@ -39,7 +39,7 @@
 #ifndef _BASIC_SMART_POINTER_H_
 #define _BASIC_SMART_POINTER_H_
 
-#include "assertions.h"
+#include <basic/assertions.h>
 
 
 /**

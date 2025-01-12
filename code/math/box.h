@@ -39,9 +39,9 @@
 #ifndef _MATH_GEOMETRY_BOX_H_
 #define _MATH_GEOMETRY_BOX_H_
 
-#include "math_common.h"
-#include "vecg.h"
-#include "../basic/assertions.h"
+#include <math/math_common.h>
+#include <math/vecg.h>
+#include <basic/assertions.h>
 
 
 template <class T>

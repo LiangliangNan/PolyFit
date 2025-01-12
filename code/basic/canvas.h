@@ -1,7 +1,7 @@
 #ifndef _BASIC_CANVAS_H_
 #define _BASIC_CANVAS_H_
 
-#include "basic_common.h"
+#include <basic/basic_common.h>
 #include <string>
 
 class Map;

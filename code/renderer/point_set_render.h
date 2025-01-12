@@ -19,8 +19,8 @@
 #ifndef _POINT_SET_RENDERER_H_
 #define _POINT_SET_RENDERER_H_
 
-#include "renderer_common.h"
-#include "rendering_styles.h"
+#include <renderer/renderer_common.h>
+#include <renderer/rendering_styles.h>
 
 
 class Canvas;

@@ -41,13 +41,13 @@
 #ifndef _GEOM_MAP_H_
 #define _GEOM_MAP_H_
 
-#include "model_common.h"
-#include "iterators.h"
-#include "map_cells.h"
-#include "../basic/dlist.h"
-#include "../basic/attribute.h"
-#include "../basic/counted.h"
-#include "../basic/smart_pointer.h"
+#include <model/model_common.h>
+#include <model/iterators.h>
+#include <model/map_cells.h>
+#include <basic/dlist.h>
+#include <basic/attribute.h>
+#include <basic/counted.h>
+#include <basic/smart_pointer.h>
 
 #include <vector>
 #include <list>

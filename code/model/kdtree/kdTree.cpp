@@ -26,7 +26,7 @@
 // licensing are not clear to you.
 //
 
-#include "kdTree.h"
+#include <model/kdtree/kdTree.h>
 #include <float.h>
 #include <stdlib.h>
 

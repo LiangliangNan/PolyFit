@@ -18,8 +18,8 @@
 #ifndef _MATH_PLANE_H_
 #define _MATH_PLANE_H_
 
-#include "math_common.h"
-#include "vecg.h"
+#include <math/math_common.h>
+#include <math/vecg.h>
 #include <cassert>
 
 // A 3D Plane of equation a.x + b.y + c.z + d = 0

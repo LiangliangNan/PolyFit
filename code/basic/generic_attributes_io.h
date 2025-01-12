@@ -39,9 +39,9 @@
 #ifndef _BASIC_GENERIC_ATTRIBUTES_IO_H_
 #define _BASIC_GENERIC_ATTRIBUTES_IO_H_
 
-#include "basic_common.h"
-#include "attribute_manager.h"
-#include "attribute_serializer.h"
+#include <basic/basic_common.h>
+#include <basic/attribute_manager.h>
+#include <basic/attribute_serializer.h>
 #include <iostream>
 
 

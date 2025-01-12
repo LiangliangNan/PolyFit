@@ -39,8 +39,8 @@
 #ifndef _LINE_STREAM_H_
 #define _LINE_STREAM_H_
 
-#include "basic_types.h"
-#include "assertions.h"
+#include <basic/basic_types.h>
+#include <basic/assertions.h>
 
 #include <iostream>
 #include <sstream>

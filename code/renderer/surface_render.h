@@ -17,9 +17,9 @@
 #ifndef _RENDERER_SURFACE_RENDERER_H_
 #define _RENDERER_SURFACE_RENDERER_H_
 
-#include "renderer_common.h"
-#include "rendering_styles.h"
-#include "../model/map_attributes.h"
+#include <renderer/renderer_common.h>
+#include <renderer/rendering_styles.h>
+#include <model/map_attributes.h>
 
 
 class Map;

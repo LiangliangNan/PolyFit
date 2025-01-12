@@ -40,10 +40,10 @@
 #ifndef _MAP_SERIALIZER_H_
 #define _MAP_SERIALIZER_H_
 
-#include "model_common.h"
-#include "../model/map.h"
-#include "../basic/counted.h"
-#include "../basic/smart_pointer.h"
+#include <model/model_common.h>
+#include <model/map.h>
+#include <basic/counted.h>
+#include <basic/smart_pointer.h>
 #include <iostream>
 
 

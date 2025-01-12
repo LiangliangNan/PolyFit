@@ -36,8 +36,8 @@
 */
 
 
-#include "../basic/basic_types.h"
-#include "semi_definite_symmetric_eigen.h"
+#include <basic/basic_types.h>
+#include <math/semi_definite_symmetric_eigen.h>
 
 
 

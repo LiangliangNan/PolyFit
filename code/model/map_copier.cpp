@@ -35,8 +35,8 @@
 *     Qt, SuperLU, WildMagic and CGAL
 */
 
-#include "map_copier.h"
-#include "map_builder.h"
+#include <model/map_copier.h>
+#include <model/map_builder.h>
 
 
 

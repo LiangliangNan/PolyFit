@@ -18,13 +18,13 @@
 #define _POINT_SET_H_
 
 
-#include "model_common.h"
-#include "../basic/basic_types.h"
-#include "../math/math_types.h"
-#include "../basic/counted.h"
-#include "../basic/smart_pointer.h"
+#include <model/model_common.h>
+#include <basic/basic_types.h>
+#include <math/math_types.h>
+#include <basic/counted.h>
+#include <basic/smart_pointer.h>
 
-#include "vertex_group.h"
+#include <model/vertex_group.h>
 #include <list>
 
 

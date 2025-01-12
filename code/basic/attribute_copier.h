@@ -39,8 +39,8 @@
 #define ___ATTRIBUTE_COPIER__
 
 
-#include "attribute.h"
-#include "../basic/logger.h"
+#include <basic/attribute.h>
+#include <basic//logger.h>
 
 #include <string>
 #include <typeinfo>

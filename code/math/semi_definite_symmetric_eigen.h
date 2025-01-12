@@ -39,7 +39,7 @@
 #ifndef _MATH_MATRIX_UTIL_H_
 #define _MATH_MATRIX_UTIL_H_
 
-#include "math_common.h"
+#include <math/math_common.h>
 
 
 namespace MatrixUtil {

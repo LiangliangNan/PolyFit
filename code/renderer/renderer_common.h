@@ -3,7 +3,7 @@
 #define _RENDERER_COMMON_H_
 
 
-#include "../basic/basic_common.h"
+#include <basic/basic_common.h>
 
 
 # ifdef RENDERER_EXPORTS

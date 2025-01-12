@@ -18,8 +18,8 @@
 #ifndef _POLYFIT_RECONSTRUCTION_H_
 #define _POLYFIT_RECONSTRUCTION_H_
 
-#include "method_common.h"
-#include "../math/linear_program_solver.h"
+#include <method/method_common.h>
+#include <math/linear_program_solver.h>
 
 class Map;
 class PointSet;

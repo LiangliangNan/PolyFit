@@ -40,10 +40,10 @@
 #ifndef _GEOM_MAP_BUILDER_H_
 #define _GEOM_MAP_BUILDER_H_
 
-#include "model_common.h"
-#include "map.h"
-#include "map_attributes.h"
-#include "../basic/color.h"
+#include <model/model_common.h>
+#include <model/map.h>
+#include <model/map_attributes.h>
+#include <basic/color.h>
 
 #include <set>
 #include <vector>

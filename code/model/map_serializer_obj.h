@@ -38,9 +38,9 @@
 #ifndef _MAP_SERIALIZER_OBJ_H_
 #define _MAP_SERIALIZER_OBJ_H_
 
-#include "model_common.h"
-#include "map_serializer.h"
-#include "../basic/color.h"
+#include <model/model_common.h>
+#include <model/map_serializer.h>
+#include <basic/color.h>
 
 
 class MODEL_API MapSerializer_obj : public MapSerializer 

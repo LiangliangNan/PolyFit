@@ -14,8 +14,8 @@
  * ---------------------------------------------------------------------------
  */
 
-#include "point_set.h"
-#include "vertex_group.h"
+#include <model/point_set.h>
+#include <model/vertex_group.h>
 
 
 PointSet::PointSet() : bbox_is_valid_(false)

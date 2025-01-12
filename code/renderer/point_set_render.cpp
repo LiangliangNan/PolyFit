@@ -16,11 +16,11 @@
 
 
 
-#include "point_set_render.h"
-#include "../model/point_set.h"
-#include "../model/vertex_group.h"
+#include <renderer/point_set_render.h>
+#include <model/point_set.h>
+#include <model/vertex_group.h>
 
-#include <GL/glew.h>
+#include <3rd_party/glew/include/GL/glew.h>
 
 
 

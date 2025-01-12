@@ -17,11 +17,11 @@
 #ifndef _FACE_SELECTION_H_
 #define _FACE_SELECTION_H_
 
-#include "method_common.h"
-#include "../math/math_types.h"
-#include "../math/linear_program.h"
-#include "../math/linear_program_solver.h"
-#include "../model/map_attributes.h"
+#include <method/method_common.h>
+#include <math/math_types.h>
+#include <math/linear_program.h>
+#include <math/linear_program_solver.h>
+#include <model/map_attributes.h>
 
 
 #include <vector>

@@ -41,9 +41,9 @@
 #define _GEOM_MAP_ATTRIBUTES_H_
 
 
-#include "map.h"
-#include "../basic/counted.h"
-#include "../basic/attribute_adapter.h"
+#include <model/map.h>
+#include <basic/counted.h>
+#include <basic/attribute_adapter.h>
 
 #include <string>
 #include <vector>

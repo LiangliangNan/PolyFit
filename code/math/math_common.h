@@ -3,7 +3,7 @@
 #define _MATH_COMMON_H_
 
 
-#include "../basic/basic_common.h"
+#include <basic/basic_common.h>
 
 
 # ifdef MATH_EXPORTS

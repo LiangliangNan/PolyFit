@@ -37,8 +37,8 @@
 
 
 
-#include "polygon2d.h"
-#include "math_types.h"
+#include <math/polygon2d.h>
+#include <math/math_types.h>
 
 #include <fstream>
 #include <cstdlib> // for qsort

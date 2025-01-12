@@ -37,9 +37,9 @@
 
 
 
-#include "map.h"
-#include "map_geometry.h"
-#include "map_attributes.h"
+#include <model/map.h>
+#include <model/map_geometry.h>
+#include <model/map_attributes.h>
 
 #include <stack>
 #include <algorithm>

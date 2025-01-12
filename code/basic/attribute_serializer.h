@@ -38,8 +38,8 @@
 #ifndef ___ATTRIBUTE_SERIALIZER__
 #define ___ATTRIBUTE_SERIALIZER__
 
-#include "basic_common.h"
-#include "attribute.h"
+#include <basic/basic_common.h>
+#include <basic/attribute.h>
 
 #include <map>
 #include <string>

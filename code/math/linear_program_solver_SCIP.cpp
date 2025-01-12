@@ -15,10 +15,10 @@
  */
 
 
-#include "linear_program_solver.h"
-#include "scip/scip.h"
-#include "scip/scipdefplugins.h"
-#include "../basic/logger.h"
+#include <math/linear_program_solver.h>
+#include <scip/scip.h>
+#include <scip/scipdefplugins.h>
+#include <basic/logger.h>
 
 #include <iostream>
 

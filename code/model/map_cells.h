@@ -40,12 +40,12 @@
 #ifndef _GEOM_MAP_TYPES_H_
 #define _GEOM_MAP_TYPES_H_
 
-#include "model_common.h"
-#include "../basic/counted.h"
-#include "../basic/smart_pointer.h"
-#include "../math/math_types.h"
-#include "../basic/record_id.h"
-#include "../basic/attribute_manager.h"
+#include <model/model_common.h>
+#include <basic/counted.h>
+#include <basic/smart_pointer.h>
+#include <math/math_types.h>
+#include <basic/record_id.h>
+#include <basic/attribute_manager.h>
 
 
 class Map ;

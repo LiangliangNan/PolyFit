@@ -40,8 +40,8 @@
 #ifndef _GEOM_MAP_ENUMERATOR_H_
 #define _GEOM_MAP_ENUMERATOR_H_
 
-#include "model_common.h"
-#include "map_attributes.h"
+#include <model/model_common.h>
+#include <model/map_attributes.h>
 
 
 class Map;

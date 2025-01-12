@@ -15,14 +15,14 @@
  */
 
 
-#include "face_selection.h"
-#include "method_global.h"
-#include "../basic/stop_watch.h"
-#include "../model/point_set.h"
-#include "../model/map_geometry.h"
-#include "../basic/logger.h"
-#include "../model/map_editor.h"
-#include "../method/hypothesis_generator.h"
+#include <method/face_selection.h>
+#include <method/method_global.h>
+#include <basic/stop_watch.h>
+#include <model/point_set.h>
+#include <model/map_geometry.h>
+#include <basic/logger.h>
+#include <model/map_editor.h>
+#include <method/hypothesis_generator.h>
 
 #include <algorithm>
 #include <limits>

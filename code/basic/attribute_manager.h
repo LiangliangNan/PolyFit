@@ -38,9 +38,9 @@
 #ifndef _ATTRIBUTE_MANAGER_H_
 #define _ATTRIBUTE_MANAGER_H_
 
-#include "basic_common.h"
-#include "rat.h"
-#include "attribute_store.h"
+#include <basic/basic_common.h>
+#include <basic/rat.h>
+#include <basic/attribute_store.h>
 
 #include <set>
 #include <map>

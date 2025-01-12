@@ -1,5 +1,5 @@
 
-#include "quaternion.h"
+#include <math/quaternion.h>
 #include <cstdlib> // RAND_MAX
 #include <iostream>
 

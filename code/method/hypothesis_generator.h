@@ -17,10 +17,10 @@
 #ifndef _HYPOTHESIS_GENERATOR_
 #define _HYPOTHESIS_GENERATOR_
 
-#include "method_common.h"
-#include "../math/polygon2d.h"
-#include "../model/vertex_group.h"
-#include "../model/map_attributes.h"
+#include <method/method_common.h>
+#include <math/polygon2d.h>
+#include <model/vertex_group.h>
+#include <model/map_attributes.h>
 
 #include <string>
 #include <vector>

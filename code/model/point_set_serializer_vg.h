@@ -18,7 +18,7 @@
 #ifndef _POINT_SERIALIZER_VERTEX_GROUP_H_
 #define _POINT_SERIALIZER_VERTEX_GROUP_H_
 
-#include "model_common.h"
+#include <model/model_common.h>
 
 
 #include <string>

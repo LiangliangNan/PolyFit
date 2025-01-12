@@ -40,10 +40,10 @@
 #ifndef _GEOM_MAP_COPIER_H_
 #define _GEOM_MAP_COPIER_H_
 
-#include "model_common.h"
-#include "map.h"
-#include "map_attributes.h"
-#include "../basic/attribute_copier.h"
+#include <model/model_common.h>
+#include <model/map.h>
+#include <model/map_attributes.h>
+#include <basic/attribute_copier.h>
 
 #include <string>
 #include <set>

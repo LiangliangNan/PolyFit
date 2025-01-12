@@ -14,24 +14,24 @@
  * ---------------------------------------------------------------------------
  */
 
-#include "hypothesis_generator.h"
-#include "cgal_types.h"
-#include "alpha_shape.h"
-#include "method_global.h"
-#include "alpha_shape_mesh.h"
-#include "../basic/progress.h"
-#include "../basic/logger.h"
-#include "../basic/assertions.h"
-#include "../basic/stop_watch.h"
-#include "../model/vertex_group.h"
-#include "../model/point_set.h"
-#include "../model/iterators.h"
-#include "../model/map.h"
-#include "../model/map_builder.h"
-#include "../model/map_editor.h"
-#include "../model/map_circulators.h"
-#include "../model/map_geometry.h"
-#include "../model/kdtree_search.h"
+#include <method/hypothesis_generator.h>
+#include <method/cgal_types.h>
+#include <method/alpha_shape.h>
+#include <method/method_global.h>
+#include <method/alpha_shape_mesh.h>
+#include <basic/progress.h>
+#include <basic/logger.h>
+#include <basic/assertions.h>
+#include <basic/stop_watch.h>
+#include <model/vertex_group.h>
+#include <model/point_set.h>
+#include <model/iterators.h>
+#include <model/map.h>
+#include <model/map_builder.h>
+#include <model/map_editor.h>
+#include <model/map_circulators.h>
+#include <model/map_geometry.h>
+#include <model/kdtree_search.h>
 
 #include <CGAL/convex_hull_2.h>
 #include <CGAL/Projection_traits_xy_3.h>

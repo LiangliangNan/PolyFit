@@ -15,7 +15,7 @@
  */
 
 
-#include "opengl_info.h"
+#include <renderer/opengl_info.h>
 #include <iostream>
 /* this is how we can safely include GLU */
 #if defined(__APPLE__) && defined(__MACH__)

@@ -40,12 +40,9 @@
 #ifndef _MATH_GEOMETRY_POLYGON2D_H_
 #define _MATH_GEOMETRY_POLYGON2D_H_
 
-#include "math_common.h"
-#include "math_types.h"
+#include <math/math_common.h>
+#include <math/math_types.h>
 #include <vector>
-
-
-
 
 
 namespace Geom {

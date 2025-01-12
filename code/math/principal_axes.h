@@ -39,9 +39,9 @@
 #ifndef __MESH_TOOLS_MATH_PPAL_AXIS__
 #define __MESH_TOOLS_MATH_PPAL_AXIS__
 
-#include "math_common.h"
-#include "math_types.h"
-#include "../basic/assertions.h"
+#include <math/math_common.h>
+#include <math/math_types.h>
+#include <basic/assertions.h>
 
 // eigen values are sorted in descending order, 
 // eigen vectors are sorted in accordance.

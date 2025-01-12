@@ -39,9 +39,9 @@
 #ifndef _GEOM_MAP_GEOMETRY_H_
 #define _GEOM_MAP_GEOMETRY_H_
 
-#include "model_common.h"
-#include "map.h"
-#include "../math/polygon2d.h"
+#include <model/model_common.h>
+#include <model/map.h>
+#include <math/polygon2d.h>
 
 
 // Adds some functions related to Map to the Geom namespace.

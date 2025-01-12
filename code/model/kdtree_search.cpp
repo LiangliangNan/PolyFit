@@ -14,9 +14,9 @@
  * ---------------------------------------------------------------------------
  */
 
-#include "kdtree_search.h"
-#include "kdtree/kdTree.h"
-#include "../model/point_set.h"
+#include <model/kdtree_search.h>
+#include <model/kdtree/kdTree.h>
+#include <model/point_set.h>
 
 
 

@@ -18,13 +18,13 @@
 #ifndef _OPENGL_GLINFORMATION_H_
 #define _OPENGL_GLINFORMATION_H_
 
-#include "renderer_common.h"
+#include <renderer/renderer_common.h>
 
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
-#include <GL/glew.h>
+#include <3rd_party/glew/include/GL/glew.h>
 #include <string>
 
 

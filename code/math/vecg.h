@@ -39,9 +39,10 @@
 #ifndef _MATH_TYPES_VECG_H_
 #define _MATH_TYPES_VECG_H_
 
-#include "math_common.h"
-#include "../basic/basic_types.h"
-#include "../basic/assertions.h"
+#include <math/math_common.h>
+#include <basic/basic_types.h>
+#include <basic/assertions.h>
+
 #include <iostream>
 #include <cfloat>
 

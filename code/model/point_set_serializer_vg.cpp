@@ -15,15 +15,15 @@
  */
 
 
-#include "point_set_serializer_vg.h"
+#include <model/point_set_serializer_vg.h>
 
 #include <cassert>
 
-#include "../basic/basic_types.h"
-#include "../basic/logger.h"
-#include "../basic/progress.h"
-#include "../basic/color.h"
-#include "../model/point_set.h"
+#include <basic/basic_types.h>
+#include <basic/logger.h>
+#include <basic/progress.h>
+#include <basic/color.h>
+#include <model/point_set.h>
 
 
 //#define TRANSLATE_RELATIVE_TO_FIRST_POINT

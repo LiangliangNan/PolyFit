@@ -14,13 +14,13 @@
  * ---------------------------------------------------------------------------
  */
 
-#include "surface_render.h"
-#include "opengl_info.h"
-#include "../basic/logger.h"
-#include "../basic/canvas.h"
+#include <renderer/surface_render.h>
+#include <renderer/opengl_info.h>
+#include <basic/logger.h>
+#include <basic/canvas.h>
 // these two are here for cylinders
-#include "../model/map_geometry.h" 
-#include "../math/quaternion.h"
+#include <model/map_geometry.h>
+#include <math/quaternion.h>
 
 /* this is how we can safely include GLU */
 #if defined(__APPLE__) && defined(__MACH__)

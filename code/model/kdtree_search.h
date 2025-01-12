@@ -17,10 +17,10 @@
 #ifndef __KDTREE_KDTREE_SEARCH__
 #define __KDTREE_KDTREE_SEARCH__
 
-#include "model_common.h"
-#include "../math/math_types.h"
-#include "../basic/counted.h"
-#include "../basic/smart_pointer.h"
+#include <model/model_common.h>
+#include <math/math_types.h>
+#include <basic/counted.h>
+#include <basic/smart_pointer.h>
 
 #include <list>
 

@@ -19,10 +19,10 @@
 #define _VERTEX_GROUP_H_
 
 
-#include "../basic/color.h"
-#include "../math/principal_axes.h"
-#include "../basic/counted.h"
-#include "../basic/smart_pointer.h"
+#include <basic/color.h>
+#include <math/principal_axes.h>
+#include <basic/counted.h>
+#include <basic/smart_pointer.h>
 #include <vector>
 #include <set>
 

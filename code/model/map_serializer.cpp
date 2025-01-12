@@ -37,10 +37,10 @@
 
 
 
-#include "../basic/logger.h"
-#include "../basic/assertions.h"
-#include "../model/map_builder.h"
-#include "map_serializer.h"
+#include <basic/logger.h>
+#include <basic/assertions.h>
+#include <model/map_builder.h>
+#include <model/map_serializer.h>
 
 #include <fstream>
 

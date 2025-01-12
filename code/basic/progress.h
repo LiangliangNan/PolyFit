@@ -38,8 +38,8 @@
 #ifndef __BASIC_PROGRESS__
 #define __BASIC_PROGRESS__
 
-#include "basic_common.h"
-#include "basic_types.h"
+#include <basic/basic_common.h>
+#include <basic/basic_types.h>
 
 
 class ProgressClient ;

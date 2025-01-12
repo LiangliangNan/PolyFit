@@ -17,7 +17,7 @@
 #ifndef _POINT_SET_IO_H_
 #define _POINT_SET_IO_H_
 
-#include "model_common.h"
+#include <model/model_common.h>
 
 #include <string>
 

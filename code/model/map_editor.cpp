@@ -36,9 +36,9 @@
 */
 
 
-#include "map_editor.h"
-#include "map_geometry.h"
-#include "../basic/assertions.h"
+#include <model/map_editor.h>
+#include <model/map_geometry.h>
+#include <basic/assertions.h>
 
 #include <set>
 #include <cfloat>

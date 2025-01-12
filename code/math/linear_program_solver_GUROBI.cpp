@@ -15,8 +15,8 @@
  */
 
 
-#include "linear_program_solver.h"
-#include "../basic/logger.h"
+#include <math/linear_program_solver.h>
+#include <basic/logger.h>
 
 
 #ifdef HAS_GUROBI
