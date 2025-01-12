@@ -69,9 +69,9 @@ endif ()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         basic
-        3rd_scip
-#        3rd_lpsolve
-#        3rd_glpk
-        3rd_soplex
+        scip
+#        lpsolve
+#        glpk
+        soplex
         ${CMAKE_DL_LIBS}
         )

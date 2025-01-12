@@ -68,4 +68,4 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE QT_DEPRECATED_WARNINGS)
 
 target_link_libraries( ${PROJECT_NAME} ${QtLibs})
 
-target_link_libraries( ${PROJECT_NAME} basic math model method renderer 3rd_glew 3rd_QGLViewer)
+target_link_libraries( ${PROJECT_NAME} basic math model method renderer glew QGLViewer)

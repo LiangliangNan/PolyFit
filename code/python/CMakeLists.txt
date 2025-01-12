@@ -3,7 +3,6 @@ project(PyPolyFit)
 
 set(CMAKE_CXX_STANDARD 11)  # If you use pybind11::overload_cast<...>, then it requires compiling in C++14 mode
 
-add_subdirectory(3rd_pybind11)
 pybind11_add_module(${PROJECT_NAME} MODULE bindings/polyfit.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE method)
 

@@ -1,7 +1,7 @@
 get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${PROJECT_NAME})
 
-include(../cmake/UseQt.cmake)
+include(../../cmake/UseQt.cmake)
 
 find_package(OpenGL REQUIRED)
 

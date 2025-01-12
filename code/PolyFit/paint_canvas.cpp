@@ -21,7 +21,7 @@
 #include <QMessageBox>
 #include <QCoreApplication>
 
-#include "../3rd_QGLViewer/QGLViewer/manipulatedCameraFrame.h"
+#include "../3rd_party/QGLViewer/QGLViewer/manipulatedCameraFrame.h"
 #include "../basic/file_utils.h"
 #include "../basic/stop_watch.h"
 #include "../model/map_editor.h"

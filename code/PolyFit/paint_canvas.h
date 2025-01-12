@@ -19,7 +19,7 @@
 
 #include <GL/glew.h>
 
-#include "../3rd_QGLViewer/QGLViewer/qglviewer.h"
+#include "../3rd_party/QGLViewer/QGLViewer/qglviewer.h"
 #include "../basic/color.h"
 #include "../math/math_types.h"
 #include "../model/point_set.h"
