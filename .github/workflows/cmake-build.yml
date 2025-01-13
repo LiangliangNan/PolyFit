@@ -28,7 +28,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update || true
-          sudo apt-get install -y cmake build-essential libgl1-mesa-dev libglu1-mesa-dev 
+          sudo apt-get install -y cmake build-essential libgl1-mesa-dev libglu1-mesa-dev \
               mesa-common-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev \
               libcgal-dev qt6-base-dev libopencv-dev
 
