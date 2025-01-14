@@ -62,15 +62,6 @@ find_package(Boost REQUIRED)
 
 ################################################################################
 
-SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY
-    ${CMAKE_BINARY_DIR}/lib CACHE
-    PATH "Directory where all the .lib files are dumped." FORCE)
-SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY
-    ${CMAKE_BINARY_DIR}/bin CACHE
-    PATH "Directory where .exe and .dll files are dumped." FORCE)
-
-################################################################################
-
 add_subdirectory(3rd_party/QGLViewer)
 add_subdirectory(3rd_party/scip)
 add_subdirectory(3rd_party/soplex)
