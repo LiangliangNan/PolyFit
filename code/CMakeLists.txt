@@ -58,7 +58,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 if (POLICY CMP0167)
         cmake_policy(SET CMP0167 NEW)
 endif ()
-find_package(Boost REQUIRED)
 
 ################################################################################
 

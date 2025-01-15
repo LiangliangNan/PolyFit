@@ -57,7 +57,7 @@ endif ()
 
 
 include(../cmake/FindGUROBI.cmake)
-if (GUROBI_FOUND)
+if (GUROBI_FOUND AND (NOT (WIN32 AND MINGW))) # the official Gurobi distribution is only for MSVC
     message(STATUS "Gurobi include dir: " ${GUROBI_INCLUDE_DIRS})
     message(STATUS "Gurobi libraries: " ${GUROBI_LIBRARIES})
 
