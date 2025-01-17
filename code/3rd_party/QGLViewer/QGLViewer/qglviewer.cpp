@@ -270,15 +270,6 @@ void QGLViewer::initializeGL() {
   setForegroundColor(QColor(180, 180, 180));
   setBackgroundColor(QColor(51, 51, 51));
 
-  // Clear the buffer where we're going to draw
-  if (format().stereo()) {
-    glDrawBuffer(GL_BACK_RIGHT);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glDrawBuffer(GL_BACK_LEFT);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  } else
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
   // Calls user defined method. Default emits a signal.
   init();
 
@@ -295,6 +286,15 @@ camera in the world coordinate system. \arg draw() (or fastDraw() when the
 camera is manipulated) : main drawing method. Should be overloaded. \arg
 postDraw() : display of visual hints (world axis, FPS...) */
 void QGLViewer::paintGL() {
+    // Clear the buffer where we're going to draw
+    if (format().stereo()) {
+        glDrawBuffer(GL_BACK_RIGHT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glDrawBuffer(GL_BACK_LEFT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    } else
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
   if (displaysInStereo()) {
     for (int view = 1; view >= 0; --view) {
       // Clears screen, set model view matrix with shifted matrix for ith buffer

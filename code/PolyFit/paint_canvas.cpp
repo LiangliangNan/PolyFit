@@ -105,6 +105,8 @@ void PaintCanvas::clear() {
 static bool fatal_opengl_error = false;
 void PaintCanvas::init()
 {
+    ogf_check_gl;
+
 	GLenum err = glewInit();
 	if (GLEW_OK != err) {
 		// Problem: glewInit failed, something is seriously wrong. 
@@ -206,6 +208,7 @@ void PaintCanvas::draw() {
 	if (fatal_opengl_error) {
 		return;
 	}
+    ogf_check_gl;
 
 	bool interacting = camera()->frame()->isManipulated();
     if (point_set_ && show_input_ && point_set_render_)
