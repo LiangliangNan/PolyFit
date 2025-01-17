@@ -16,8 +16,6 @@
 
 #include "paint_canvas.h"
 
-#include <fstream>
-
 #include <QMessageBox>
 #include <QCoreApplication>
 
