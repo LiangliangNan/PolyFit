@@ -64,7 +64,7 @@ function(copy_runtime_dependencies target destination)
                 # ----------
                 # Using a Python script (copy_dependencies.py) to resolve transitive dependencies.
                 # This script should also work for macOS and Linux!!!
-                COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/helper/copy_dependencies.py $<TARGET_FILE:${target}>  ${destination}
+                COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/copy_dependencies.py $<TARGET_FILE:${target}>  ${destination}
                 # -----------------------------------------------------------------------------------------------
                 # Copy the Python runtime DLL
                 COMMAND ${CMAKE_COMMAND} -E echo "Copying Python runtime DLL ${PYTHON_RUNTIME_DLL} to ${destination}..."
