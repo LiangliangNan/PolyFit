@@ -55,20 +55,23 @@ function(copy_runtime_dependencies target destination)
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${destination}
                 # -----------------------------------------------------------------------------------------------
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${target}> ${destination}
+                # -----------------------------------------------------------------------------------------------
                 COMMAND ${CMAKE_COMMAND} -E echo "Copying runtime DLLs of ${target} to ${destination}..."
                 # -----------------------------------------------------------------------------------------------
                 # Liangliang: both "dumpbin /DEPENDENTS" and "$<TARGET_RUNTIME_DLLS:${target}>" only resolve direct dependencies.
                 # COMMAND dumpbin /DEPENDENTS $<TARGET_FILE:${target}> > ${destination}/runtime_dependencies.txt
                 # COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${target}> ${destination}
-                # -----------------------------------------------------------------------------------------------
+                # ----------
                 # Using a Python script (copy_dependencies.py) to resolve transitive dependencies.
-                COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/copy_dependencies.py $<TARGET_FILE:${target}>  ${destination}
+                # This script should also work for macOS and Linux!!!
+                COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/helper/copy_dependencies.py $<TARGET_FILE:${target}>  ${destination}
                 # -----------------------------------------------------------------------------------------------
                 # Copy the Python runtime DLL
+                COMMAND ${CMAKE_COMMAND} -E echo "Copying Python runtime DLL ${PYTHON_RUNTIME_DLL} to ${destination}..."
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PYTHON_RUNTIME_DLL} ${destination}
                 # -----------------------------------------------------------------------------------------------
                 COMMAND_EXPAND_LISTS
-                )
+        )
     elseif (APPLE) # macOS
         add_custom_command(TARGET ${target} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${destination}
@@ -92,10 +95,11 @@ function(copy_runtime_dependencies target destination)
                 #COMMAND otool -L $<TARGET_FILE:${target}> | awk '/@rpath|\\/|\\// {print $$1}' | sed 's|@rpath|$<TARGET_FILE_DIR:${target}>|g' | xargs -I {} sh -c '[ -e "{}" ] && cp -v "{}" ${destination}' || true
                 # -----------------------------------------------------------------------------------------------
                 # Copy the Python runtime library
+                COMMAND ${CMAKE_COMMAND} -E echo "Copying Python runtime library ${PYTHON_LIBRARIES} to ${destination}..."
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PYTHON_LIBRARIES} ${destination}
                 # -----------------------------------------------------------------------------------------------
                 COMMAND_EXPAND_LISTS
-                )
+        )
     elseif (UNIX) # Linux
         add_custom_command(TARGET ${target} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${destination}
@@ -108,10 +112,11 @@ function(copy_runtime_dependencies target destination)
                 COMMAND ldd $<TARGET_FILE:${target}> | grep '=> /' | awk '{print $$3}' | xargs -I {} cp -v {} ${destination}
                 # -----------------------------------------------------------------------------------------------
                 # Copy the Python runtime library
+                COMMAND ${CMAKE_COMMAND} -E echo "Copying Python runtime library ${PYTHON_LIBRARIES} to ${destination}..."
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PYTHON_LIBRARIES} ${destination}
                 # -----------------------------------------------------------------------------------------------
                 COMMAND_EXPAND_LISTS
-                )
+        )
     endif ()
 endfunction()
 
