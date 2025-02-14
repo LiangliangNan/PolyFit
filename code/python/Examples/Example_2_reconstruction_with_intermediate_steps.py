@@ -11,12 +11,13 @@
 # ------------------------------------------------------------------
 
 
-# This example shows how to perform the reconstruction step by step.
-# This could be useful if you want to reuse the generated candidate faces and their confidence values,
-# but try multiple times of the final optimization step with different parameters.
-#
-# See "Example_1" for reconstruction with a single function call.
+"""
+This example shows how to perform the reconstruction step by step.
+This could be useful if you want to reuse the generated candidate faces and their confidence values,
+but try multiple times of the final optimization step with different parameters.
 
+See "Example_1" for reconstruction with a single function call.
+"""
 
 import sys
 sys.path.append("../../../cmake-build-release/lib/python")     # <--- Update this to use your actual build directory.
@@ -27,6 +28,7 @@ def main():
     # Initialize PolyFit
     polyfit.initialize()
 
+    # Input and output file paths
     input_file  = "../../../data/toy_data.bvg"          # <--- Update this path to your point cloud
     output_file = "../../../data/toy_data-result.obj"   # <--- Update this path to where your want to save the result
 
@@ -63,9 +65,9 @@ def main():
     selector = polyfit.FaceSelection(point_cloud, mesh)
     selector.optimize(hypothesis,
                       polyfit.SCIP, # solver name (GUROBI requires a license, free for research and eduction)
-                      0.43,         # Weight of data_fitting         <--- tune if needed.
-                      0.27,         # Weight of model_coverage       <--- tune if needed.
-                      0.3)          # Weight of model_complexity     <--- tune if needed.
+                      0.43,         # Weight of data fitting         <--- tune if needed.
+                      0.27,         # Weight of model coverage       <--- tune if needed.
+                      0.3)          # Weight of model complexity     <--- tune if needed.
 
     if mesh.size_of_facets() == 0:
         print("Optimization failed: model has no face", file=sys.stderr)
