@@ -2,6 +2,10 @@ set(PROJECT_NAME 3rd_QGLViewer)
 
 include(../../cmake/UseQt.cmake)
 
+if (NOT Qt6_FOUND AND NOT Qt5_FOUND)
+  return()
+endif()
+
 find_package(OpenGL REQUIRED)
 
 # QGLViewer target.

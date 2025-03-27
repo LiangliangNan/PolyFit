@@ -2,6 +2,10 @@ get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 project(${PROJECT_NAME})
 
 include(../cmake/UseQt.cmake)
+if (NOT Qt6_FOUND AND NOT Qt5_FOUND)
+    message(WARNING "Qt (either Qt6 or Qt5) is required for building the GUI demo, but Qt is not found. Building the GUI demo is skipped, but you can still build the commandline examples and the Python bindings.")
+    return()
+endif()
 
 set(${PROJECT_NAME}_HEADERS
     main_window.h
