@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "polyfit"
-version = "@CONF_POLYFIT_RELEASE_DATE@"  # Use the release date as the version number
+version = "@PolyFit_VERSION_STRING@"
 description = "Python bindings for the PolyFit library"
 authors = [
     { name = "Liangliang Nan", email = "liangliang.nan@gmail.com" }

@@ -5,9 +5,13 @@ if (APPLE)
         message(STATUS "Minimum OS X deployment version: ${CMAKE_OSX_DEPLOYMENT_TARGET}")
 endif ()
 
+set(PolyFit_VERSION_MAJOR 1)
+set(PolyFit_VERSION_MINOR 6)
+set(PolyFit_VERSION_PATCH 0)
+set(PolyFit_VERSION_STRING ${PolyFit_VERSION_MAJOR}.${PolyFit_VERSION_MINOR}.${PolyFit_VERSION_PATCH})
+set(PolyFit_VERSION_NUMBER 10${PolyFit_VERSION_MAJOR}0${PolyFit_VERSION_MINOR}0${PolyFit_VERSION_PATCH})
 
-get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-project(PolyFit)
+project(PolyFit VERSION ${PolyFit_VERSION_STRING})
 
 # One shouldn't generate the BUILD project directly in the SOURCES folder!
 if ( ${CMAKE_CURRENT_BINARY_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR} )

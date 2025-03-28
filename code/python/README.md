@@ -39,7 +39,7 @@ Below are the detailed steps for creating the wheel file and installation.
 
 - Step 3: Install the Wheel
 
-    - `pip install dist/polyfit-2.6.0-py3-none-any.whl` # Update the wheel file name accordingly
+    - `pip install dist/polyfit-1.6.0-py3-none-any.whl` # Update the wheel file name accordingly
 
   You can verify the installation by running the following command:
 

@@ -126,8 +126,6 @@ copy_runtime_dependencies(${PROJECT_NAME} ${POLYFIT_PYTHON_PACKAGE_DIR}/polyfit)
 
 
 # Configure and create pyproject.toml
-string(TIMESTAMP TODAY "%Y%m%d")
-set(CONF_POLYFIT_RELEASE_DATE ${TODAY})
 configure_file(${CMAKE_CURRENT_LIST_DIR}/pyproject.toml.in ${POLYFIT_PYTHON_PACKAGE_DIR}/pyproject.toml @ONLY)
 
 # Copy the readme file
