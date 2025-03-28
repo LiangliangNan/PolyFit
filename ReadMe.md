@@ -31,7 +31,7 @@ You can also build PolyFit from the source code:
   - [Qt](https://www.qt.io) ([v5.14.2](https://download.qt.io/archive/qt/5.14/5.14.2/), 
     [v5.12.12](https://download.qt.io/archive/qt/5.12/5.12.12/), and [v6.7.3](https://www.qt.io/download-qt-installer-oss) 
     have been tested). Qt is required by the [GUI demo](./code/PolyFit). You should still be able to build 
-    the [command-line example](./Example) without Qt. 
+    the [command-line examples](./code/Examples) without Qt. 
   - [CGAL](http://www.cgal.org/index.html) (v6.0, v5.5, v5.0, v4.11.1, and v4.10 were tested).
    
 * Build PolyFit
