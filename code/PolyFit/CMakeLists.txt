@@ -3,7 +3,7 @@ project(${PROJECT_NAME})
 
 include(../cmake/UseQt.cmake)
 if (NOT Qt6_FOUND AND NOT Qt5_FOUND)
-    message(WARNING "Qt (either Qt6 or Qt5) is required for building the GUI demo, but Qt is not found. Building the GUI demo is skipped, but you can still build the commandline examples and the Python bindings.")
+    message(WARNING "Qt6 or Qt5 is required for building the GUI demo, but Qt is not found, and thus building the GUI demo is skipped. You can still build the command-line examples and the Python bindings.")
     return()
 endif()
 
