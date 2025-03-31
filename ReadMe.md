@@ -22,9 +22,9 @@ ICCV 2017.
 ---
 
 ### Obtaining PolyFit
-Prebuilt executable files (for **macOS**, **Linux**, and **Windows**) are available [here](https://github.com/LiangliangNan/PolyFit/releases). 
+Prebuilt executable files and Python bindings (for **macOS**, **Linux**, and **Windows**) are available [here](https://github.com/LiangliangNan/PolyFit/releases). 
   
-You can also build PolyFit from the source code:
+You can also build PolyFit from the source code (Python users see [here](./code/python/README.md)):
    
 * Clone the repository or download the [source code](https://github.com/LiangliangNan/PolyFit).
 * Dependencies
