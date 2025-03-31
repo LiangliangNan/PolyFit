@@ -1,19 +1,27 @@
-# PolyFit Python Bindings
+## PolyFit Python Bindings
 
 Python bindings for the PolyFit reconstruction method.
 
-More information about PolyFit:
+For more information about PolyFit, visit:
 https://github.com/LiangliangNan/PolyFit
 
-### Build PolyFit bindings
+### Obtain/Build PolyFit bindings
 
-Before building the Python bindings, ensure that [Python](https://www.python.org/downloads/) is installed on your system.
-Then, run CMake to configure the project and build PolyFit (see detailed instructions [here](../../ReadMe.md)). 
-After building PolyFit, the Python bindings module, `PyPolyFit`, will be located in your build directory at:
-- Windows: `YOUR_BUILD_DIRECTORY/lib/PyPolyFit.pyd`
-- macOS/Linux: `YOUR_BUILD_DIRECTORY/lib/PyPolyFit.so`
+Prebuilt Python bindings are available for download on the [Releases](https://github.com/LiangliangNan/PolyFit/releases) page.
+Simply Download the appropriate wheel file for your platform and Python version, and install it using `pip`:
+```bash
+pip install polyfit-1.6.0-py3-none-any.whl # <-- Use your actual wheel file name
+```
 
-### Use PolyFit bindings in Python code
+#### Build from source
+
+If prebuilt bindings are not available for your platform or specific Python version, you can build the bindings from the
+source code. Here’s how:
+- Ensure you have [Python](https://www.python.org/downloads/) installed on your system.
+- Run CMake to configure the project and build PolyFit (see detailed instructions [here](../../ReadMe.md)). 
+- After building, the Python bindings module will be located in `YOUR_BUILD_DIRECTORY/lib/python/polyfit`.
+
+#### Use PolyFit bindings in Python code
 
 After successfully building the Python bindings, you can directly import the PyPolyFit module into your Python code.
 To get started, refer to the [examples](./Examples) directory for code snippets demonstrating typical usage.
@@ -23,12 +31,12 @@ To get started, refer to the [examples](./Examples) directory for code snippets 
 
 ### (Optional) Installing PolyFit Python bindings
 
-If you prefer not to build PolyFit from source on each machine, you can create a wheel installer for easier 
+If you prefer not to build PolyFit from source on each machine, you can create a wheel (`.whl`) installer for easier 
 distribution and installation. This will allow you to install PolyFit like any other Python package (e.g., [Numpy](https://numpy.org/)).
 
 Follow these steps to build and install the wheel file:
 
-- Step 1: Install the build tool (if not already installed)
+- Step 1: Install the `build` tool (if not already installed)
 
     - `pip install build`
 
@@ -40,7 +48,7 @@ Follow these steps to build and install the wheel file:
 
 - Step 3: Install the wheel
 
-    - `pip install dist/polyfit-1.6.0-py3-none-any.whl` # Update the wheel file name accordingly
+    - `pip install dist/polyfit-1.6.0-py3-none-any.whl` # <-- Use your actual wheel file name
 
   You can verify the installation by running the following command:
 
