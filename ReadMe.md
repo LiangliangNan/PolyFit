@@ -48,7 +48,7 @@ You can also build PolyFit from the source code:
         $ cmake -DCMAKE_BUILD_TYPE=Release ..
         $ make
         ```
-    - On Windows with Microsoft Visual Studio, use the `x64 Native Tools Command Prompt for VS XXXX` (don't use the x86 one), then
+    - On Windows with Microsoft Visual Studio, use the `x64 Native Tools Command Prompt for VS 20XX` (don't use the x86 one), then
         ```
         $ cd PolyFit
         $ mkdir Release

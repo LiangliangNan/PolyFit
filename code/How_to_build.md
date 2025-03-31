@@ -5,7 +5,7 @@ NOTE: There are usually many options to set up a development environment on each
  
 **Step #1. Install a C/C++ compiler and necessary tools.** Some compilers can be installed separately, but some compilers do come along with an IDE (Integrated Development Environment). We install the commonly used IDE if available on your operating system.
 
- - For Windows user, install [Microsoft Visual Studio](https://visualstudio.microsoft.com/) (NOT Visual Studio Code)   
+ - For Windows user, install [Microsoft Visual Studio](https://visualstudio.microsoft.com/) (NOT Visual Studio Code).
  
  - For Mac users, install XCode from the Apple's App Store.
 

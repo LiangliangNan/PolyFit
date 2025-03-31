@@ -7,37 +7,38 @@ https://github.com/LiangliangNan/PolyFit
 
 ### Build PolyFit bindings
 
-Make sure you have [Python](https://www.python.org/downloads/) installed.
-Run CMake and then build. After building PolyFit, you
-can find the Python bindings module `PyPolyFit` (`PyPolyFit.pyd` on Windows, `PyPolyFit.so` on macOS/Linux) in
-`YOUR_BUILD_DIRECTORY/lib`.
+Before building the Python bindings, ensure that [Python](https://www.python.org/downloads/) is installed on your system.
+Then, run CMake to configure the project and build PolyFit (see detailed instructions [here](../../ReadMe.md)). 
+After building PolyFit, the Python bindings module, `PyPolyFit`, will be located in your build directory at:
+- Windows: `YOUR_BUILD_DIRECTORY/lib/PyPolyFit.pyd`
+- macOS/Linux: `YOUR_BUILD_DIRECTORY/lib/PyPolyFit.so`
 
 ### Use PolyFit bindings in Python code
 
-After building the Python bindings, you should already be able to use the Python bindings module in your Python code.
-See the [examples](./Examples).
+After successfully building the Python bindings, you can directly import the PyPolyFit module into your Python code.
+To get started, refer to the [examples](./Examples) directory for code snippets demonstrating typical usage.
 
-**Note**: the Python version used for running the code should match the version used for building the bindings.
+**Note**: the Python version used for running your code should match the version used for building the bindings.
 
 
-### (Optional) Installation
+### (Optional) Installing PolyFit Python bindings
 
-If you want to avoid specifying the path of the generated bindings in your Python code, you can create a wheel (`.whl`)
-file for the bindings and install it globally. This will make PoliFit work like other Python packages such as [Numpy](https://numpy.org/).
+If you prefer not to build PolyFit from source on each machine, you can create a wheel installer for easier 
+distribution and installation. This will allow you to install PolyFit like any other Python package (e.g., [Numpy](https://numpy.org/)).
 
-Below are the detailed steps for creating the wheel file and installation.
+Follow these steps to build and install the wheel file:
 
-- Step 1: Install the build Tool (only if not installed)
+- Step 1: Install the build tool (if not already installed)
 
     - `pip install build`
 
-- Step 2: Build the Wheel
+- Step 2: Navigate to the bindings directory and build the wheel
 
     - `cd YOUR_BUILD_DIRECTORY/lib/python`
 
     - `python -m build`
 
-- Step 3: Install the Wheel
+- Step 3: Install the wheel
 
     - `pip install dist/polyfit-1.6.0-py3-none-any.whl` # Update the wheel file name accordingly
 
