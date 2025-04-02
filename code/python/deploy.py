@@ -271,7 +271,7 @@ def copy_and_fix_dependencies(source_lib, dest_dir):
                     queue.append(resolved_dep)
 
         # On Windows, dependency paths are typically resolved via PATH or the DLL search order.
-        print("✅ All dependencies copied successfully on Windows. You may need to add the destination directory to your PATH.")
+        print("All dependencies copied successfully on Windows. You may need to add the destination directory to your PATH.")
     else:
         print("Unsupported platform.")
 
