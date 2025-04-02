@@ -28,9 +28,9 @@ def get_dependencies(lib_path):
                 parts = line.strip().split("=>")
                 if len(parts) == 2:
                     dep = parts[1].split()[0]
-                    # Exclude system libraries from /lib or /usr/lib if desired
+                    # Liangliang: uncomment the line below to exclude system libraries from /lib or /usr/lib if desired
                     # if not (dep.startswith("/lib") or dep.startswith("/usr/lib")):
-                    #     dependencies.append(dep)
+                    dependencies.append(dep)
         return dependencies
 
     elif sys.platform.startswith("win"):
