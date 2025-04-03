@@ -82,6 +82,20 @@ def resolve_rpath(lib_path, dep):
         possible_path = os.path.join(lib_dir, dep)
         if os.path.exists(possible_path):
             return possible_path
+        else: # If not found, check the PATH environment variable.
+            # Split PATH into individual directories
+            search_paths = os.environ['PATH'].split(os.pathsep)  # List of directories in PATH
+            for path in search_paths:
+                possible_path = os.path.join(path, dep)
+                # Exclude system DLLs that are likely in C:\Windows and C:\Windows\System32
+                if (possible_path.lower().startswith("c:\\windows") or
+                        possible_path.lower().startswith("c:\\windows\\system32") or
+                        "api-ms-" in possible_path.lower() or
+                        "vcruntime" in possible_path.lower() or
+                        "msvcp" in possible_path.lower()):
+                    continue  # Skip this dependency
+                if os.path.exists(possible_path):
+                    return possible_path
         return None
 
     else:
