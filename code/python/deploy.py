@@ -1,3 +1,34 @@
+"""
+copy_runtime_dependencies.py
+
+This script recursively copies a given shared library (or binary) and its runtime
+dependencies into a specified destination directory. It resolves and rewrites
+paths as needed to ensure the binary and its dependencies can run standalone
+from the destination directory.
+
+Supported platforms:
+- macOS: Uses otool and install_name_tool to resolve and fix @rpath dependencies.
+- Linux: Uses ldd and patchelf to rewrite rpaths.
+- Windows: Uses dumpbin (requires Visual Studio tools) to find DLL dependencies.
+
+Usage:
+    python copy_runtime_dependencies.py <target_binary> <destination_directory>
+
+Arguments:
+    <target_binary>            Path to the binary or shared library to process.
+    <destination_directory>    Directory where the binary and dependencies will be copied.
+
+Note:
+- On macOS, this script ensures all libraries are rewritten with `@loader_path`.
+- On Linux, the rpath of copied libraries is set to `$ORIGIN`.
+- On Windows, it attempts to find dependent DLLs in the PATH or next to the binary.
+
+Dependencies:
+    - macOS: install_name_tool, otool
+    - Linux: ldd, patchelf
+    - Windows: dumpbin (from Visual Studio command line tools)
+"""
+
 import os
 import sys
 import shutil
