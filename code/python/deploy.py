@@ -235,17 +235,6 @@ def copy_and_fix_dependencies(source_lib, dest_dir):
                     # On Linux, dependencies from ldd should already be full paths.
                     queue.append(dep)
 
-        # 🔹 Locate and copy the dynamic linker (ld-linux-x86-64.so.2)
-        result = subprocess.run(["ldd", source_lib], capture_output=True, text=True)
-        for line in result.stdout.splitlines():
-            if "ld-linux" in line:
-                linker_path = line.split("=>")[-1].strip().split(" ")[0]
-                if os.path.exists(linker_path):
-                    dest_linker = os.path.join(dest_dir, os.path.basename(linker_path))
-                    shutil.copy2(linker_path, dest_linker)
-                    subprocess.run(["patchelf", "--set-interpreter", dest_linker, source_lib])
-                    print(f"✔ Set interpreter: {source_lib} -> {dest_linker}")
-                    break
         # Update rpath of each copied library to use $ORIGIN (requires patchelf)
         for original_path, new_path in copied_libs.items():
             subprocess.run(["patchelf", "--set-rpath", "$ORIGIN", new_path])
