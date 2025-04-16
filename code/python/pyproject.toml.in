@@ -9,11 +9,12 @@ description = "Python bindings for the PolyFit library"
 authors = [
     { name = "Liangliang Nan", email = "liangliang.nan@gmail.com" }
 ]
-license = { text = "GPLv3" }
+license = "GPL-3.0-or-later"  # SPDX license string
+license-files = ["LICENSE"]   # if you want to include a LICENSE file
+readme = { file = "README.md", content-type = "text/markdown" }
 urls = { Homepage = "https://github.com/LiangliangNan/PolyFit" }
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS",
@@ -41,7 +42,6 @@ polyfit = [
     "*.dll",    # Include .dll files (Windows)
     "LICENSE",
     "README.md",
-    "runtime_dependencies.txt",
 ]
 
 # Exclude specific files (e.g., .DS_Store, runtime_dependencies.txt)
