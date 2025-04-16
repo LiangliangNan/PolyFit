@@ -138,8 +138,8 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/pyproject.toml.in ${POLYFIT_PYTHON_PACK
 
 # Copy the readme file
 file(COPY ${CMAKE_CURRENT_LIST_DIR}/README.md DESTINATION ${POLYFIT_PYTHON_PACKAGE_DIR})
-# Copy the license files
-file(COPY ${POLYFIT_ROOT_DIR}/LICENSE DESTINATION ${POLYFIT_PYTHON_PACKAGE_DIR})
+# Copy the license file
+file(COPY ${POLYFIT_ROOT_DIR}/LICENSE DESTINATION ${POLYFIT_PYTHON_PACKAGE_DIR}/polyfit)
 
 # Generate the __init__.py file for the Python package
 file(WRITE ${POLYFIT_PYTHON_PACKAGE_DIR}/polyfit/__init__.py

@@ -9,8 +9,8 @@ description = "Python bindings for the PolyFit library"
 authors = [
     { name = "Liangliang Nan", email = "liangliang.nan@gmail.com" }
 ]
-license = "GPL-3.0-or-later"  # SPDX license string
-license-files = ["LICENSE"]   # if you want to include a LICENSE file
+license = "GPL-3.0-or-later"
+license-files = ["polyfit/LICENSE"]
 readme = { file = "README.md", content-type = "text/markdown" }
 urls = { Homepage = "https://github.com/LiangliangNan/PolyFit" }
 classifiers = [
