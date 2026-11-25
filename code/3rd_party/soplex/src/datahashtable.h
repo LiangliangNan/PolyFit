@@ -341,7 +341,8 @@ public:
       m_memfactor = base.m_memfactor;
       m_used = base.m_used;
       m_hashsize = base.m_hashsize;
-      primes = base.primes;
+      // primes = base.primes; // Liangliang: coping an array failed to compile on Ubuntu
+      std::copy(std::begin(base.primes), std::end(base.primes),std::begin(primes));
       nprimes = base.nprimes;
 
       assert(m_memfactor > 1.0);
