@@ -65,6 +65,7 @@ int main(int argc, char **argv)
 	QSurfaceFormat::setDefaultFormat(format);
 
 	QApplication app(argc, argv);
+	app.setAttribute(Qt::AA_DontUseNativeDialogs);
 
 	MainWindow window;	
 	window.show();

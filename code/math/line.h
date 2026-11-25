@@ -46,7 +46,7 @@ public:
 	// the projection of p on this line
 	Point  projection(const Point &p) const { return p_ + dir_ * dot(p - p_, dir_) ; }
 
-	FT	   squared_ditance(const Point &p) const { length2(projection(p) - p); }
+	FT	   squared_ditance(const Point &p) const { return length2(projection(p) - p); }
 
 private:  // Ambiguities exist for this one.
     GenericLine(const Point & p, const Vector & dir) ;
